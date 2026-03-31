@@ -1,7 +1,7 @@
 "use client";
 
 import type { Color, PieceType, GameState } from "@/lib/types";
-import { hexPoints, pieceAbbrev } from "@/lib/types";
+import { hexPoints } from "@/lib/types";
 import type { HiveTheme } from "@/themes/types";
 
 interface Props {
@@ -35,14 +35,18 @@ export function PlayerHand({
   const handIdx = color === "White" ? 0 : 1;
   const hand = state.hands[handIdx];
 
-  const pieces = PIECE_ORDER.filter((type) => {
+  // Build a flat list of individual pieces for visual stacking.
+  const pieceEntries: { type: PieceType; count: number; total: number }[] = [];
+  for (const type of PIECE_ORDER) {
     const count = hand[type] ?? 0;
-    return count > 0;
-  });
+    if (count > 0) {
+      pieceEntries.push({ type, count, total: count });
+    }
+  }
 
   return (
     <div
-      className={`p-3 rounded-xl border transition-colors ${
+      className={`p-2 md:p-3 rounded-xl border transition-colors ${
         isActive
           ? "border-amber-500/50 bg-amber-500/5"
           : "border-zinc-800 bg-zinc-900/50"
@@ -50,7 +54,7 @@ export function PlayerHand({
     >
       <div className="flex items-center gap-2 mb-2">
         <div
-          className="w-3 h-3 rounded-full"
+          className="w-3 h-3 rounded-full shrink-0"
           style={{
             background:
               color === "White"
@@ -71,9 +75,8 @@ export function PlayerHand({
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {pieces.map((type) => {
-          const count = hand[type] ?? 0;
+      <div className="flex flex-row md:flex-col flex-wrap gap-1.5">
+        {pieceEntries.map(({ type, count }) => {
           const isSelected = selectedPieceType === type && isActive;
 
           return (
@@ -81,7 +84,7 @@ export function PlayerHand({
               key={type}
               onClick={() => isActive && onSelectPiece(type)}
               disabled={!isActive}
-              className={`relative flex items-center gap-1 px-2 py-1 rounded-lg border text-xs transition-colors ${
+              className={`relative flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs transition-colors ${
                 isSelected
                   ? "border-blue-400 bg-blue-400/20"
                   : isActive
@@ -89,38 +92,60 @@ export function PlayerHand({
                     : "border-zinc-800 opacity-60 cursor-default"
               }`}
             >
-              <svg width="24" height="24" viewBox="-14 -14 28 28">
-                <polygon
-                  points={hexPoints(0, 0, 12)}
-                  fill={
-                    color === "White"
-                      ? theme.pieces.whiteColor
-                      : theme.pieces.blackColor
-                  }
-                  stroke={
-                    color === "White"
-                      ? theme.pieces.whiteBorder
-                      : theme.pieces.blackBorder
-                  }
-                  strokeWidth={1}
-                />
-                <text
-                  x={0}
-                  y={4}
-                  fontSize={10}
-                  fill={theme.pieces.textColor(color)}
-                  textAnchor="middle"
-                >
-                  {theme.pieces.renderLabel(type)}
-                </text>
-              </svg>
-              <span className="text-zinc-400">x{count}</span>
+              {/* Show stacked hex tiles for the count */}
+              <div className="relative" style={{ width: 36, height: 36 }}>
+                {Array.from({ length: Math.min(count, 3) }).map((_, i) => (
+                  <svg
+                    key={i}
+                    width="32"
+                    height="32"
+                    viewBox="-14 -14 28 28"
+                    className="absolute"
+                    style={{
+                      left: i * 2,
+                      top: i * 2,
+                      zIndex: 3 - i,
+                      opacity: i === 0 ? 1 : 0.5,
+                    }}
+                  >
+                    <polygon
+                      points={hexPoints(0, 0, 12)}
+                      fill={
+                        color === "White"
+                          ? theme.pieces.whiteColor
+                          : theme.pieces.blackColor
+                      }
+                      stroke={
+                        color === "White"
+                          ? theme.pieces.whiteBorder
+                          : theme.pieces.blackBorder
+                      }
+                      strokeWidth={1}
+                    />
+                    {i === 0 && (
+                      <text
+                        x={0}
+                        y={4}
+                        fontSize={10}
+                        fill={theme.pieces.textColor(color)}
+                        textAnchor="middle"
+                      >
+                        {theme.pieces.renderLabel(type)}
+                      </text>
+                    )}
+                  </svg>
+                ))}
+              </div>
+              <div className="flex flex-col items-start leading-tight">
+                <span className="text-zinc-200 text-xs font-medium">{type}</span>
+                <span className="text-zinc-500 text-[10px]">x{count}</span>
+              </div>
             </button>
           );
         })}
 
-        {pieces.length === 0 && (
-          <span className="text-xs text-zinc-600">All placed</span>
+        {pieceEntries.length === 0 && (
+          <span className="text-xs text-zinc-600 py-1">All placed</span>
         )}
       </div>
     </div>
