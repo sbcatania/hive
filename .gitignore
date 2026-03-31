@@ -1,0 +1,22 @@
+# Rust
+target/
+Cargo.lock
+
+# Node
+node_modules/
+.next/
+out/
+
+# WASM build output — committed to git so Vercel can deploy without Rust
+# Rebuild locally with: npm run build:wasm
+# web/public/wasm/
+
+# Environment
+.env*.local
+
+# Training data (generated)
+training/data/weights.json
+training/data/openings.json
+
+# OS
+.DS_Store

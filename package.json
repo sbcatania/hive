@@ -1,0 +1,12 @@
+{
+  "name": "hive",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:wasm": "cd engine && wasm-pack build --target web --out-dir ../web/public/wasm",
+    "dev": "npm run build:wasm && cd web && npx next dev",
+    "build": "npm run build:wasm && cd web && npx next build",
+    "test": "cargo test",
+    "train": "cd training && cargo run --release"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "hive-engine",
+  "type": "module",
+  "description": "Hive board game engine — rules, move generation, and AI",
+  "version": "0.1.0",
+  "files": [
+    "hive_engine_bg.wasm",
+    "hive_engine.js",
+    "hive_engine.d.ts"
+  ],
+  "main": "hive_engine.js",
+  "types": "hive_engine.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
