@@ -15,7 +15,7 @@ use crate::moves::{Move, all_legal_moves};
 use crate::piece::Color;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Result of an MCTS search.
 pub struct MctsResult {
@@ -76,20 +76,21 @@ impl MctsNode {
     }
 }
 
-/// Run MCTS search for the given number of simulations or time limit.
+/// Run MCTS search for the given number of simulations.
+/// The time_limit parameter is accepted for API compatibility but not enforced
+/// (std::time::Instant doesn't work in WASM). The simulation count is the real limit.
 pub fn search(
     state: &GameState,
     max_simulations: u32,
-    time_limit: Duration,
+    _time_limit: Duration,
     _weights: &EvalWeights,
 ) -> MctsResult {
-    let start = Instant::now();
     let player = state.current_player;
     let mut root = MctsNode::new(state.clone(), None, player.opponent());
 
     let mut sim_count = 0u32;
 
-    while sim_count < max_simulations && start.elapsed() < time_limit {
+    while sim_count < max_simulations {
         // 1. Selection + 2. Expansion
         let mut node_path = vec![0usize]; // Indices into the tree.
         let leaf = select_and_expand(&mut root, &mut node_path);

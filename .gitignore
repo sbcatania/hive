@@ -20,3 +20,4 @@ training/data/openings.json
 
 # OS
 .DS_Store
+.vercel

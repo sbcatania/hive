@@ -270,22 +270,22 @@ export function GameView({ config, onBack }: Props) {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-[100dvh] flex flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-zinc-800 shrink-0">
         <button
           onClick={onBack}
-          className="text-sm text-zinc-400 hover:text-zinc-200"
+          className="text-xs sm:text-sm text-zinc-400 hover:text-zinc-200"
         >
-          Back to Setup
+          Back
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-400">
+          <span className="text-xs sm:text-sm text-zinc-400">
             Turn {Math.floor(gameState.turn / 2) + 1}
           </span>
           <span className="text-xs text-zinc-600">|</span>
           <span
-            className={`text-sm font-medium ${
+            className={`text-xs sm:text-sm font-medium ${
               gameState.current_player === "White"
                 ? "text-zinc-200"
                 : "text-zinc-400"
@@ -295,6 +295,33 @@ export function GameView({ config, onBack }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-1">
+          {/* Controls inline on small screens */}
+          <div className="flex items-center gap-1 mr-2 md:mr-0">
+            {canUndo && (
+              <button
+                onClick={handleUndo}
+                className="px-2 py-1 text-xs border border-zinc-700 rounded hover:border-zinc-500 text-zinc-400"
+              >
+                Undo
+              </button>
+            )}
+            {canRedo && (
+              <button
+                onClick={handleRedo}
+                className="px-2 py-1 text-xs border border-zinc-700 rounded hover:border-zinc-500 text-zinc-400"
+              >
+                Redo
+              </button>
+            )}
+            {canPass && isPlayerTurn(gameState) && (
+              <button
+                onClick={handlePass}
+                className="px-2 py-1 text-xs border border-amber-700 rounded hover:border-amber-500 text-amber-400"
+              >
+                Pass
+              </button>
+            )}
+          </div>
           {THEMES.map((t) => (
             <button
               key={t.id}
@@ -314,10 +341,10 @@ export function GameView({ config, onBack }: Props) {
         </div>
       </div>
 
-      {/* Main area */}
-      <div className="flex-1 flex">
-        {/* Left: Black hand */}
-        <div className="w-56 p-3 border-r border-zinc-800 flex flex-col gap-3">
+      {/* Main area: column on mobile, row on desktop */}
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        {/* Black hand: top on mobile, left sidebar on desktop */}
+        <div className="shrink-0 p-2 md:p-3 border-b md:border-b-0 md:border-r border-zinc-800 md:w-56 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
           <PlayerHand
             state={gameState}
             color="Black"
@@ -335,38 +362,10 @@ export function GameView({ config, onBack }: Props) {
             }
             onSelectPiece={handleHandSelect}
           />
-
-          {/* Controls */}
-          <div className="mt-auto space-y-2">
-            {canUndo && (
-              <button
-                onClick={handleUndo}
-                className="w-full py-1.5 text-xs border border-zinc-700 rounded-lg hover:border-zinc-500 text-zinc-400"
-              >
-                Undo
-              </button>
-            )}
-            {canRedo && (
-              <button
-                onClick={handleRedo}
-                className="w-full py-1.5 text-xs border border-zinc-700 rounded-lg hover:border-zinc-500 text-zinc-400"
-              >
-                Redo
-              </button>
-            )}
-            {canPass && isPlayerTurn(gameState) && (
-              <button
-                onClick={handlePass}
-                className="w-full py-1.5 text-xs border border-amber-700 rounded-lg hover:border-amber-500 text-amber-400"
-              >
-                Pass Turn
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Center: Board */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative min-h-0 min-w-0">
           <HexGrid
             state={gameState}
             theme={theme}
@@ -379,14 +378,14 @@ export function GameView({ config, onBack }: Props) {
 
           {/* Message overlay */}
           {message && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-zinc-900/90 border border-zinc-700 rounded-lg text-sm">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-zinc-900/90 border border-zinc-700 rounded-lg text-xs sm:text-sm max-w-[90%] text-center">
               {message}
             </div>
           )}
 
           {/* AI thinking overlay */}
           {aiThinking && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-zinc-900/90 border border-amber-700 rounded-lg text-sm text-amber-400 animate-pulse">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900/90 border border-amber-700 rounded-lg text-xs sm:text-sm text-amber-400 animate-pulse">
               Computer thinking...
             </div>
           )}
@@ -394,15 +393,15 @@ export function GameView({ config, onBack }: Props) {
           {/* Game over overlay */}
           {gameState.status !== "InProgress" && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-              <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-8 text-center">
-                <div className="text-3xl font-bold mb-2">
+              <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 sm:p-8 text-center mx-4">
+                <div className="text-2xl sm:text-3xl font-bold mb-2">
                   {gameState.status === "Draw"
                     ? "Draw!"
                     : gameState.status === "WhiteWins"
                       ? "White Wins!"
                       : "Black Wins!"}
                 </div>
-                <p className="text-zinc-400 mb-6">{message}</p>
+                <p className="text-zinc-400 mb-6 text-sm">{message}</p>
                 <div className="flex gap-3 justify-center">
                   <button
                     onClick={onBack}
@@ -416,8 +415,8 @@ export function GameView({ config, onBack }: Props) {
           )}
         </div>
 
-        {/* Right: White hand */}
-        <div className="w-56 p-3 border-l border-zinc-800">
+        {/* White hand: bottom on mobile, right sidebar on desktop */}
+        <div className="shrink-0 p-2 md:p-3 border-t md:border-t-0 md:border-l border-zinc-800 md:w-56 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
           <PlayerHand
             state={gameState}
             color="White"
@@ -445,7 +444,7 @@ function getTopPiece(
   state: GameState,
   coord: Coord
 ): { piece_type: PieceType; color: Color } | null {
-  const key = `(${coord[0]}, ${coord[1]})`;
+  const key = `${coord[0]},${coord[1]}`;
   const stack = state.board.grid[key];
   if (!stack || stack.length === 0) return null;
   return stack[stack.length - 1];

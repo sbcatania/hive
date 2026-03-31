@@ -12,7 +12,15 @@ use crate::ai::eval::{evaluate, EvalWeights};
 use crate::game::GameState;
 use crate::moves::{Move, all_legal_moves};
 use crate::piece::Color;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+/// Maximum nodes to search per depth iteration.
+/// This acts as a portable time limit (std::time::Instant doesn't work in WASM).
+fn max_nodes_for_duration(time_limit: Duration) -> u64 {
+    // Rough calibration: ~5000 nodes/sec in WASM, be conservative.
+    let millis = time_limit.as_millis() as u64;
+    (millis * 5).max(1000)
+}
 
 /// Result of a minimax search.
 pub struct SearchResult {
@@ -24,7 +32,7 @@ pub struct SearchResult {
 
 /// Run iterative deepening minimax search.
 ///
-/// Searches progressively deeper until `max_depth` or `time_limit` is reached.
+/// Searches progressively deeper until `max_depth` or node budget is exhausted.
 /// Returns the best move found so far.
 pub fn search(
     state: &GameState,
@@ -32,8 +40,8 @@ pub fn search(
     time_limit: Duration,
     weights: &EvalWeights,
 ) -> SearchResult {
-    let start = Instant::now();
     let player = state.current_player;
+    let node_budget = max_nodes_for_duration(time_limit);
 
     let mut best_result = SearchResult {
         best_move: Move::Pass,
@@ -42,21 +50,25 @@ pub fn search(
         nodes_searched: 0,
     };
 
+    let mut total_nodes = 0u64;
+
     // Iterative deepening: search at depth 1, 2, 3, ...
     for depth in 1..=max_depth {
-        if start.elapsed() >= time_limit {
+        if total_nodes >= node_budget {
             break;
         }
 
         let mut nodes = 0u64;
-        let result = minimax_root(state, depth, player, weights, &start, time_limit, &mut nodes);
+        let remaining = node_budget.saturating_sub(total_nodes);
+        let result = minimax_root(state, depth, player, weights, remaining, &mut nodes);
+        total_nodes += nodes;
 
         if let Some((best_move, score)) = result {
             best_result = SearchResult {
                 best_move,
                 score,
                 depth_reached: depth,
-                nodes_searched: nodes,
+                nodes_searched: total_nodes,
             };
 
             // If we found a winning move, stop searching.
@@ -75,8 +87,7 @@ fn minimax_root(
     depth: u32,
     player: Color,
     weights: &EvalWeights,
-    start: &Instant,
-    time_limit: Duration,
+    node_budget: u64,
     nodes: &mut u64,
 ) -> Option<(Move, f64)> {
     let moves = all_legal_moves(state);
@@ -93,7 +104,7 @@ fn minimax_root(
     let beta = f64::INFINITY;
 
     for action in ordered_moves {
-        if start.elapsed() >= time_limit {
+        if *nodes >= node_budget {
             break;
         }
 
@@ -111,8 +122,7 @@ fn minimax_root(
             player.opponent(),
             player,
             weights,
-            start,
-            time_limit,
+            node_budget,
             nodes,
         );
 
@@ -137,12 +147,11 @@ fn minimax(
     current: Color,
     maximizing: Color,
     weights: &EvalWeights,
-    start: &Instant,
-    time_limit: Duration,
+    node_budget: u64,
     nodes: &mut u64,
 ) -> f64 {
-    // Time check.
-    if start.elapsed() >= time_limit {
+    // Node budget check.
+    if *nodes >= node_budget {
         return evaluate(state, current, weights);
     }
 
@@ -159,6 +168,10 @@ fn minimax(
     let mut best_score = f64::NEG_INFINITY;
 
     for action in ordered_moves {
+        if *nodes >= node_budget {
+            break;
+        }
+
         let mut child = state.clone();
         if child.apply_move(action).is_err() {
             continue;
@@ -173,8 +186,7 @@ fn minimax(
             current.opponent(),
             maximizing,
             weights,
-            start,
-            time_limit,
+            node_budget,
             nodes,
         );
 

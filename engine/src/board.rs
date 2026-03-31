@@ -13,11 +13,49 @@
 /// ```
 
 use std::collections::{HashMap, HashSet};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::piece::Piece;
 
 /// A hex position in axial coordinates.
 pub type Coord = (i32, i32);
+
+/// Custom serialization for HashMap<Coord, Vec<Piece>> — JSON requires string keys.
+/// Serializes (q, r) as "q,r" strings.
+mod coord_map_serde {
+    use super::*;
+    use std::collections::HashMap;
+
+    pub fn serialize<S>(map: &HashMap<Coord, Vec<Piece>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut ser_map = serializer.serialize_map(Some(map.len()))?;
+        for ((q, r), stack) in map {
+            let key = format!("{},{}", q, r);
+            ser_map.serialize_entry(&key, stack)?;
+        }
+        ser_map.end()
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<HashMap<Coord, Vec<Piece>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string_map: HashMap<String, Vec<Piece>> = HashMap::deserialize(deserializer)?;
+        let mut result = HashMap::new();
+        for (key, stack) in string_map {
+            let parts: Vec<&str> = key.split(',').collect();
+            if parts.len() != 2 {
+                return Err(serde::de::Error::custom(format!("Invalid coord key: {}", key)));
+            }
+            let q: i32 = parts[0].trim().parse().map_err(serde::de::Error::custom)?;
+            let r: i32 = parts[1].trim().parse().map_err(serde::de::Error::custom)?;
+            result.insert((q, r), stack);
+        }
+        Ok(result)
+    }
+}
 
 /// The 6 directions on a hex grid (axial coordinates).
 pub const DIRECTIONS: [Coord; 6] = [
@@ -45,6 +83,8 @@ pub fn neighbor_in_direction(coord: Coord, direction: Coord) -> Coord {
 pub struct Board {
     /// Map from (q, r) to a stack of pieces (bottom to top).
     /// A beetle on top of another piece means the stack has 2+ entries.
+    /// Serialized with string keys ("q,r") for JSON compatibility.
+    #[serde(with = "coord_map_serde")]
     grid: HashMap<Coord, Vec<Piece>>,
 }
 

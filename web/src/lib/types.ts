@@ -120,16 +120,16 @@ export function hexPoints(cx: number, cy: number, size: number): string {
   return points.join(" ");
 }
 
-/// Parse a board grid key like "(0, 1)" back to a Coord.
+/// Parse a board grid key like "0,1" back to a Coord.
 export function parseCoordKey(key: string): Coord {
-  const match = key.match(/\((-?\d+),\s*(-?\d+)\)/);
-  if (!match) throw new Error(`Invalid coord key: ${key}`);
-  return [parseInt(match[1]), parseInt(match[2])];
+  const parts = key.split(",");
+  if (parts.length !== 2) throw new Error(`Invalid coord key: ${key}`);
+  return [parseInt(parts[0].trim()), parseInt(parts[1].trim())];
 }
 
-/// Format a coord as a grid key string.
+/// Format a coord as a grid key string matching Rust serialization.
 export function coordKey(coord: Coord): string {
-  return `(${coord[0]}, ${coord[1]})`;
+  return `${coord[0]},${coord[1]}`;
 }
 
 /// Get the piece type abbreviation for display.
