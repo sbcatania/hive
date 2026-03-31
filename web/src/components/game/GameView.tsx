@@ -34,7 +34,17 @@ export function GameView({ config, onBack }: Props) {
     | null
   >(null);
   const [aiThinking, setAiThinking] = useState(false);
+  const [aiPaused, setAiPaused] = useState(false); // Pause AI after undo
   const [message, setMessage] = useState("");
+
+  // Escape key deselects piece.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedPiece(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Initialize game.
   useEffect(() => {
@@ -58,11 +68,12 @@ export function GameView({ config, onBack }: Props) {
     [config.aiConfig, config.playerColor]
   );
 
-  // AI move.
+  // AI move — paused after undo so player can undo multiple times.
   useEffect(() => {
     if (!gameState || !engine.ready || !config.aiConfig) return;
     if (isPlayerTurn(gameState)) return;
     if (gameState.status !== "InProgress") return;
+    if (aiPaused) return; // Don't auto-move after undo
 
     setAiThinking(true);
     setMessage("Computer is thinking...");
@@ -87,7 +98,7 @@ export function GameView({ config, onBack }: Props) {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [gameState, engine, config.aiConfig, isPlayerTurn]);
+  }, [gameState, engine, config.aiConfig, isPlayerTurn, aiPaused]);
 
   // Update message on game end.
   useEffect(() => {
@@ -181,6 +192,7 @@ export function GameView({ config, onBack }: Props) {
         setLegalMoves(engine.getLegalMoves(newState));
         setSelectedPiece(null);
         setMessage("");
+        setAiPaused(false); // Player made a move, AI can respond
       } catch (e) {
         setMessage(`Error: ${e}`);
       }
@@ -209,6 +221,7 @@ export function GameView({ config, onBack }: Props) {
       setGameState(newState);
       setLegalMoves(engine.getLegalMoves(newState));
       setSelectedPiece(null);
+      setAiPaused(true); // Don't let AI auto-move after undo
     } catch (e) {
       setMessage(`${e}`);
     }
@@ -238,6 +251,7 @@ export function GameView({ config, onBack }: Props) {
       setGameState(newState);
       setLegalMoves(engine.getLegalMoves(newState));
       setSelectedPiece(null);
+      setAiPaused(false); // Player passed, AI can respond
     } catch (e) {
       setMessage(`${e}`);
     }
@@ -321,6 +335,14 @@ export function GameView({ config, onBack }: Props) {
                 Pass
               </button>
             )}
+            {aiPaused && !isPlayerTurn(gameState) && config.aiConfig && (
+              <button
+                onClick={() => setAiPaused(false)}
+                className="px-2 py-1 text-xs border border-green-700 rounded hover:border-green-500 text-green-400"
+              >
+                Let AI Play
+              </button>
+            )}
           </div>
           {THEMES.map((t) => (
             <button
@@ -344,7 +366,7 @@ export function GameView({ config, onBack }: Props) {
       {/* Main area: column on mobile, row on desktop */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         {/* Black hand: top on mobile, left sidebar on desktop */}
-        <div className="shrink-0 p-2 md:p-3 border-b md:border-b-0 md:border-r border-zinc-800 md:w-56 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
+        <div className="shrink-0 p-2 md:p-3 border-b md:border-b-0 md:border-r border-zinc-800 md:w-72 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
           <PlayerHand
             state={gameState}
             color="Black"
@@ -374,6 +396,7 @@ export function GameView({ config, onBack }: Props) {
             lastMoveCoords={lastMoveCoords}
             onHexClick={handleHexClick}
             onPieceClick={handlePieceClick}
+            onDeselect={() => setSelectedPiece(null)}
           />
 
           {/* Message overlay */}
@@ -416,7 +439,7 @@ export function GameView({ config, onBack }: Props) {
         </div>
 
         {/* White hand: bottom on mobile, right sidebar on desktop */}
-        <div className="shrink-0 p-2 md:p-3 border-t md:border-t-0 md:border-l border-zinc-800 md:w-56 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
+        <div className="shrink-0 p-2 md:p-3 border-t md:border-t-0 md:border-l border-zinc-800 md:w-72 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
           <PlayerHand
             state={gameState}
             color="White"
