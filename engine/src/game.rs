@@ -293,8 +293,26 @@ impl GameState {
         let entry = self.redo_stack.pop()
             .ok_or_else(|| "No moves to redo".to_string())?;
 
-        // Re-apply the move.
-        self.apply_move(entry.action)?;
+        // Re-apply the move without clearing the redo stack.
+        let action = entry.action.clone();
+        match &action {
+            Move::Place { piece_type, to } => {
+                self.apply_placement(*piece_type, *to)?;
+            }
+            Move::Move { from, to } => {
+                self.apply_movement(*from, *to)?;
+            }
+            Move::PillbugThrow { pillbug_at: _, target, to } => {
+                self.apply_pillbug_throw(*target, *to)?;
+            }
+            Move::Pass => {}
+        }
+
+        self.history.push(entry);
+        self.last_move = Some(action);
+        self.current_player = self.current_player.opponent();
+        self.turn += 1;
+        self.update_status();
 
         Ok(())
     }
