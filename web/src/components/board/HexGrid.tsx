@@ -20,6 +20,7 @@ interface Props {
   lastMoveCoords: Coord[];
   onHexClick: (coord: Coord) => void;
   onPieceClick: (coord: Coord) => void;
+  onDeselect?: () => void;
 }
 
 export function HexGrid({
@@ -30,6 +31,7 @@ export function HexGrid({
   lastMoveCoords,
   onHexClick,
   onPieceClick,
+  onDeselect,
 }: Props) {
   // Parse the board into a list of (coord, stack) pairs.
   const boardEntries = useMemo(() => {
@@ -105,6 +107,16 @@ export function HexGrid({
       className="w-full h-full"
       style={{ background: theme.board.background }}
     >
+      {/* Invisible background rect to capture clicks on empty space */}
+      <rect
+        x={viewBox.split(" ")[0]}
+        y={viewBox.split(" ")[1]}
+        width={viewBox.split(" ")[2]}
+        height={viewBox.split(" ")[3]}
+        fill="transparent"
+        onClick={onDeselect}
+      />
+
       {/* Legal move destinations (empty hexes you can click) */}
       {selectedPiece &&
         Array.from(legalDestinations).map((key) => {
