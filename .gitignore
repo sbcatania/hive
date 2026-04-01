@@ -18,6 +18,9 @@ out/
 training/data/weights.json
 training/data/openings.json
 
+# Playwright
+.playwright-mcp/
+
 # OS
 .DS_Store
 .vercel
