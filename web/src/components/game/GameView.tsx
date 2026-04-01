@@ -495,6 +495,14 @@ export function GameView({ config, onBack }: Props) {
                 Let AI Play
               </button>
             )}
+            {gameRecordRef.current && (
+              <button
+                onClick={() => exportRecord(gameRecordRef.current!)}
+                className="px-2 py-1 text-xs border border-zinc-700 rounded hover:border-zinc-500 text-zinc-400"
+              >
+                Export
+              </button>
+            )}
           </div>
           {THEMES.map((t) => (
             <button

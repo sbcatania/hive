@@ -44,7 +44,7 @@ export default function Home() {
         <GameView config={gameConfig} onBack={handleBackToSetup} />
       )}
       {mode === "replay" && replayRecord && (
-        <ReplayView record={replayRecord} onBack={handleBackToSetup} />
+        <ReplayView record={replayRecord} onBack={handleBackToSetup} onReplay={handleReplay} />
       )}
     </main>
   );

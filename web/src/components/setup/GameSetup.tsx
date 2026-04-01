@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useGameEngine } from "@/hooks/useGameEngine";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { THEMES, getSavedThemeId, saveThemeId } from "@/themes";
+import { SavedGames } from "./SavedGames";
 import type { GameConfig } from "@/app/page";
 import type {
   RuleConfig,
@@ -15,7 +16,7 @@ import type {
   UndoMode,
   EvalWeights,
 } from "@/lib/types";
-import { importRecord, loadRecordsFromStorage, type GameRecord } from "@/lib/gameRecorder";
+import type { GameRecord } from "@/lib/gameRecorder";
 
 const DEFAULT_PIECE_COUNTS: Record<PieceType, number> = {
   Queen: 1,
@@ -441,42 +442,10 @@ export function GameSetup({ onStart, onReplay }: Props) {
         </div>
       </Section>
 
-      {/* Replay Section */}
+      {/* Saved Games */}
       {onReplay && (
-        <Section title="Game Replay">
-          <div className="flex gap-3 flex-wrap">
-            <label className="px-4 py-2 rounded-lg border border-zinc-700 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors">
-              Import .hive File
-              <input
-                type="file"
-                accept=".hive,.json"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  try {
-                    const record = await importRecord(file);
-                    onReplay(record);
-                  } catch (err) {
-                    alert(`Failed to import: ${err}`);
-                  }
-                }}
-              />
-            </label>
-            {(() => {
-              const saved = loadRecordsFromStorage();
-              if (saved.length === 0) return null;
-              const latest = saved[saved.length - 1];
-              return (
-                <button
-                  onClick={() => onReplay(latest)}
-                  className="px-4 py-2 rounded-lg border border-zinc-700 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  Replay Last Game ({latest.metadata.result})
-                </button>
-              );
-            })()}
-          </div>
+        <Section title="Saved Games">
+          <SavedGames onReplay={onReplay} />
         </Section>
       )}
 
