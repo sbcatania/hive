@@ -143,7 +143,10 @@ fn select_and_expand<'a>(
 
         let mut child_state = node.state.clone();
         let player = child_state.current_player;
-        let _ = child_state.apply_move(action.clone());
+        if let Err(_) = child_state.apply_move(action.clone()) {
+            // Invalid move — skip it, don't add to the tree.
+            return node;
+        }
 
         let child = MctsNode::new(child_state, Some(action), player);
         node.children.push(child);
@@ -189,7 +192,9 @@ fn simulate(node: &MctsNode, player: Color) -> f64 {
             break;
         }
         let action = moves.choose(&mut rng).unwrap().clone();
-        let _ = state.apply_move(action);
+        if state.apply_move(action).is_err() {
+            break; // Shouldn't happen with legal moves, but don't continue with bad state.
+        }
         turns += 1;
     }
 
