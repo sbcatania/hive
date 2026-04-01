@@ -59,9 +59,15 @@ export function HexGrid({
           dests.add(`${move.Move.to[0]},${move.Move.to[1]}`);
         }
       } else if ("PillbugThrow" in move && selectedPiece?.type === "board") {
-        dests.add(
-          `${move.PillbugThrow.to[0]},${move.PillbugThrow.to[1]}`
-        );
+        // Only show throw destinations when the selected piece is the pillbug doing the throwing.
+        if (
+          move.PillbugThrow.pillbug_at[0] === selectedPiece.coord[0] &&
+          move.PillbugThrow.pillbug_at[1] === selectedPiece.coord[1]
+        ) {
+          dests.add(
+            `${move.PillbugThrow.to[0]},${move.PillbugThrow.to[1]}`
+          );
+        }
       }
     }
     return dests;
@@ -147,6 +153,7 @@ export function HexGrid({
           selectedPiece.coord[0] === q &&
           selectedPiece.coord[1] === r;
         const isLastMove = lastMoveSet.has(coordKey);
+        const isStacked = stack.length > 1;
 
         let fill = isWhite ? theme.pieces.whiteColor : theme.pieces.blackColor;
         if (isSelected) fill = theme.board.selectedColor;
@@ -167,6 +174,30 @@ export function HexGrid({
               />
             )}
 
+            {/* Stacked piece shadow layers for depth effect */}
+            {isStacked &&
+              stack.slice(0, -1).reverse().map((piece, i) => {
+                const offset = (i + 1) * 3;
+                const layerColor =
+                  piece.color === "White"
+                    ? theme.pieces.whiteColor
+                    : theme.pieces.blackColor;
+                const layerBorder =
+                  piece.color === "White"
+                    ? theme.pieces.whiteBorder
+                    : theme.pieces.blackBorder;
+                return (
+                  <polygon
+                    key={`shadow-${i}`}
+                    points={hexPoints(x + offset, y + offset, HEX_SIZE - 3)}
+                    fill={layerColor}
+                    stroke={layerBorder}
+                    strokeWidth={theme.pieces.borderWidth * 0.7}
+                    opacity={0.45 - i * 0.1}
+                  />
+                );
+              })}
+
             {/* Hex tile */}
             <polygon
               points={hexPoints(x, y, HEX_SIZE - 2)}
@@ -179,20 +210,6 @@ export function HexGrid({
               strokeWidth={theme.pieces.borderWidth}
             />
 
-            {/* Stack indicator */}
-            {stack.length > 1 && (
-              <text
-                x={x + HEX_SIZE * 0.6}
-                y={y - HEX_SIZE * 0.5}
-                fontSize={10}
-                fill="#fbbf24"
-                textAnchor="middle"
-                fontWeight="bold"
-              >
-                {stack.length}
-              </text>
-            )}
-
             {/* Piece label */}
             <text
               x={x}
@@ -204,6 +221,55 @@ export function HexGrid({
             >
               {theme.pieces.renderLabel(topPiece.piece_type)}
             </text>
+
+            {/* Stack indicator badge and color dots */}
+            {isStacked && (
+              <>
+                {/* Badge background */}
+                <circle
+                  cx={x + HEX_SIZE * 0.55}
+                  cy={y - HEX_SIZE * 0.45}
+                  r={8}
+                  fill="#18181b"
+                  stroke="#fbbf24"
+                  strokeWidth={1.5}
+                />
+                {/* Badge number */}
+                <text
+                  x={x + HEX_SIZE * 0.55}
+                  y={y - HEX_SIZE * 0.45 + 3.5}
+                  fontSize={9}
+                  fill="#fbbf24"
+                  textAnchor="middle"
+                  fontWeight="bold"
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {stack.length}
+                </text>
+                {/* Mini color dots showing stack composition (bottom to top) */}
+                {stack.slice(0, -1).map((piece, i) => {
+                  const dotColor =
+                    piece.color === "White"
+                      ? theme.pieces.whiteColor
+                      : theme.pieces.blackColor;
+                  const dotBorder =
+                    piece.color === "White"
+                      ? theme.pieces.whiteBorder
+                      : theme.pieces.blackBorder;
+                  return (
+                    <circle
+                      key={`dot-${i}`}
+                      cx={x - HEX_SIZE * 0.55 + i * 9}
+                      cy={y + HEX_SIZE * 0.55}
+                      r={3.5}
+                      fill={dotColor}
+                      stroke={dotBorder}
+                      strokeWidth={0.8}
+                    />
+                  );
+                })}
+              </>
+            )}
           </g>
         );
       })}

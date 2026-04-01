@@ -1,10 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useGameEngine } from "@/hooks/useGameEngine";
 import { getTheme, getSavedThemeId, THEMES, saveThemeId } from "@/themes";
 import { HexGrid } from "@/components/board/HexGrid";
 import { PlayerHand } from "./PlayerHand";
+import { AnalysisPanel } from "./AnalysisPanel";
+import {
+  createGameRecord,
+  recordMove,
+  finalizeRecord,
+  saveRecordToStorage,
+  exportRecord,
+  type GameRecord,
+} from "@/lib/gameRecorder";
 import type { GameConfig } from "@/app/page";
 import type {
   GameState,
@@ -14,6 +23,8 @@ import type {
   AiConfig,
   RuleConfig,
   Color,
+  PositionEval,
+  MoveAnalysis,
 } from "@/lib/types";
 
 interface Props {
@@ -37,6 +48,14 @@ export function GameView({ config, onBack }: Props) {
   const [aiPaused, setAiPaused] = useState(false); // Pause AI after undo
   const [message, setMessage] = useState("");
 
+  // Analysis mode state.
+  const [analysisEnabled, setAnalysisEnabled] = useState(false);
+  const [positionEval, setPositionEval] = useState<PositionEval | null>(null);
+  const [moveAnalyses, setMoveAnalyses] = useState<MoveAnalysis[]>([]);
+
+  // Game recording.
+  const gameRecordRef = useRef<GameRecord | null>(null);
+
   // Escape key deselects piece.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -54,6 +73,14 @@ export function GameView({ config, onBack }: Props) {
       setGameState(state);
       const moves = engine.getLegalMoves(state);
       setLegalMoves(moves);
+      // Initialize game recording.
+      const whitePlayer = config.aiConfig && config.playerColor === "Black" ? "AI" : "Human";
+      const blackPlayer = config.aiConfig && config.playerColor === "White" ? "AI" : "Human";
+      gameRecordRef.current = createGameRecord(
+        config.rules as unknown as RuleConfig,
+        whitePlayer,
+        blackPlayer
+      );
     } catch (e) {
       setMessage(`Error: ${e}`);
     }
@@ -86,6 +113,7 @@ export function GameView({ config, onBack }: Props) {
           config.aiConfig as unknown as AiConfig
         );
         const newState = engine.applyMove(gameState, aiMove);
+        recordGameMove(aiMove, newState);
         setGameState(newState);
         setLegalMoves(engine.getLegalMoves(newState));
         setSelectedPiece(null);
@@ -116,9 +144,99 @@ export function GameView({ config, onBack }: Props) {
     }
   }, [gameState?.status]);
 
+  // Record a move and save to localStorage.
+  const recordGameMove = useCallback((move: GameMove, newState: GameState) => {
+    if (gameRecordRef.current) {
+      gameRecordRef.current = recordMove(gameRecordRef.current, move);
+      if (newState.status !== "InProgress") {
+        gameRecordRef.current = finalizeRecord(gameRecordRef.current, newState.status);
+      }
+      saveRecordToStorage(gameRecordRef.current);
+    }
+  }, []);
+
+  // Update position evaluation when analysis is enabled.
+  useEffect(() => {
+    if (!analysisEnabled || !gameState || !engine.ready) {
+      setPositionEval(null);
+      return;
+    }
+    try {
+      const player = config.playerColor || "White";
+      const evaluation = engine.evaluatePosition(gameState, player);
+      setPositionEval(evaluation);
+    } catch {
+      // Eval not available yet (e.g., early game).
+    }
+  }, [analysisEnabled, gameState, engine.ready, config.playerColor]);
+
   const handlePieceClick = useCallback(
     (coord: Coord) => {
       if (!gameState || !isPlayerTurn(gameState) || aiThinking) return;
+
+      // If a piece is already selected, check if this coord is a legal destination
+      // (e.g., beetle climbing onto another piece). If so, execute the move.
+      if (selectedPiece && engine.ready) {
+        const coordKey = `${coord[0]},${coord[1]}`;
+        let move: GameMove | null = null;
+
+        if (selectedPiece.type === "board") {
+          move =
+            legalMoves.find(
+              (m) =>
+                m !== "Pass" &&
+                "Move" in m &&
+                m.Move.from[0] === selectedPiece.coord[0] &&
+                m.Move.from[1] === selectedPiece.coord[1] &&
+                m.Move.to[0] === coord[0] &&
+                m.Move.to[1] === coord[1]
+            ) || null;
+
+          if (!move) {
+            move =
+              legalMoves.find(
+                (m) =>
+                  m !== "Pass" &&
+                  "PillbugThrow" in m &&
+                  m.PillbugThrow.pillbug_at[0] === selectedPiece.coord[0] &&
+                  m.PillbugThrow.pillbug_at[1] === selectedPiece.coord[1] &&
+                  m.PillbugThrow.to[0] === coord[0] &&
+                  m.PillbugThrow.to[1] === coord[1]
+              ) || null;
+          }
+        } else if (selectedPiece.type === "hand") {
+          move =
+            legalMoves.find(
+              (m) =>
+                m !== "Pass" &&
+                "Place" in m &&
+                m.Place.piece_type === selectedPiece.pieceType &&
+                m.Place.to[0] === coord[0] &&
+                m.Place.to[1] === coord[1]
+            ) || null;
+        }
+
+        if (move) {
+          try {
+            if (analysisEnabled) {
+              try {
+                const analysis = engine.analyzeMove(gameState, move);
+                setMoveAnalyses((prev) => [...prev, analysis]);
+              } catch { /* Analysis failure shouldn't block the move */ }
+            }
+            const newState = engine.applyMove(gameState, move);
+            recordGameMove(move, newState);
+            setGameState(newState);
+            setLegalMoves(engine.getLegalMoves(newState));
+            setSelectedPiece(null);
+            setMessage("");
+            setAiPaused(false);
+          } catch (e) {
+            setMessage(`Error: ${e}`);
+          }
+          return;
+        }
+      }
 
       const topPiece = getTopPiece(gameState, coord);
       if (!topPiece) return;
@@ -138,7 +256,7 @@ export function GameView({ config, onBack }: Props) {
 
       setSelectedPiece({ type: "board", coord });
     },
-    [gameState, selectedPiece, isPlayerTurn, aiThinking]
+    [gameState, selectedPiece, engine, legalMoves, isPlayerTurn, aiThinking]
   );
 
   const handleHexClick = useCallback(
@@ -187,7 +305,17 @@ export function GameView({ config, onBack }: Props) {
       if (!move) return;
 
       try {
+        // Analyze the move before applying if analysis is enabled.
+        if (analysisEnabled) {
+          try {
+            const analysis = engine.analyzeMove(gameState, move);
+            setMoveAnalyses((prev) => [...prev, analysis]);
+          } catch {
+            // Analysis failure shouldn't block the move.
+          }
+        }
         const newState = engine.applyMove(gameState, move);
+        recordGameMove(move, newState);
         setGameState(newState);
         setLegalMoves(engine.getLegalMoves(newState));
         setSelectedPiece(null);
@@ -197,7 +325,7 @@ export function GameView({ config, onBack }: Props) {
         setMessage(`Error: ${e}`);
       }
     },
-    [gameState, engine, selectedPiece, legalMoves, isPlayerTurn, aiThinking]
+    [gameState, engine, selectedPiece, legalMoves, isPlayerTurn, aiThinking, analysisEnabled, recordGameMove]
   );
 
   const handleHandSelect = useCallback(
@@ -248,6 +376,7 @@ export function GameView({ config, onBack }: Props) {
     }
     try {
       const newState = engine.applyMove(gameState, "Pass");
+      recordGameMove("Pass", newState);
       setGameState(newState);
       setLegalMoves(engine.getLegalMoves(newState));
       setSelectedPiece(null);
@@ -365,25 +494,39 @@ export function GameView({ config, onBack }: Props) {
 
       {/* Main area: column on mobile, row on desktop */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
-        {/* Black hand: top on mobile, left sidebar on desktop */}
+        {/* White hand: top on mobile, left sidebar on desktop */}
         <div className="shrink-0 p-2 md:p-3 border-b md:border-b-0 md:border-r border-zinc-800 md:w-72 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
           <PlayerHand
             state={gameState}
-            color="Black"
+            color="White"
             theme={theme}
             isActive={
-              gameState.current_player === "Black" &&
+              gameState.current_player === "White" &&
               isPlayerTurn(gameState) &&
               !aiThinking
             }
             selectedPieceType={
               selectedPiece?.type === "hand" &&
-              gameState.current_player === "Black"
+              gameState.current_player === "White"
                 ? selectedPiece.pieceType
                 : null
             }
             onSelectPiece={handleHandSelect}
           />
+          {/* Analysis panel in left sidebar */}
+          <div className="hidden md:block mt-3 border-t border-zinc-800 pt-3">
+            <AnalysisPanel
+              positionEval={positionEval}
+              moveAnalyses={moveAnalyses}
+              currentMoveIndex={moveAnalyses.length - 1}
+              playerColor={config.playerColor || "White"}
+              analysisEnabled={analysisEnabled}
+              onToggleAnalysis={() => {
+                setAnalysisEnabled((v) => !v);
+                if (!analysisEnabled) setMoveAnalyses([]);
+              }}
+            />
+          </div>
         </div>
 
         {/* Center: Board */}
@@ -432,26 +575,34 @@ export function GameView({ config, onBack }: Props) {
                   >
                     New Game
                   </button>
+                  {gameRecordRef.current && (
+                    <button
+                      onClick={() => exportRecord(gameRecordRef.current!)}
+                      className="px-6 py-2 border border-zinc-600 hover:border-zinc-400 text-zinc-300 font-medium rounded-lg"
+                    >
+                      Export Game
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* White hand: bottom on mobile, right sidebar on desktop */}
+        {/* Black hand: bottom on mobile, right sidebar on desktop */}
         <div className="shrink-0 p-2 md:p-3 border-t md:border-t-0 md:border-l border-zinc-800 md:w-72 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
           <PlayerHand
             state={gameState}
-            color="White"
+            color="Black"
             theme={theme}
             isActive={
-              gameState.current_player === "White" &&
+              gameState.current_player === "Black" &&
               isPlayerTurn(gameState) &&
               !aiThinking
             }
             selectedPieceType={
               selectedPiece?.type === "hand" &&
-              gameState.current_player === "White"
+              gameState.current_player === "Black"
                 ? selectedPiece.pieceType
                 : null
             }
