@@ -9,13 +9,14 @@
 /// - Piece positioning (attackers near opponent's queen)
 /// - Material in hand
 
+use serde::{Deserialize, Serialize};
 use crate::board::{Board, neighbors};
 use crate::game::{GameState, GameStatus};
 use crate::moves::{all_legal_moves, color_index};
 use crate::piece::{Color, PieceType};
 
 /// Evaluation weights — can be tuned by the training system.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EvalWeights {
     /// How bad it is to have neighbors around your queen (per neighbor).
     pub queen_danger_per_neighbor: f64,
@@ -132,6 +133,63 @@ fn is_adjacent_to_queen(board: &Board, coord: crate::board::Coord, queen_color: 
         crate::freedom::are_adjacent(coord, queen_coord)
     } else {
         false
+    }
+}
+
+/// Detailed position stats for the analysis UI.
+/// Returns a JSON-serializable map of stat name → value.
+pub fn position_stats(state: &GameState, player: Color) -> serde_json::Value {
+    let opponent = player.opponent();
+    let board = &state.board;
+
+    // Queen neighbor counts.
+    let our_queen_neighbors = queen_occupied_neighbors(board, player);
+    let opp_queen_neighbors = queen_occupied_neighbors(board, opponent);
+
+    // Mobility.
+    let our_moves = count_moves_for_player(state, player);
+    let their_moves = count_moves_for_player(state, opponent);
+
+    // Hand counts.
+    let our_hand: u8 = state.hands[color_index(player)].values().sum();
+    let their_hand: u8 = state.hands[color_index(opponent)].values().sum();
+
+    // Pieces on board.
+    let our_board_pieces = board.pieces().filter(|(_, p)| p.color == player).count();
+    let their_board_pieces = board.pieces().filter(|(_, p)| p.color == opponent).count();
+
+    // Ants on board (very mobile).
+    let our_ants = board.pieces().filter(|(_, p)| p.color == player && p.piece_type == PieceType::Ant).count();
+
+    // Beetles adjacent to opponent queen.
+    let beetles_near_queen = board.pieces()
+        .filter(|(coord, p)| p.color == player && p.piece_type == PieceType::Beetle && is_adjacent_to_queen(board, *coord, opponent))
+        .count();
+
+    serde_json::json!({
+        "yourQueenNeighbors": our_queen_neighbors,
+        "opponentQueenNeighbors": opp_queen_neighbors,
+        "yourMoves": our_moves,
+        "opponentMoves": their_moves,
+        "yourHandPieces": our_hand,
+        "opponentHandPieces": their_hand,
+        "yourBoardPieces": our_board_pieces,
+        "opponentBoardPieces": their_board_pieces,
+        "yourAntsOnBoard": our_ants,
+        "beetlesNearOpponentQueen": beetles_near_queen,
+    })
+}
+
+/// Count occupied neighbors around a player's queen.
+fn queen_occupied_neighbors(board: &Board, color: Color) -> usize {
+    let queen = crate::piece::Piece::new(PieceType::Queen, color, 0);
+    if let Some(coord) = board.find_piece_any_depth(&queen) {
+        neighbors(coord)
+            .iter()
+            .filter(|&&n| board.is_occupied(n))
+            .count()
+    } else {
+        0
     }
 }
 

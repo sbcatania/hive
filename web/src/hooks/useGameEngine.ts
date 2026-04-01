@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { GameState, GameMove, RuleConfig, AiConfig } from "@/lib/types";
+import type { GameState, GameMove, RuleConfig, AiConfig, PositionEval, MoveAnalysis, Color } from "@/lib/types";
 
 interface EngineAPI {
   create_game: (rules: string) => string;
@@ -10,6 +10,8 @@ interface EngineAPI {
   undo_move: (state: string) => string;
   redo_move: (state: string) => string;
   ai_pick_move: (state: string, config: string) => string;
+  evaluate_position: (state: string, player: string) => string;
+  analyze_move: (state: string, move: string) => string;
   get_presets: () => string;
 }
 
@@ -98,6 +100,30 @@ export function useGameEngine() {
     [engine]
   );
 
+  const evaluatePosition = useCallback(
+    (state: GameState, player: Color): PositionEval => {
+      if (!engine) throw new Error("Engine not loaded");
+      const result = engine.evaluate_position(
+        JSON.stringify(state),
+        JSON.stringify(player)
+      );
+      return JSON.parse(result);
+    },
+    [engine]
+  );
+
+  const analyzeMove = useCallback(
+    (state: GameState, move: GameMove): MoveAnalysis => {
+      if (!engine) throw new Error("Engine not loaded");
+      const result = engine.analyze_move(
+        JSON.stringify(state),
+        JSON.stringify(move)
+      );
+      return JSON.parse(result);
+    },
+    [engine]
+  );
+
   const getPresets = useCallback(() => {
     if (!engine) throw new Error("Engine not loaded");
     return JSON.parse(engine.get_presets());
@@ -113,6 +139,8 @@ export function useGameEngine() {
     undoMove,
     redoMove,
     aiPickMove,
+    evaluatePosition,
+    analyzeMove,
     getPresets,
   };
 }

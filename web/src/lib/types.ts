@@ -74,16 +74,58 @@ export type Difficulty =
 
 export type AiEngine = "Minimax" | "Mcts";
 
+export interface EvalWeights {
+  queen_danger_per_neighbor: number;
+  queen_attack_per_neighbor: number;
+  mobility_per_move: number;
+  hand_piece_value: number;
+  beetle_near_queen_bonus: number;
+  ant_on_board_bonus: number;
+}
+
 export interface AiConfig {
   engine: AiEngine;
   difficulty: Difficulty;
   adaptive_history: boolean[];
+  custom_weights?: EvalWeights | null;
 }
 
 export interface GamePreset {
   name: string;
   description: string;
   rules: RuleConfig;
+}
+
+// Analysis types
+export type MoveClassification = "Brilliant" | "Best" | "Good" | "Inaccuracy" | "Mistake" | "Blunder";
+
+export interface PositionEval {
+  score: number;
+  winProbability: number;
+  stats: PositionStats;
+}
+
+export interface PositionStats {
+  yourQueenNeighbors: number;
+  opponentQueenNeighbors: number;
+  yourMoves: number;
+  opponentMoves: number;
+  yourHandPieces: number;
+  opponentHandPieces: number;
+  yourBoardPieces: number;
+  opponentBoardPieces: number;
+  yourAntsOnBoard: number;
+  beetlesNearOpponentQueen: number;
+}
+
+export interface MoveAnalysis {
+  classification: MoveClassification;
+  scoreBefore: number;
+  scoreAfter: number;
+  bestScore: number;
+  delta: number;
+  winProbBefore: number;
+  winProbAfter: number;
 }
 
 // Hex coordinate helpers
