@@ -33,6 +33,9 @@ pub struct AiConfig {
     /// For adaptive mode: recent win/loss record (last N games).
     /// Stored as a list of booleans (true = player won).
     pub adaptive_history: Vec<bool>,
+    /// Custom eval weights (loaded from a trained model). If None, uses defaults.
+    #[serde(default)]
+    pub custom_weights: Option<crate::ai::eval::EvalWeights>,
 }
 
 impl AiConfig {
@@ -41,6 +44,7 @@ impl AiConfig {
             engine,
             difficulty,
             adaptive_history: Vec::new(),
+            custom_weights: None,
         }
     }
 }
