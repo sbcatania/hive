@@ -2,8 +2,10 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const ai_pick_move: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+export const analyze_move: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const apply_move: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const create_game: (a: number, b: number) => [number, number, number, number];
+export const evaluate_position: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const get_legal_moves: (a: number, b: number) => [number, number, number, number];
 export const get_presets: () => [number, number, number, number];
 export const redo_move: (a: number, b: number) => [number, number, number, number];

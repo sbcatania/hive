@@ -9,6 +9,12 @@
 export function ai_pick_move(state_json: string, ai_config_json: string): string;
 
 /**
+ * Analyze a move: returns classification (Brilliant/Good/Inaccuracy/Mistake/Blunder)
+ * and the score change. Compares position eval before and after the move.
+ */
+export function analyze_move(state_json: string, move_json: string): string;
+
+/**
  * Apply a move to the game state.
  * Returns the updated game state as JSON.
  */
@@ -19,6 +25,12 @@ export function apply_move(state_json: string, move_json: string): string;
  * Returns the initial game state as JSON.
  */
 export function create_game(rules_json: string): string;
+
+/**
+ * Evaluate the current board position for the given player.
+ * Returns a JSON object with score, win probability, and detailed stats.
+ */
+export function evaluate_position(state_json: string, player_json: string): string;
 
 /**
  * Get all legal moves for the current player.
@@ -46,8 +58,10 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly ai_pick_move: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly analyze_move: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly apply_move: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly create_game: (a: number, b: number) => [number, number, number, number];
+    readonly evaluate_position: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly get_legal_moves: (a: number, b: number) => [number, number, number, number];
     readonly get_presets: () => [number, number, number, number];
     readonly redo_move: (a: number, b: number) => [number, number, number, number];
