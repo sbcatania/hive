@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useGameEngine } from "@/hooks/useGameEngine";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { THEMES, getSavedThemeId, saveThemeId } from "@/themes";
 import type { GameConfig } from "@/app/page";
 import type {
@@ -34,6 +35,7 @@ interface Props {
 
 export function GameSetup({ onStart, onReplay }: Props) {
   const engine = useGameEngine();
+  const { isDark, toggle: toggleDarkMode } = useDarkMode();
   const [presets, setPresets] = useState<GamePreset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState("Standard");
   const [gameMode, setGameMode] = useState<"cpu" | "local">("cpu");
@@ -118,10 +120,31 @@ export function GameSetup({ onStart, onReplay }: Props) {
 
   if (engine.loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
         <div className="text-center">
-          <div className="text-4xl mb-4">Loading engine...</div>
-          <div className="animate-pulse text-zinc-400">Initializing WASM</div>
+          {/* Animated hex spinner */}
+          <div className="relative w-24 h-24 mx-auto mb-8">
+            <svg viewBox="0 0 100 100" className="w-full h-full animate-spin" style={{ animationDuration: "3s" }}>
+              <polygon
+                points="50,5 93,27.5 93,72.5 50,95 7,72.5 7,27.5"
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="2"
+                opacity="0.6"
+              />
+            </svg>
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full animate-spin" style={{ animationDuration: "2s", animationDirection: "reverse" }}>
+              <polygon
+                points="50,15 83,32.5 83,67.5 50,85 17,67.5 17,32.5"
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="1.5"
+                opacity="0.3"
+              />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-100 mb-2">Hive</h1>
+          <div className="text-sm text-zinc-500 animate-pulse">Initializing game engine...</div>
         </div>
       </div>
     );
@@ -129,10 +152,19 @@ export function GameSetup({ onStart, onReplay }: Props) {
 
   if (engine.error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-400 text-center">
-          <div className="text-2xl mb-2">Failed to load game engine</div>
-          <div className="text-sm">{engine.error}</div>
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+        <div className="text-center max-w-md mx-4">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/10 flex items-center justify-center">
+            <span className="text-2xl text-red-400">!</span>
+          </div>
+          <h2 className="text-xl font-semibold text-zinc-100 mb-2">Failed to load game engine</h2>
+          <p className="text-sm text-zinc-500 mb-4">{engine.error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-zinc-300 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -389,7 +421,7 @@ export function GameSetup({ onStart, onReplay }: Props) {
 
       {/* Theme */}
       <Section title="Visual Theme">
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           {THEMES.map((t) => (
             <ToggleButton
               key={t.id}
@@ -398,6 +430,14 @@ export function GameSetup({ onStart, onReplay }: Props) {
               label={t.name}
             />
           ))}
+        </div>
+        <div className="mt-3">
+          <button
+            onClick={toggleDarkMode}
+            className="px-4 py-2 rounded-lg border text-sm font-medium transition-colors border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-300"
+          >
+            {isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          </button>
         </div>
       </Section>
 
