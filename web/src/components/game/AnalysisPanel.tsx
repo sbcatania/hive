@@ -11,10 +11,12 @@ import type {
 interface Props {
   positionEval: PositionEval | null;
   moveAnalyses: MoveAnalysis[];
-  currentMoveIndex: number; // Which move we're viewing in the analysis
+  currentMoveIndex: number;
   playerColor: Color;
-  analysisEnabled: boolean;
-  onToggleAnalysis: () => void;
+  analyzePlayer: boolean;
+  analyzeCpu: boolean;
+  onTogglePlayerAnalysis: () => void;
+  onToggleCpuAnalysis: () => void;
 }
 
 const CLASSIFICATION_COLORS: Record<MoveClassification, string> = {
@@ -40,9 +42,13 @@ export function AnalysisPanel({
   moveAnalyses,
   currentMoveIndex,
   playerColor,
-  analysisEnabled,
-  onToggleAnalysis,
+  analyzePlayer,
+  analyzeCpu,
+  onTogglePlayerAnalysis,
+  onToggleCpuAnalysis,
 }: Props) {
+  const analysisEnabled = analyzePlayer || analyzeCpu;
+
   const currentAnalysis =
     currentMoveIndex >= 0 && currentMoveIndex < moveAnalyses.length
       ? moveAnalyses[currentMoveIndex]
@@ -52,7 +58,6 @@ export function AnalysisPanel({
     ? Math.round(positionEval.winProbability * 100)
     : 50;
 
-  // Summary stats for finished games.
   const summary = useMemo(() => {
     if (moveAnalyses.length === 0) return null;
     const counts: Record<MoveClassification, number> = {
@@ -71,17 +76,29 @@ export function AnalysisPanel({
 
   return (
     <div className="flex flex-col gap-2 text-xs">
-      {/* Toggle */}
-      <button
-        onClick={onToggleAnalysis}
-        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-          analysisEnabled
-            ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-            : "bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700"
-        }`}
-      >
-        {analysisEnabled ? "Analysis ON" : "Analysis OFF"}
-      </button>
+      {/* Independent toggles */}
+      <div className="flex gap-1.5">
+        <button
+          onClick={onTogglePlayerAnalysis}
+          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+            analyzePlayer
+              ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+              : "bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700"
+          }`}
+        >
+          Player {analyzePlayer ? "ON" : "OFF"}
+        </button>
+        <button
+          onClick={onToggleCpuAnalysis}
+          className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+            analyzeCpu
+              ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
+              : "bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700"
+          }`}
+        >
+          CPU {analyzeCpu ? "ON" : "OFF"}
+        </button>
+      </div>
 
       {!analysisEnabled && (
         <p className="text-zinc-500 text-[10px]">
@@ -91,21 +108,24 @@ export function AnalysisPanel({
 
       {analysisEnabled && positionEval && (
         <>
-          {/* Win probability bar */}
+          {/* Win probability bar — text uses contrasting colors for readability */}
           <div className="flex items-center gap-2">
             <div className="text-zinc-500 w-8">Win%</div>
-            <div className="flex-1 h-4 bg-zinc-800 rounded overflow-hidden relative">
+            <div className="flex-1 h-5 bg-zinc-700 rounded overflow-hidden relative">
+              {/* White portion */}
               <div
-                className="absolute inset-y-0 left-0 bg-white/90 transition-all duration-300"
+                className="absolute inset-y-0 left-0 bg-zinc-100 transition-all duration-300"
                 style={{ width: `${playerColor === "White" ? winBarHeight : 100 - winBarHeight}%` }}
               />
-              <div className="absolute inset-0 flex items-center justify-between px-1 text-[9px] font-mono">
-                <span className="text-black font-bold mix-blend-difference">
+              <div className="absolute inset-0 flex items-center justify-between px-1.5 text-[10px] font-mono font-bold">
+                {/* Left label: dark text on white bg */}
+                <span className="text-zinc-900 drop-shadow-[0_0_2px_rgba(255,255,255,0.5)]">
                   {playerColor === "White"
                     ? `${winBarHeight}%`
                     : `${100 - winBarHeight}%`}
                 </span>
-                <span className="text-white font-bold mix-blend-difference">
+                {/* Right label: light text on dark bg */}
+                <span className="text-zinc-100 drop-shadow-[0_0_2px_rgba(0,0,0,0.5)]">
                   {playerColor === "White"
                     ? `${100 - winBarHeight}%`
                     : `${winBarHeight}%`}

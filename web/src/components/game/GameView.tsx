@@ -5,6 +5,7 @@ import { useGameEngine } from "@/hooks/useGameEngine";
 import { getTheme, getSavedThemeId, THEMES, saveThemeId } from "@/themes";
 import { HexGrid } from "@/components/board/HexGrid";
 import { PlayerHand } from "./PlayerHand";
+import { GameTimer } from "./GameTimer";
 import { AnalysisPanel } from "./AnalysisPanel";
 import {
   createGameRecord,
@@ -32,6 +33,65 @@ interface Props {
   onBack: () => void;
 }
 
+/** Find the top piece at a board coordinate. */
+function getTopPiece(
+  state: GameState,
+  coord: Coord
+): { piece_type: PieceType; color: Color } | null {
+  const key = `${coord[0]},${coord[1]}`;
+  const stack = state.board.grid[key];
+  if (!stack || stack.length === 0) return null;
+  return stack[stack.length - 1];
+}
+
+/** Find a legal move that targets the given coordinate for the current selection. */
+function findMoveForCoord(
+  legalMoves: GameMove[],
+  selectedPiece: { type: "board"; coord: Coord } | { type: "hand"; pieceType: PieceType } | null,
+  coord: Coord
+): GameMove | null {
+  if (!selectedPiece) return null;
+
+  if (selectedPiece.type === "hand") {
+    return (
+      legalMoves.find(
+        (m) =>
+          m !== "Pass" &&
+          "Place" in m &&
+          m.Place.piece_type === selectedPiece.pieceType &&
+          m.Place.to[0] === coord[0] &&
+          m.Place.to[1] === coord[1]
+      ) || null
+    );
+  }
+
+  // Board piece: check Move, then PillbugThrow
+  const moveMatch =
+    legalMoves.find(
+      (m) =>
+        m !== "Pass" &&
+        "Move" in m &&
+        m.Move.from[0] === selectedPiece.coord[0] &&
+        m.Move.from[1] === selectedPiece.coord[1] &&
+        m.Move.to[0] === coord[0] &&
+        m.Move.to[1] === coord[1]
+    ) || null;
+
+  if (moveMatch) return moveMatch;
+
+  return (
+    legalMoves.find(
+      (m) =>
+        m !== "Pass" &&
+        "PillbugThrow" in m &&
+        m.PillbugThrow.pillbug_at[0] === selectedPiece.coord[0] &&
+        m.PillbugThrow.pillbug_at[1] === selectedPiece.coord[1] &&
+        m.PillbugThrow.to[0] === coord[0] &&
+        m.PillbugThrow.to[1] === coord[1]
+    ) || null
+  );
+}
+
 export function GameView({ config, onBack }: Props) {
   const engine = useGameEngine();
   const [themeId, setThemeId] = useState(getSavedThemeId());
@@ -45,16 +105,45 @@ export function GameView({ config, onBack }: Props) {
     | null
   >(null);
   const [aiThinking, setAiThinking] = useState(false);
-  const [aiPaused, setAiPaused] = useState(false); // Pause AI after undo
+  const [aiPaused, setAiPaused] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Analysis mode state.
-  const [analysisEnabled, setAnalysisEnabled] = useState(false);
+  // Independent analysis toggles for player and CPU.
+  const [analyzePlayer, setAnalyzePlayer] = useState(false);
+  const [analyzeCpu, setAnalyzeCpu] = useState(false);
   const [positionEval, setPositionEval] = useState<PositionEval | null>(null);
-  const [moveAnalyses, setMoveAnalyses] = useState<MoveAnalysis[]>([]);
+  const [playerAnalyses, setPlayerAnalyses] = useState<MoveAnalysis[]>([]);
+  const [cpuAnalyses, setCpuAnalyses] = useState<MoveAnalysis[]>([]);
 
   // Game recording.
   const gameRecordRef = useRef<GameRecord | null>(null);
+
+  // Merge player and CPU analyses for display (interleaved by move order).
+  const allAnalyses = useMemo(() => {
+    const merged: MoveAnalysis[] = [];
+    let pi = 0;
+    let ci = 0;
+    // Interleave based on who moves first — player analyses on player turns, CPU on CPU turns.
+    // Simple approach: just concatenate both in order; the panel shows them sequentially.
+    const isPlayerWhite = config.playerColor === "White";
+    const totalMoves = playerAnalyses.length + cpuAnalyses.length;
+    for (let i = 0; i < totalMoves; i++) {
+      const isWhiteTurn = i % 2 === 0;
+      const isPlayerTurnHere = isWhiteTurn === isPlayerWhite;
+      if (isPlayerTurnHere && pi < playerAnalyses.length) {
+        merged.push(playerAnalyses[pi++]);
+      } else if (!isPlayerTurnHere && ci < cpuAnalyses.length) {
+        merged.push(cpuAnalyses[ci++]);
+      } else if (pi < playerAnalyses.length) {
+        merged.push(playerAnalyses[pi++]);
+      } else if (ci < cpuAnalyses.length) {
+        merged.push(cpuAnalyses[ci++]);
+      }
+    }
+    return merged;
+  }, [playerAnalyses, cpuAnalyses, config.playerColor]);
+
+  const analysisEnabled = analyzePlayer || analyzeCpu;
 
   // Escape key deselects piece.
   useEffect(() => {
@@ -73,7 +162,6 @@ export function GameView({ config, onBack }: Props) {
       setGameState(state);
       const moves = engine.getLegalMoves(state);
       setLegalMoves(moves);
-      // Initialize game recording.
       const whitePlayer = config.aiConfig && config.playerColor === "Black" ? "AI" : "Human";
       const blackPlayer = config.aiConfig && config.playerColor === "White" ? "AI" : "Human";
       gameRecordRef.current = createGameRecord(
@@ -89,35 +177,71 @@ export function GameView({ config, onBack }: Props) {
   const isPlayerTurn = useCallback(
     (state: GameState | null): boolean => {
       if (!state || state.status !== "InProgress") return false;
-      if (!config.aiConfig) return true; // Pass-and-play: always player turn
+      if (!config.aiConfig) return true;
       return state.current_player === config.playerColor;
     },
     [config.aiConfig, config.playerColor]
   );
 
-  // AI move — paused after undo so player can undo multiple times.
+  // Record a move and save to localStorage.
+  const recordGameMove = useCallback((move: GameMove, newState: GameState) => {
+    if (gameRecordRef.current) {
+      gameRecordRef.current = recordMove(gameRecordRef.current, move);
+      if (newState.status !== "InProgress") {
+        gameRecordRef.current = finalizeRecord(gameRecordRef.current, newState.status);
+      }
+      saveRecordToStorage(gameRecordRef.current);
+    }
+  }, []);
+
+  /** Shared move execution: analyze (if enabled), apply, record, update state. */
+  const executeMove = useCallback(
+    (move: GameMove, isCpuMove: boolean) => {
+      if (!gameState || !engine.ready) return;
+
+      // Analyze if the relevant toggle is on.
+      const shouldAnalyze = isCpuMove ? analyzeCpu : analyzePlayer;
+      if (shouldAnalyze) {
+        try {
+          const analysis = engine.analyzeMove(gameState, move);
+          if (isCpuMove) {
+            setCpuAnalyses((prev) => [...prev, analysis]);
+          } else {
+            setPlayerAnalyses((prev) => [...prev, analysis]);
+          }
+        } catch {
+          // Analysis failure shouldn't block the move.
+        }
+      }
+
+      const newState = engine.applyMove(gameState, move);
+      recordGameMove(move, newState);
+      setGameState(newState);
+      setLegalMoves(engine.getLegalMoves(newState));
+      setSelectedPiece(null);
+      setMessage("");
+      if (!isCpuMove) setAiPaused(false);
+    },
+    [gameState, engine, analyzePlayer, analyzeCpu, recordGameMove]
+  );
+
+  // AI move effect.
   useEffect(() => {
     if (!gameState || !engine.ready || !config.aiConfig) return;
     if (isPlayerTurn(gameState)) return;
     if (gameState.status !== "InProgress") return;
-    if (aiPaused) return; // Don't auto-move after undo
+    if (aiPaused) return;
 
     setAiThinking(true);
     setMessage("Computer is thinking...");
 
-    // Use setTimeout to let the UI update before blocking on AI.
     const timer = setTimeout(() => {
       try {
         const aiMove = engine.aiPickMove(
           gameState,
           config.aiConfig as unknown as AiConfig
         );
-        const newState = engine.applyMove(gameState, aiMove);
-        recordGameMove(aiMove, newState);
-        setGameState(newState);
-        setLegalMoves(engine.getLegalMoves(newState));
-        setSelectedPiece(null);
-        setMessage("");
+        executeMove(aiMove, true);
       } catch (e) {
         setMessage(`AI Error: ${e}`);
       } finally {
@@ -126,7 +250,28 @@ export function GameView({ config, onBack }: Props) {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [gameState, engine, config.aiConfig, isPlayerTurn, aiPaused]);
+  }, [gameState, engine, config.aiConfig, isPlayerTurn, aiPaused, executeMove]);
+
+  // Auto-pass: when the player's only legal move is Pass, execute it automatically.
+  useEffect(() => {
+    if (!gameState || !engine.ready) return;
+    if (!isPlayerTurn(gameState)) return;
+    if (gameState.status !== "InProgress") return;
+    if (aiThinking) return;
+
+    // Check if the only legal move is Pass.
+    if (legalMoves.length === 1 && legalMoves[0] === "Pass") {
+      setMessage(`${gameState.current_player} has no moves — auto-passing...`);
+      const timer = setTimeout(() => {
+        try {
+          executeMove("Pass", false);
+        } catch (e) {
+          setMessage(`Error: ${e}`);
+        }
+      }, 800); // Brief delay so the user sees the message
+      return () => clearTimeout(timer);
+    }
+  }, [gameState, engine, legalMoves, isPlayerTurn, aiThinking, executeMove]);
 
   // Update message on game end.
   useEffect(() => {
@@ -144,17 +289,6 @@ export function GameView({ config, onBack }: Props) {
     }
   }, [gameState?.status]);
 
-  // Record a move and save to localStorage.
-  const recordGameMove = useCallback((move: GameMove, newState: GameState) => {
-    if (gameRecordRef.current) {
-      gameRecordRef.current = recordMove(gameRecordRef.current, move);
-      if (newState.status !== "InProgress") {
-        gameRecordRef.current = finalizeRecord(gameRecordRef.current, newState.status);
-      }
-      saveRecordToStorage(gameRecordRef.current);
-    }
-  }, []);
-
   // Update position evaluation when analysis is enabled.
   useEffect(() => {
     if (!analysisEnabled || !gameState || !engine.ready) {
@@ -166,7 +300,7 @@ export function GameView({ config, onBack }: Props) {
       const evaluation = engine.evaluatePosition(gameState, player);
       setPositionEval(evaluation);
     } catch {
-      // Eval not available yet (e.g., early game).
+      // Eval not available yet.
     }
   }, [analysisEnabled, gameState, engine.ready, config.playerColor]);
 
@@ -174,63 +308,12 @@ export function GameView({ config, onBack }: Props) {
     (coord: Coord) => {
       if (!gameState || !isPlayerTurn(gameState) || aiThinking) return;
 
-      // If a piece is already selected, check if this coord is a legal destination
-      // (e.g., beetle climbing onto another piece). If so, execute the move.
+      // If a piece is already selected, check if this coord is a legal destination.
       if (selectedPiece && engine.ready) {
-        const coordKey = `${coord[0]},${coord[1]}`;
-        let move: GameMove | null = null;
-
-        if (selectedPiece.type === "board") {
-          move =
-            legalMoves.find(
-              (m) =>
-                m !== "Pass" &&
-                "Move" in m &&
-                m.Move.from[0] === selectedPiece.coord[0] &&
-                m.Move.from[1] === selectedPiece.coord[1] &&
-                m.Move.to[0] === coord[0] &&
-                m.Move.to[1] === coord[1]
-            ) || null;
-
-          if (!move) {
-            move =
-              legalMoves.find(
-                (m) =>
-                  m !== "Pass" &&
-                  "PillbugThrow" in m &&
-                  m.PillbugThrow.pillbug_at[0] === selectedPiece.coord[0] &&
-                  m.PillbugThrow.pillbug_at[1] === selectedPiece.coord[1] &&
-                  m.PillbugThrow.to[0] === coord[0] &&
-                  m.PillbugThrow.to[1] === coord[1]
-              ) || null;
-          }
-        } else if (selectedPiece.type === "hand") {
-          move =
-            legalMoves.find(
-              (m) =>
-                m !== "Pass" &&
-                "Place" in m &&
-                m.Place.piece_type === selectedPiece.pieceType &&
-                m.Place.to[0] === coord[0] &&
-                m.Place.to[1] === coord[1]
-            ) || null;
-        }
-
+        const move = findMoveForCoord(legalMoves, selectedPiece, coord);
         if (move) {
           try {
-            if (analysisEnabled) {
-              try {
-                const analysis = engine.analyzeMove(gameState, move);
-                setMoveAnalyses((prev) => [...prev, analysis]);
-              } catch { /* Analysis failure shouldn't block the move */ }
-            }
-            const newState = engine.applyMove(gameState, move);
-            recordGameMove(move, newState);
-            setGameState(newState);
-            setLegalMoves(engine.getLegalMoves(newState));
-            setSelectedPiece(null);
-            setMessage("");
-            setAiPaused(false);
+            executeMove(move, false);
           } catch (e) {
             setMessage(`Error: ${e}`);
           }
@@ -240,11 +323,9 @@ export function GameView({ config, onBack }: Props) {
 
       const topPiece = getTopPiece(gameState, coord);
       if (!topPiece) return;
-
-      // Can only select own pieces (in pass-and-play, current player's pieces).
       if (topPiece.color !== gameState.current_player) return;
 
-      // If already selected, deselect.
+      // Toggle selection.
       if (
         selectedPiece?.type === "board" &&
         selectedPiece.coord[0] === coord[0] &&
@@ -256,7 +337,7 @@ export function GameView({ config, onBack }: Props) {
 
       setSelectedPiece({ type: "board", coord });
     },
-    [gameState, selectedPiece, engine, legalMoves, isPlayerTurn, aiThinking]
+    [gameState, selectedPiece, engine, legalMoves, isPlayerTurn, aiThinking, executeMove]
   );
 
   const handleHexClick = useCallback(
@@ -264,68 +345,16 @@ export function GameView({ config, onBack }: Props) {
       if (!gameState || !engine.ready || !selectedPiece || aiThinking) return;
       if (!isPlayerTurn(gameState)) return;
 
-      // Find the matching legal move.
-      let move: GameMove | null = null;
-
-      if (selectedPiece.type === "hand") {
-        move =
-          legalMoves.find(
-            (m) =>
-              m !== "Pass" &&
-              "Place" in m &&
-              m.Place.piece_type === selectedPiece.pieceType &&
-              m.Place.to[0] === coord[0] &&
-              m.Place.to[1] === coord[1]
-          ) || null;
-      } else if (selectedPiece.type === "board") {
-        move =
-          legalMoves.find(
-            (m) =>
-              m !== "Pass" &&
-              "Move" in m &&
-              m.Move.from[0] === selectedPiece.coord[0] &&
-              m.Move.from[1] === selectedPiece.coord[1] &&
-              m.Move.to[0] === coord[0] &&
-              m.Move.to[1] === coord[1]
-          ) || null;
-
-        // Check pillbug throws too.
-        if (!move) {
-          move =
-            legalMoves.find(
-              (m) =>
-                m !== "Pass" &&
-                "PillbugThrow" in m &&
-                m.PillbugThrow.to[0] === coord[0] &&
-                m.PillbugThrow.to[1] === coord[1]
-            ) || null;
-        }
-      }
-
+      const move = findMoveForCoord(legalMoves, selectedPiece, coord);
       if (!move) return;
 
       try {
-        // Analyze the move before applying if analysis is enabled.
-        if (analysisEnabled) {
-          try {
-            const analysis = engine.analyzeMove(gameState, move);
-            setMoveAnalyses((prev) => [...prev, analysis]);
-          } catch {
-            // Analysis failure shouldn't block the move.
-          }
-        }
-        const newState = engine.applyMove(gameState, move);
-        recordGameMove(move, newState);
-        setGameState(newState);
-        setLegalMoves(engine.getLegalMoves(newState));
-        setSelectedPiece(null);
-        setMessage("");
-        setAiPaused(false); // Player made a move, AI can respond
+        executeMove(move, false);
       } catch (e) {
         setMessage(`Error: ${e}`);
       }
     },
-    [gameState, engine, selectedPiece, legalMoves, isPlayerTurn, aiThinking, analysisEnabled, recordGameMove]
+    [gameState, engine, selectedPiece, legalMoves, isPlayerTurn, aiThinking, executeMove]
   );
 
   const handleHandSelect = useCallback(
@@ -349,7 +378,7 @@ export function GameView({ config, onBack }: Props) {
       setGameState(newState);
       setLegalMoves(engine.getLegalMoves(newState));
       setSelectedPiece(null);
-      setAiPaused(true); // Don't let AI auto-move after undo
+      setAiPaused(true);
     } catch (e) {
       setMessage(`${e}`);
     }
@@ -375,16 +404,11 @@ export function GameView({ config, onBack }: Props) {
       return;
     }
     try {
-      const newState = engine.applyMove(gameState, "Pass");
-      recordGameMove("Pass", newState);
-      setGameState(newState);
-      setLegalMoves(engine.getLegalMoves(newState));
-      setSelectedPiece(null);
-      setAiPaused(false); // Player passed, AI can respond
+      executeMove("Pass", false);
     } catch (e) {
       setMessage(`${e}`);
     }
-  }, [gameState, engine, legalMoves]);
+  }, [gameState, engine, legalMoves, executeMove]);
 
   const lastMoveCoords = useMemo((): Coord[] => {
     if (!gameState?.last_move) return [];
@@ -438,7 +462,6 @@ export function GameView({ config, onBack }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-1">
-          {/* Controls inline on small screens */}
           <div className="flex items-center gap-1 mr-2 md:mr-0">
             {canUndo && (
               <button
@@ -480,22 +503,29 @@ export function GameView({ config, onBack }: Props) {
                 setThemeId(t.id);
                 saveThemeId(t.id);
               }}
-              className={`w-5 h-5 rounded-full border ${
+              className={`px-2 py-0.5 rounded border text-[10px] sm:text-xs font-medium transition-colors ${
                 themeId === t.id
-                  ? "border-amber-400"
-                  : "border-zinc-700"
+                  ? "border-amber-400 text-amber-300"
+                  : "border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
               }`}
               style={{ background: t.board.background }}
-              title={t.name}
-            />
+            >
+              {t.name}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Main area: column on mobile, row on desktop */}
+      {/* Main area */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
-        {/* White hand: top on mobile, left sidebar on desktop */}
+        {/* White hand: left sidebar */}
         <div className="shrink-0 p-2 md:p-3 border-b md:border-b-0 md:border-r border-zinc-800 md:w-72 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
+          <GameTimer
+            timeRemaining={gameState.time_remaining[0]}
+            color="White"
+            isActive={gameState.current_player === "White" && gameState.status === "InProgress"}
+            gameOver={gameState.status !== "InProgress"}
+          />
           <PlayerHand
             state={gameState}
             color="White"
@@ -517,13 +547,18 @@ export function GameView({ config, onBack }: Props) {
           <div className="hidden md:block mt-3 border-t border-zinc-800 pt-3">
             <AnalysisPanel
               positionEval={positionEval}
-              moveAnalyses={moveAnalyses}
-              currentMoveIndex={moveAnalyses.length - 1}
+              moveAnalyses={allAnalyses}
+              currentMoveIndex={allAnalyses.length - 1}
               playerColor={config.playerColor || "White"}
-              analysisEnabled={analysisEnabled}
-              onToggleAnalysis={() => {
-                setAnalysisEnabled((v) => !v);
-                if (!analysisEnabled) setMoveAnalyses([]);
+              analyzePlayer={analyzePlayer}
+              analyzeCpu={analyzeCpu}
+              onTogglePlayerAnalysis={() => {
+                setAnalyzePlayer((v) => !v);
+                if (analyzePlayer) setPlayerAnalyses([]);
+              }}
+              onToggleCpuAnalysis={() => {
+                setAnalyzeCpu((v) => !v);
+                if (analyzeCpu) setCpuAnalyses([]);
               }}
             />
           </div>
@@ -589,8 +624,14 @@ export function GameView({ config, onBack }: Props) {
           )}
         </div>
 
-        {/* Black hand: bottom on mobile, right sidebar on desktop */}
+        {/* Black hand: right sidebar */}
         <div className="shrink-0 p-2 md:p-3 border-t md:border-t-0 md:border-l border-zinc-800 md:w-72 overflow-x-auto md:overflow-x-visible md:overflow-y-auto">
+          <GameTimer
+            timeRemaining={gameState.time_remaining[1]}
+            color="Black"
+            isActive={gameState.current_player === "Black" && gameState.status === "InProgress"}
+            gameOver={gameState.status !== "InProgress"}
+          />
           <PlayerHand
             state={gameState}
             color="Black"
@@ -612,14 +653,4 @@ export function GameView({ config, onBack }: Props) {
       </div>
     </div>
   );
-}
-
-function getTopPiece(
-  state: GameState,
-  coord: Coord
-): { piece_type: PieceType; color: Color } | null {
-  const key = `${coord[0]},${coord[1]}`;
-  const stack = state.board.grid[key];
-  if (!stack || stack.length === 0) return null;
-  return stack[stack.length - 1];
 }

@@ -91,10 +91,25 @@ export function HexGrid({
     }
 
     const pixels = allCoords.map(([q, r]) => axialToPixel(q, r, HEX_SIZE));
-    const minX = Math.min(...pixels.map((p) => p.x)) - HEX_SIZE * 2;
-    const maxX = Math.max(...pixels.map((p) => p.x)) + HEX_SIZE * 2;
-    const minY = Math.min(...pixels.map((p) => p.y)) - HEX_SIZE * 2;
-    const maxY = Math.max(...pixels.map((p) => p.y)) + HEX_SIZE * 2;
+    const padding = HEX_SIZE * 3;
+    let minX = Math.min(...pixels.map((p) => p.x)) - padding;
+    let maxX = Math.max(...pixels.map((p) => p.x)) + padding;
+    let minY = Math.min(...pixels.map((p) => p.y)) - padding;
+    let maxY = Math.max(...pixels.map((p) => p.y)) + padding;
+
+    // Enforce a minimum viewBox so early game isn't overly zoomed in.
+    // This gives room for ~8 hexes in each direction before needing to grow.
+    const minSpan = HEX_SIZE * 16;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    if (maxX - minX < minSpan) {
+      minX = cx - minSpan / 2;
+      maxX = cx + minSpan / 2;
+    }
+    if (maxY - minY < minSpan) {
+      minY = cy - minSpan / 2;
+      maxY = cy + minSpan / 2;
+    }
 
     return {
       allHexes: allCoords,
