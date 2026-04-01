@@ -12,7 +12,9 @@ import type {
   GamePreset,
   PieceType,
   UndoMode,
+  EvalWeights,
 } from "@/lib/types";
+import { importRecord, loadRecordsFromStorage, type GameRecord } from "@/lib/gameRecorder";
 
 const DEFAULT_PIECE_COUNTS: Record<PieceType, number> = {
   Queen: 1,
@@ -27,9 +29,10 @@ const DEFAULT_PIECE_COUNTS: Record<PieceType, number> = {
 
 interface Props {
   onStart: (config: GameConfig) => void;
+  onReplay?: (record: GameRecord) => void;
 }
 
-export function GameSetup({ onStart }: Props) {
+export function GameSetup({ onStart, onReplay }: Props) {
   const engine = useGameEngine();
   const [presets, setPresets] = useState<GamePreset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState("Standard");
@@ -40,6 +43,8 @@ export function GameSetup({ onStart }: Props) {
   // AI settings
   const [aiEngine, setAiEngine] = useState<AiEngine>("Minimax");
   const [difficulty, setDifficulty] = useState<Difficulty>("Medium");
+  const [customWeights, setCustomWeights] = useState<EvalWeights | null>(null);
+  const [modelName, setModelName] = useState<string>("default");
 
   // Rule overrides
   const [useMosquito, setUseMosquito] = useState(false);
@@ -96,7 +101,12 @@ export function GameSetup({ onStart }: Props) {
 
     const aiConfig: AiConfig | null =
       gameMode === "cpu"
-        ? { engine: aiEngine, difficulty, adaptive_history: [] }
+        ? {
+            engine: aiEngine,
+            difficulty,
+            adaptive_history: [],
+            custom_weights: customWeights,
+          }
         : null;
 
     onStart({
@@ -242,6 +252,49 @@ export function GameSetup({ onStart }: Props) {
               </div>
             </div>
           </div>
+          <div>
+            <label className="text-sm text-zinc-400 mb-1 block">
+              AI Model
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <ToggleButton
+                active={modelName === "default"}
+                onClick={() => {
+                  setModelName("default");
+                  setCustomWeights(null);
+                }}
+                label="Default"
+              />
+              <label className="px-4 py-2 rounded-lg border border-zinc-700 text-sm font-medium text-zinc-400 hover:border-zinc-500 cursor-pointer transition-colors">
+                Load Model
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const text = await file.text();
+                      const weights = JSON.parse(text) as EvalWeights;
+                      if (typeof weights.queen_danger_per_neighbor !== "number") {
+                        throw new Error("Invalid model format");
+                      }
+                      setCustomWeights(weights);
+                      setModelName(file.name.replace(".json", ""));
+                    } catch {
+                      alert("Invalid model file. Use a .json file from the training CLI.");
+                    }
+                  }}
+                />
+              </label>
+              {modelName !== "default" && (
+                <span className="px-3 py-2 text-sm text-amber-400 border border-amber-500/30 rounded-lg bg-amber-500/10">
+                  {modelName}
+                </span>
+              )}
+            </div>
+          </div>
         </Section>
       )}
 
@@ -347,6 +400,45 @@ export function GameSetup({ onStart }: Props) {
           ))}
         </div>
       </Section>
+
+      {/* Replay Section */}
+      {onReplay && (
+        <Section title="Game Replay">
+          <div className="flex gap-3 flex-wrap">
+            <label className="px-4 py-2 rounded-lg border border-zinc-700 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors">
+              Import .hive File
+              <input
+                type="file"
+                accept=".hive,.json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const record = await importRecord(file);
+                    onReplay(record);
+                  } catch (err) {
+                    alert(`Failed to import: ${err}`);
+                  }
+                }}
+              />
+            </label>
+            {(() => {
+              const saved = loadRecordsFromStorage();
+              if (saved.length === 0) return null;
+              const latest = saved[saved.length - 1];
+              return (
+                <button
+                  onClick={() => onReplay(latest)}
+                  className="px-4 py-2 rounded-lg border border-zinc-700 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  Replay Last Game ({latest.metadata.result})
+                </button>
+              );
+            })()}
+          </div>
+        </Section>
+      )}
 
       {/* Start Button */}
       <button
