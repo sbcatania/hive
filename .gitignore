@@ -21,6 +21,12 @@ training/data/openings.json
 # Playwright
 .playwright-mcp/
 
+# Screenshots (testing artifacts)
+*.png
+
+# Build artifacts
+web/tsconfig.tsbuildinfo
+
 # OS
 .DS_Store
 .vercel
