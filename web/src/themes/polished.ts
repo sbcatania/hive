@@ -12,24 +12,24 @@ const PIECE_ICONS: Record<string, string> = {
   Pillbug: "🐛",
 };
 
-export const polishedTheme: HiveTheme = {
-  name: "Polished",
-  id: "polished",
+export const emberTheme: HiveTheme = {
+  name: "Ember",
+  id: "ember",
   board: {
-    background: "#0c0a09",
-    gridLineColor: "#44403c",
+    background: "#1a1a1a",
+    gridLineColor: "#3d1f1f",
     gridLineWidth: 1,
-    highlightColor: "rgba(251, 191, 36, 0.4)",
-    selectedColor: "rgba(96, 165, 250, 0.5)",
-    lastMoveColor: "rgba(74, 222, 128, 0.3)",
+    highlightColor: "rgba(255, 109, 0, 0.4)",
+    selectedColor: "rgba(255, 23, 68, 0.5)",
+    lastMoveColor: "rgba(255, 152, 0, 0.3)",
   },
   pieces: {
-    whiteColor: "#fef3c7",
-    blackColor: "#292524",
-    whiteBorder: "#d97706",
-    blackBorder: "#78716c",
+    whiteColor: "#ffe0b2",
+    blackColor: "#6d1b1b",
+    whiteBorder: "#ff8a65",
+    blackBorder: "#a04040",
     borderWidth: 2.5,
-    textColor: (color) => (color === "White" ? "#451a03" : "#fef3c7"),
+    textColor: (color) => (color === "White" ? "#3e1a00" : "#ffe0b2"),
     fontSize: 22,
     renderLabel: (type) => PIECE_ICONS[type] || pieceAbbrev(type),
   },

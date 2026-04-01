@@ -12,24 +12,24 @@ const PIECE_ICONS: Record<string, string> = {
   Pillbug: "🐛",
 };
 
-export const cleanTheme: HiveTheme = {
-  name: "Clean",
-  id: "clean",
+export const natureTheme: HiveTheme = {
+  name: "Nature",
+  id: "nature",
   board: {
-    background: "#0f172a",
-    gridLineColor: "#334155",
+    background: "#1a2e1a",
+    gridLineColor: "#3a5a3a",
     gridLineWidth: 1.5,
-    highlightColor: "rgba(245, 158, 11, 0.35)",
-    selectedColor: "rgba(59, 130, 246, 0.5)",
-    lastMoveColor: "rgba(34, 197, 94, 0.25)",
+    highlightColor: "rgba(212, 160, 23, 0.4)",
+    selectedColor: "rgba(76, 175, 80, 0.55)",
+    lastMoveColor: "rgba(139, 195, 74, 0.3)",
   },
   pieces: {
-    whiteColor: "#e2e8f0",
-    blackColor: "#1e293b",
-    whiteBorder: "#94a3b8",
-    blackBorder: "#475569",
+    whiteColor: "#f5f0e0",
+    blackColor: "#3d2b1f",
+    whiteBorder: "#b8a882",
+    blackBorder: "#6d4c2f",
     borderWidth: 2,
-    textColor: (color) => (color === "White" ? "#0f172a" : "#e2e8f0"),
+    textColor: (color) => (color === "White" ? "#2e1a0e" : "#f5f0e0"),
     fontSize: 20,
     renderLabel: (type) => PIECE_ICONS[type] || pieceAbbrev(type),
   },

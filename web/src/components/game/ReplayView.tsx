@@ -177,12 +177,15 @@ export function ReplayView({ record, onBack }: Props) {
                 setThemeId(t.id);
                 saveThemeId(t.id);
               }}
-              className={`w-5 h-5 rounded-full border ${
-                themeId === t.id ? "border-amber-400" : "border-zinc-700"
+              className={`px-2 py-0.5 rounded border text-[10px] sm:text-xs font-medium transition-colors ${
+                themeId === t.id
+                  ? "border-amber-400 text-amber-300"
+                  : "border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
               }`}
               style={{ background: t.board.background }}
-              title={t.name}
-            />
+            >
+              {t.name}
+            </button>
           ))}
         </div>
       </div>
