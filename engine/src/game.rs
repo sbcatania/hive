@@ -124,6 +124,8 @@ impl GameState {
 #[derive(Clone, Copy, Debug)]
 pub struct HistoryEntry {
     pub mv: Move,
+    /// Position hash before this move.
+    pub prev_hash: u64,
     prev_last_moved: PieceId,
     prev_state: GameState,
 }
@@ -340,7 +342,7 @@ impl Game {
 
     /// Plays a move without checking legality.
     pub fn play_unchecked(&mut self, m: Move) {
-        self.history.push(HistoryEntry { mv: m, prev_last_moved: self.last_moved, prev_state: self.state });
+        self.history.push(HistoryEntry { mv: m, prev_hash: self.hash, prev_last_moved: self.last_moved, prev_state: self.state });
         if !m.is_pass() {
             if !m.is_placement() {
                 self.lift(m.piece);
@@ -411,23 +413,29 @@ impl Game {
         if self.state.is_over() {
             return;
         }
-        let color = self.to_move();
-        self.generate_placements(color, out);
-        if self.queen_placed(color) {
-            let pinned = self.pinned_pieces();
-            for p in pieces_of(color) {
-                if self.in_hand(p) || !self.on_top(p) || p == self.last_moved {
-                    continue;
-                }
-                self.generate_piece_moves(p, pinned, out);
-            }
-        }
+        let pinned = self.pinned_pieces();
+        self.generate_moves_for(self.to_move(), self.last_moved, pinned, out);
         if out.is_empty() {
             out.push(Move::PASS);
-        } else {
-            out.sort_unstable();
-            out.dedup();
         }
+    }
+
+    /// Moves `color` could make if it were their turn, with `stunned` unable to
+    /// move (used by the evaluator to measure both sides' mobility). Doesn't add
+    /// a pass when there are no moves.
+    pub fn generate_moves_for(&mut self, color: Color, stunned: PieceId, pinned: u32, out: &mut Vec<Move>) {
+        out.clear();
+        self.generate_placements(color, out);
+        if self.queen_placed(color) {
+            for p in pieces_of(color) {
+                if self.in_hand(p) || !self.on_top(p) || p == stunned {
+                    continue;
+                }
+                self.generate_piece_moves(p, pinned, stunned, out);
+            }
+        }
+        out.sort_unstable();
+        out.dedup();
     }
 
     /// Moves available to a single piece on the board (including Pillbug throws
@@ -436,8 +444,17 @@ impl Game {
         self.legal_moves().into_iter().filter(|m| m.piece == p).collect()
     }
 
+    /// 1-based turn number of `color` (their next move).
+    pub fn turn_number_of(&self, color: Color) -> u32 {
+        let made = match color {
+            Color::White => (self.ply + 1) / 2,
+            Color::Black => self.ply / 2,
+        };
+        made + 1
+    }
+
     fn generate_placements(&self, color: Color, out: &mut Vec<Move>) {
-        let turn = self.turn_number();
+        let turn = self.turn_number_of(color);
         let queen_in_hand = !self.queen_placed(color);
         let must_place_queen = turn == 4 && queen_in_hand;
 
@@ -574,7 +591,7 @@ impl Game {
         self.level[p as usize] == 0 && pinned & (1 << p) != 0
     }
 
-    fn generate_piece_moves(&mut self, p: PieceId, pinned: u32, out: &mut Vec<Move>) {
+    fn generate_piece_moves(&mut self, p: PieceId, pinned: u32, stunned: PieceId, out: &mut Vec<Move>) {
         let from = self.pos[p as usize];
         let free = !self.is_pinned(p, pinned);
         match bug_of(p) {
@@ -588,7 +605,7 @@ impl Game {
                 if free {
                     self.gen_slides(p, from, 1, out);
                 }
-                self.gen_pillbug_throws(from, pinned, out);
+                self.gen_pillbug_throws(from, pinned, stunned, out);
             }
             Bug::Mosquito => {
                 if self.level[p as usize] > 0 {
@@ -620,7 +637,7 @@ impl Game {
                     }
                 }
                 if copied[Bug::Pillbug as usize] {
-                    self.gen_pillbug_throws(from, pinned, out);
+                    self.gen_pillbug_throws(from, pinned, stunned, out);
                 }
             }
             _ => {}
@@ -763,7 +780,7 @@ impl Game {
     /// Pillbug special ability (also used by a mosquito next to a pillbug):
     /// lift an adjacent unstacked piece onto the user and drop it on an empty
     /// cell next to the user.
-    fn gen_pillbug_throws(&mut self, user: Cell, pinned: u32, out: &mut Vec<Move>) {
+    fn gen_pillbug_throws(&mut self, user: Cell, pinned: u32, stunned: PieceId, out: &mut Vec<Move>) {
         if self.height(user) != 1 {
             return;
         }
@@ -773,7 +790,7 @@ impl Game {
                 continue;
             }
             let t = self.stack[src as usize][0];
-            if t == self.last_moved || pinned & (1 << t) != 0 {
+            if t == stunned || pinned & (1 << t) != 0 {
                 continue;
             }
             // Up onto the user (from src towards user).
@@ -826,21 +843,15 @@ impl Game {
     // ---- Misc -----------------------------------------------------------
 
     /// Number of times the current position (incl. side to move) has occurred.
-    pub fn repetitions(&mut self) -> u32 {
-        let target = self.hash;
+    pub fn repetitions(&self) -> u32 {
         let mut count = 1;
-        let mut undone = Vec::new();
-        while let Some(m) = self.undo() {
-            undone.push(m);
-            if self.hash == target {
+        for e in self.history.iter().rev() {
+            if e.prev_hash == self.hash {
                 count += 1;
             }
-            if m.is_placement() {
+            if e.mv.is_placement() {
                 break; // positions before a placement can't repeat
             }
-        }
-        for m in undone.into_iter().rev() {
-            self.play_unchecked(m);
         }
         count
     }

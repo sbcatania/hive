@@ -2,6 +2,14 @@ pub mod hex;
 pub mod pieces;
 pub mod game;
 pub mod notation;
+pub mod layout;
+pub mod eval;
+pub mod search;
+pub mod ai;
+pub mod features;
+pub mod nn;
+pub mod mcts;
+pub mod time;
 
 pub use game::{Game, GameState, Move, Rules};
 pub use hex::Cell;
