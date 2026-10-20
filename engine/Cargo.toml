@@ -2,20 +2,31 @@
 name = "hive-engine"
 version = "0.1.0"
 edition = "2021"
-description = "Hive board game engine — rules, move generation, and AI"
+description = "Hive rules engine and AI (base game + Mosquito, Ladybug, Pillbug)"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = []
+wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:serde-wasm-bindgen"]
+native = ["dep:rayon"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-wasm-bindgen = "0.2"
-getrandom = { version = "0.2", features = ["js"] }
-rand = "0.8"
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+serde-wasm-bindgen = { version = "0.6", optional = true }
+rayon = { version = "1", optional = true }
 
 [[bin]]
-name = "train"
-path = "src/bin/train.rs"
+name = "selfplay"
+path = "src/bin/selfplay.rs"
+required-features = ["native"]
 
-[dev-dependencies]
+[[bin]]
+name = "arena"
+path = "src/bin/arena.rs"
+required-features = ["native"]
