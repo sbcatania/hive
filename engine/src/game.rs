@@ -514,15 +514,23 @@ impl Game {
         out.clear();
         self.generate_placements(color, out);
         if self.queen_placed(color) {
+            // Pillbug throws are generated last so they can be checked against
+            // the thrown piece's own moves (the only cross-piece duplicates).
+            let mut throw_users = [NO_CELL; 2];
+            let mut nusers = 0;
             for p in pieces_of(color) {
                 if self.in_hand(p) || !self.on_top(p) || p == stunned {
                     continue;
                 }
-                self.generate_piece_moves(p, pinned, stunned, out);
+                if self.generate_piece_moves(p, pinned, out) && nusers < 2 {
+                    throw_users[nusers] = self.pos[p as usize];
+                    nusers += 1;
+                }
+            }
+            for &user in &throw_users[..nusers] {
+                self.gen_pillbug_throws(user, pinned, stunned, out);
             }
         }
-        out.sort_unstable();
-        out.dedup();
     }
 
     /// Moves available to a single piece on the board (including Pillbug throws
@@ -607,37 +615,47 @@ impl Game {
     /// Bitmask of pieces that can't leave the ground without splitting the hive
     /// (articulation points of the ground-level graph).
     pub fn pinned_pieces(&self) -> u32 {
-        let cells = self.occupied_cells();
-        let n = cells.len();
+        // Nodes are the ground-level pieces (one per occupied cell).
+        let mut node_piece = [0u8; NUM_PIECES];
+        let mut index_of = [u8::MAX; NUM_PIECES];
+        let mut n = 0;
+        for p in 0..NUM_PIECES {
+            if self.pos[p] != NO_CELL && self.level[p] == 0 {
+                index_of[p] = n as u8;
+                node_piece[n] = p as u8;
+                n += 1;
+            }
+        }
         if n <= 2 {
             return 0;
         }
-        let index_of = |c: Cell| cells.binary_search(&c).ok();
-        let mut adj: Vec<[u8; 6]> = vec![[u8::MAX; 6]; n];
-        for (i, &c) in cells.iter().enumerate() {
+        let mut adj = [[u8::MAX; 6]; NUM_PIECES];
+        for i in 0..n {
+            let c = self.pos[node_piece[i] as usize];
             for (d, &nc) in neighbors(c).iter().enumerate() {
                 if self.occupied(nc) {
-                    adj[i][d] = index_of(nc).unwrap() as u8;
+                    adj[i][d] = index_of[self.stack[nc as usize][0] as usize];
                 }
             }
         }
         // Iterative Tarjan articulation points.
-        let mut disc = vec![0u8; n];
-        let mut low = vec![0u8; n];
-        let mut is_ap = vec![false; n];
+        let mut disc = [0u8; NUM_PIECES];
+        let mut low = [0u8; NUM_PIECES];
+        let mut is_ap = [false; NUM_PIECES];
         let mut timer = 1u8;
         // stack of (node, parent, next dir, child count)
-        let mut st: Vec<(usize, usize, usize, u8)> = Vec::with_capacity(n);
+        let mut st = [(0u8, u8::MAX, 0u8, 0u8); NUM_PIECES + 1];
+        let mut sp = 1;
         disc[0] = timer;
         low[0] = timer;
         timer += 1;
-        st.push((0, usize::MAX, 0, 0));
-        while !st.is_empty() {
-            let li = st.len() - 1;
+        while sp > 0 {
+            let li = sp - 1;
             let (u, parent, d, children) = st[li];
+            let u = u as usize;
             if d < 6 {
                 st[li].2 += 1;
-                let v = adj[u][d];
+                let v = adj[u][d as usize];
                 if v == u8::MAX {
                     continue;
                 }
@@ -647,16 +665,18 @@ impl Game {
                     disc[v] = timer;
                     low[v] = timer;
                     timer += 1;
-                    st.push((v, u, 0, 0));
-                } else if v != parent {
+                    st[sp] = (v as u8, u as u8, 0, 0);
+                    sp += 1;
+                } else if v as u8 != parent {
                     low[u] = low[u].min(disc[v]);
                 }
             } else {
-                st.pop();
-                if let Some(pt) = st.last() {
-                    let p = pt.0;
+                sp -= 1;
+                if sp > 0 {
+                    let pt = st[sp - 1];
+                    let p = pt.0 as usize;
                     low[p] = low[p].min(low[u]);
-                    if pt.1 != usize::MAX && low[u] >= disc[p] {
+                    if pt.1 != u8::MAX && low[u] >= disc[p] {
                         is_ap[p] = true;
                     }
                 } else if children > 1 {
@@ -665,9 +685,9 @@ impl Game {
             }
         }
         let mut mask = 0u32;
-        for (i, &c) in cells.iter().enumerate() {
+        for i in 0..n {
             if is_ap[i] {
-                mask |= 1u32 << self.stack[c as usize][0];
+                mask |= 1u32 << node_piece[i];
             }
         }
         mask
@@ -678,7 +698,9 @@ impl Game {
         self.level[p as usize] == 0 && pinned & (1 << p) != 0
     }
 
-    fn generate_piece_moves(&mut self, p: PieceId, pinned: u32, stunned: PieceId, out: &mut Vec<Move>) {
+    /// Pushes the piece's own moves; returns true if it can also use the
+    /// Pillbug ability (the caller generates those throws afterwards).
+    fn generate_piece_moves(&mut self, p: PieceId, pinned: u32, out: &mut Vec<Move>) -> bool {
         let from = self.pos[p as usize];
         let free = !self.is_pinned(p, pinned);
         match bug_of(p) {
@@ -692,13 +714,13 @@ impl Game {
                 if free {
                     self.gen_slides(p, from, 1, out);
                 }
-                self.gen_pillbug_throws(from, pinned, stunned, out);
+                return true;
             }
             Bug::Mosquito => {
                 if self.level[p as usize] > 0 {
                     // On top of the hive a mosquito can only move as a beetle.
                     self.gen_beetle(p, from, out);
-                    return;
+                    return false;
                 }
                 let mut copied = [false; NUM_BUGS];
                 for &nc in neighbors(from) {
@@ -708,10 +730,13 @@ impl Game {
                     }
                 }
                 if free {
+                    let start = out.len();
+                    let mut kinds = 0;
                     for bug in ALL_BUGS {
                         if !copied[bug as usize] {
                             continue;
                         }
+                        kinds += 1;
                         match bug {
                             Bug::Queen | Bug::Pillbug => self.gen_slides(p, from, 1, out),
                             Bug::Spider => self.gen_slides(p, from, 3, out),
@@ -722,20 +747,32 @@ impl Game {
                             Bug::Mosquito => {}
                         }
                     }
+                    if kinds > 1 {
+                        // Different borrowed powers can reach the same cell.
+                        let tail = &mut out[start..];
+                        tail.sort_unstable();
+                        let mut w = start;
+                        for r in start..out.len() {
+                            if r == start || out[r] != out[w - 1] {
+                                out[w] = out[r];
+                                w += 1;
+                            }
+                        }
+                        out.truncate(w);
+                    }
                 }
-                if copied[Bug::Pillbug as usize] {
-                    self.gen_pillbug_throws(from, pinned, stunned, out);
-                }
+                return copied[Bug::Pillbug as usize];
             }
             _ => {}
         }
+        false
     }
 
     /// Ground-level slide from `from` in direction `d`, with the moving piece
     /// already lifted: the target must be empty and exactly one of the two
     /// shared neighbours occupied (contact is kept and the gap isn't too narrow).
     #[inline]
-    fn can_slide(&self, from: Cell, d: usize) -> bool {
+    pub fn can_slide(&self, from: Cell, d: usize) -> bool {
         let to = neighbor(from, d);
         if self.occupied(to) {
             return false;
@@ -768,20 +805,24 @@ impl Game {
         seen.insert(from);
         match steps {
             0 => {
-                let mut queue: Vec<Cell> = vec![from];
-                let mut i = 0;
-                while i < queue.len() {
-                    let c = queue[i];
-                    i += 1;
+                // Breadth-first search; the queue is the moves pushed so far.
+                let start = out.len();
+                let mut i = start;
+                let mut c = from;
+                loop {
                     for d in 0..6 {
                         if self.can_slide(c, d) {
                             let to = neighbor(c, d);
                             if seen.insert(to) {
                                 out.push(Move { piece: p, from, to });
-                                queue.push(to);
                             }
                         }
                     }
+                    if i >= out.len() {
+                        break;
+                    }
+                    c = out[i].to;
+                    i += 1;
                 }
             }
             1 => {
@@ -888,7 +929,12 @@ impl Game {
             for d2 in 0..6 {
                 let to = neighbor(user, d2);
                 if to != src && !self.occupied(to) && self.can_climb(user, d2, 1) {
-                    out.push(Move { piece: t, from: src, to });
+                    let m = Move { piece: t, from: src, to };
+                    // The piece may reach the same cell on its own (or via the
+                    // other pillbug user).
+                    if !out.contains(&m) {
+                        out.push(m);
+                    }
                 }
             }
             self.height[src as usize] = 1;

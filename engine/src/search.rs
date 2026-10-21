@@ -1,7 +1,7 @@
 //! Alpha-beta search (negamax + PVS) with iterative deepening, a transposition
 //! table, killer moves and history ordering.
 
-use crate::eval::{evaluate, EvalScratch};
+use crate::eval::{evaluate, evaluate_fast, EvalParams, EvalScratch};
 use crate::game::{Game, GameState, Move};
 use crate::hex::*;
 use crate::pieces::*;
@@ -10,6 +10,12 @@ use crate::time::now_ms;
 pub const WIN: i32 = 1_000_000;
 pub const INF: i32 = 2_000_000;
 const MAX_PLY: usize = 64;
+
+/// Search feature flags (see `Searcher::flags`).
+pub const F_FAST_EVAL: u32 = 1;
+pub const F_LMR: u32 = 2;
+pub const F_WIN_CHECK: u32 = 4;
+pub const DEFAULT_FLAGS: u32 = F_FAST_EVAL | F_LMR | F_WIN_CHECK;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
@@ -48,6 +54,14 @@ pub struct Searcher {
     nodes: u64,
     deadline: f64,
     stopped: bool,
+    pub flags: u32,
+    pub params: EvalParams,
+    /// Moves searched at full depth before late move reductions start.
+    pub lmr_after: usize,
+    /// Don't start a new iteration unless `elapsed * id_factor` time remains.
+    pub id_factor: f64,
+    order_keys: Vec<(i32, u16)>,
+    order_tmp: Vec<Move>,
 }
 
 impl Searcher {
@@ -61,6 +75,12 @@ impl Searcher {
             nodes: 0,
             deadline: f64::INFINITY,
             stopped: false,
+            flags: DEFAULT_FLAGS,
+            params: EvalParams::default(),
+            lmr_after: 4,
+            id_factor: 1.5,
+            order_keys: Vec::with_capacity(256),
+            order_tmp: Vec::with_capacity(256),
         }
     }
 
@@ -140,12 +160,13 @@ impl Searcher {
                 }
             }
             if self.stopped && depth > 1 {
-                // Keep a partially searched iteration only if it found a better move.
-                if let Some(&(m, s)) = scores.iter().max_by_key(|x| x.1) {
-                    if s > result.score && m != result.best && scores.len() > 1 {
-                        result.best = m;
-                        result.score = s;
-                    }
+                // A partial iteration: the first move (the previous best) was
+                // searched to the new depth, and `best` only changed if another
+                // move was proven better with a full-window search. Scores from
+                // different depths aren't comparable, so trust only that.
+                if !scores.is_empty() && !exact_root {
+                    result.best = best;
+                    result.score = alpha;
                 }
                 break;
             }
@@ -161,7 +182,7 @@ impl Searcher {
             }
             // Don't start an iteration we likely can't finish.
             let now = now_ms();
-            if depth > 2 && now + (now - start) * 3.0 > self.deadline {
+            if depth > 2 && now + (now - start) * self.id_factor > self.deadline {
                 break;
             }
         }
@@ -217,7 +238,7 @@ impl Searcher {
             return 0;
         }
         if depth <= 0 || ply >= MAX_PLY - 1 {
-            return evaluate(g, &mut self.scratch);
+            return self.leaf(g, ply);
         }
 
         let key = g.hash;
@@ -243,13 +264,29 @@ impl Searcher {
         let orig_alpha = alpha;
         let mut best = -INF;
         let mut best_move = moves[0];
+        let me = g.to_move();
+        let enemy_q = g.position(queen_of(me.other()));
+        let my_q = g.position(queen_of(me));
+        let killers = self.killers[ply];
         for (i, &m) in moves.iter().enumerate() {
+            // Late move reductions for quiet moves far down the ordering.
+            let mut r = 0;
+            if self.flags & F_LMR != 0 && depth >= 3 && i >= self.lmr_after && Some(m) != tt_move && m != killers[0] && m != killers[1] && !m.is_pass() {
+                let attack = enemy_q != NO_CELL && direction_to(enemy_q, m.to).is_some();
+                let defend = my_q != NO_CELL && m.from != NO_CELL && direction_to(my_q, m.from).is_some();
+                if !attack && !defend {
+                    r = if i >= self.lmr_after * 4 && depth >= 4 { 2 } else { 1 };
+                }
+            }
             g.play_unchecked(m);
             let s = if i == 0 {
                 -self.negamax(g, depth - 1, -beta, -alpha, ply + 1)
             } else {
-                let mut s = -self.negamax(g, depth - 1, -alpha - 1, -alpha, ply + 1);
-                if s > alpha && s < beta {
+                let mut s = -self.negamax(g, depth - 1 - r, -alpha - 1, -alpha, ply + 1);
+                if r > 0 && s > alpha && !self.stopped {
+                    s = -self.negamax(g, depth - 1, -alpha - 1, -alpha, ply + 1);
+                }
+                if s > alpha && s < beta && !self.stopped {
                     s = -self.negamax(g, depth - 1, -beta, -alpha, ply + 1);
                 }
                 s
@@ -292,6 +329,50 @@ impl Searcher {
         best
     }
 
+    fn static_eval(&mut self, g: &mut Game) -> i32 {
+        if self.flags & F_FAST_EVAL != 0 {
+            evaluate_fast(g, &self.params)
+        } else {
+            evaluate(g, &mut self.scratch)
+        }
+    }
+
+    /// True if `color`'s Queen is one neighbour short of being captured.
+    fn queen_threatened(&self, g: &Game, color: Color) -> bool {
+        let q = queen_of(color);
+        !g.in_hand(q) && g.occupied_neighbors(q) + 1 >= g.rules.surround.clamp(1, 6)
+    }
+
+    /// Evaluation at the search horizon, first checking whether the side to
+    /// move can surround the enemy Queen right away (the static evaluation
+    /// would only see a Queen one neighbour short).
+    fn leaf(&mut self, g: &mut Game, ply: usize) -> i32 {
+        let me = g.to_move();
+        if self.flags & F_WIN_CHECK != 0 && self.queen_threatened(g, me.other()) {
+            let eq = g.position(queen_of(me.other()));
+            let mut moves = std::mem::take(&mut self.move_bufs[ply]);
+            g.generate_moves(&mut moves);
+            let mut win = false;
+            for &m in moves.iter() {
+                if m.is_pass() || direction_to(eq, m.to).is_none() || g.occupied(m.to) {
+                    continue;
+                }
+                g.play_unchecked(m);
+                let won = matches!(Self::terminal_score(g, ply + 1), Some(s) if s < -WIN / 2);
+                g.undo();
+                if won {
+                    win = true;
+                    break;
+                }
+            }
+            self.move_bufs[ply] = moves;
+            if win {
+                return WIN - ply as i32 - 1;
+            }
+        }
+        self.static_eval(g)
+    }
+
     fn store(&mut self, key: u64, best: Option<Move>, score: i32, depth: i32, bound: u8) {
         let idx = (key as usize) & (self.tt.len() - 1);
         let e = &mut self.tt[idx];
@@ -300,7 +381,7 @@ impl Searcher {
         }
     }
 
-    fn order(&self, g: &Game, moves: &mut [Move], ply: usize, tt_move: Option<Move>) {
+    fn order(&mut self, g: &Game, moves: &mut [Move], ply: usize, tt_move: Option<Move>) {
         let me = g.to_move();
         let enemy_q = g.position(queen_of(me.other()));
         let my_q = g.position(queen_of(me));
@@ -315,6 +396,8 @@ impl Searcher {
             let mut s = 0;
             if enemy_q != NO_CELL && direction_to(enemy_q, m.to).is_some() && (m.from == NO_CELL || direction_to(enemy_q, m.from).is_none()) {
                 s += 500_000;
+            } else if m.to == enemy_q {
+                s += 400_000;
             }
             if my_q != NO_CELL && m.from != NO_CELL && direction_to(my_q, m.from).is_some() && direction_to(my_q, m.to).is_none() {
                 s += 200_000;
@@ -329,6 +412,17 @@ impl Searcher {
             }
             s + self.history[m.piece as usize * CELLS + m.to as usize].min(100_000)
         };
-        moves.sort_by_cached_key(|m| -score(m));
+        let mut keys = std::mem::take(&mut self.order_keys);
+        keys.clear();
+        keys.extend(moves.iter().enumerate().map(|(i, m)| (-score(m), i as u16)));
+        keys.sort_unstable();
+        let mut tmp = std::mem::take(&mut self.order_tmp);
+        tmp.clear();
+        tmp.extend_from_slice(moves);
+        for (slot, &(_, i)) in moves.iter_mut().zip(keys.iter()) {
+            *slot = tmp[i as usize];
+        }
+        self.order_keys = keys;
+        self.order_tmp = tmp;
     }
 }
