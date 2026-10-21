@@ -9,6 +9,7 @@ import "./globals.css";
 import splash from "@/lib/splash.json";
 import { SiteHeader } from "@/components/SiteHeader";
 import { NativeFeel } from "@/components/NativeFeel";
+import { Wordmark } from "@/components/Wordmark";
 import { AuthProvider } from "@/lib/auth";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme-mode";
 import { DialogProvider } from "@/components/Dialogs";
@@ -47,6 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <feDisplacementMap in="SourceGraphic" in2="n" scale="3.6" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </svg>
+        {/* Launching from the home screen: the first frame repeats the launch image (the
+            wordmark centred on plain paper), then dissolves into the app. CSS-only, so it
+            needs no JavaScript and always gets out of the way. */}
+        <div className="launch" aria-hidden>
+          <Wordmark className="launch-mark" />
+        </div>
         <NativeFeel />
         <AuthProvider>
           <DialogProvider>

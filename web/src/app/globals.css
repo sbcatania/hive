@@ -240,6 +240,24 @@ nav a {
 
 /* ---- Pencil surfaces ------------------------------------------------------ */
 
+/* Bottom sheets: a big rounded top that echoes the rounded screen corners, with only
+   the top edge pencilled. The fill runs past the sides and bottom of the screen, so no
+   frame line gets cut off by the screen's curved corners. */
+.sheet-panel {
+  isolation: isolate;
+}
+.sheet-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 -8px -60px -8px;
+  z-index: -1;
+  background: var(--paper);
+  border-top: 1.8px solid var(--ink-soft);
+  border-radius: 30px 30px 0 0;
+  filter: url(#pencil);
+  pointer-events: none;
+}
+
 /* Masking tape holding a card to the page (an element, see <Tape/>). */
 .tape-strip {
   position: absolute;
@@ -370,6 +388,14 @@ nav a {
   }
 }
 
+/* The evaluation bar drawn over the board on phones: just the numbers and the bar. */
+.eval-compact .eval-label {
+  display: none;
+}
+.eval-compact .card {
+  padding: 0.4rem 0.6rem !important;
+}
+
 /* Lined notebook paper, for move lists. */
 .ruled {
   background-image: linear-gradient(transparent calc(100% - 1px), color-mix(in oklab, var(--line) 70%, transparent) 1px);
@@ -458,7 +484,43 @@ nav a {
   animation: tile-set 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 
+/* Home-screen launch: matches the launch image, then fades away. */
+.launch {
+  display: none;
+}
+@media (display-mode: standalone) {
+  html:not(.relaunch) .launch {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    background: var(--paper);
+    pointer-events: none;
+    animation: launch-out 560ms cubic-bezier(0.32, 0.72, 0, 1) 260ms forwards;
+  }
+  html:not(.relaunch) .launch-mark {
+    width: 62vw;
+    height: auto;
+    animation: launch-mark 560ms cubic-bezier(0.32, 0.72, 0, 1) 260ms forwards;
+  }
+}
+@keyframes launch-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes launch-mark {
+  to {
+    transform: scale(0.82) translateY(-8%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  html .launch {
+    display: none !important;
+  }
   *,
   *::before,
   *::after {

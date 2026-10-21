@@ -245,7 +245,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
           <div className={`pencil pointer-events-none absolute top-2 left-2 -rotate-1 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink ${analysis ? "max-w-[52%] lg:max-w-[75%]" : "max-w-[75%]"}`}>
             {status}
           </div>
-          {analysis && <div className="pointer-events-none absolute top-2 right-2 w-[44%] lg:hidden">{analysis}</div>}
+          {analysis && <div className="eval-compact pointer-events-none absolute top-2 right-2 w-[44%] lg:hidden">{analysis}</div>}
           {sel && (
             <div className={`rise pointer-events-none absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm`}>
               <div className={`pointer-events-auto flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} pencil pencil-strong py-1.5 pr-1 pl-3 text-sm sm:py-2`}>
