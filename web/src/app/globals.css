@@ -196,6 +196,15 @@ a.btn-ghost:active {
   transform: scale(0.96);
   transition-duration: 40ms;
 }
+/* iOS zooms the page when a field under 16px gets focus; native apps don't. */
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Don't let text get selected or a callout appear on long-press of controls. */
 button,
 [role="button"],
