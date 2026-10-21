@@ -51,7 +51,7 @@ fn pick_rules(spec: &str, rng: &mut Rng) -> Rules {
     }
     // Every expansion combination appears; the full set most often.
     let combo = if rng.next_f64() < 0.4 { 7 } else { rng.below(8) };
-    Rules { mosquito: combo & 1 != 0, ladybug: combo & 2 != 0, pillbug: combo & 4 != 0, tournament: rng.next_f64() < 0.85 }
+    Rules::with_expansions(combo & 1 != 0, combo & 2 != 0, combo & 4 != 0, rng.next_f64() < 0.85)
 }
 
 struct Record {

@@ -7,6 +7,7 @@ use crate::hex::*;
 use crate::layout::Layout;
 use crate::nn::Network;
 use crate::notation::{game_string, move_history_strings, move_to_string, parse_game_string, parse_move};
+use crate::pieces::parse_piece_name;
 use crate::pieces::*;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -65,6 +66,32 @@ struct StateView {
     game_string: String,
     queen_neighbors: [u8; 2],
     repetitions: u32,
+    end_reason: Option<&'static str>,
+    standard_rules: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PreviewView {
+    /// Whether these are the side to move's legal moves (false = next-turn preview).
+    legal: bool,
+    moves: Vec<MoveView>,
+    /// Why the piece can't move, when it has no moves.
+    reason: Option<String>,
+}
+
+fn parse_rules(v: JsValue) -> Result<Rules, JsError> {
+    serde_wasm_bindgen::from_value::<Rules>(v).map(|r| r.normalized()).map_err(|e| JsError::new(&e.to_string()))
+}
+
+/// Builds a game from rules and a list of UHP move strings.
+fn game_from_moves(rules: Rules, moves: &str) -> Result<Game, JsError> {
+    let mut g = Game::new(rules);
+    for (i, ms) in moves.split(';').map(str::trim).filter(|s| !s.is_empty()).enumerate() {
+        let m = parse_move(&g, ms).map_err(|e| JsError::new(&format!("Move {}: {}", i + 1, e)))?;
+        g.play(m).map_err(|e| JsError::new(&format!("Move {} ('{}'): {}", i + 1, ms, e)))?;
+    }
+    Ok(g)
 }
 
 fn color_str(c: Color) -> &'static str {
@@ -93,7 +120,13 @@ pub struct HiveGame {
 impl HiveGame {
     #[wasm_bindgen(constructor)]
     pub fn new(mosquito: bool, ladybug: bool, pillbug: bool, tournament: bool) -> HiveGame {
-        HiveGame { game: Game::new(Rules { mosquito, ladybug, pillbug, tournament }) }
+        HiveGame { game: Game::new(Rules::with_expansions(mosquito, ladybug, pillbug, tournament)) }
+    }
+
+    /// Creates a game from a full rules object (see `Rules` in engine-types.ts).
+    #[wasm_bindgen(js_name = withRules)]
+    pub fn with_rules(rules: JsValue) -> Result<HiveGame, JsError> {
+        Ok(HiveGame { game: Game::new(parse_rules(rules)?) })
     }
 
     #[wasm_bindgen(js_name = fromGameString)]
@@ -158,8 +191,23 @@ impl HiveGame {
             game_string: game_string(g),
             queen_neighbors: [g.occupied_neighbors(queen_of(Color::White)), g.occupied_neighbors(queen_of(Color::Black))],
             repetitions: g.repetitions(),
+            end_reason: g.end_reason(),
+            standard_rules: g.rules.is_standard(),
         };
         to_js(&view)
+    }
+
+    /// Where a piece could move (legal now, or next turn for the other side),
+    /// plus an explanation when it can't move at all.
+    pub fn preview(&mut self, piece: &str) -> Result<JsValue, JsError> {
+        let p = parse_piece_name(piece).ok_or_else(|| JsError::new("Unknown piece"))?;
+        let g = &mut self.game;
+        let legal = color_of(p) == g.to_move();
+        let moves = g.preview_moves(p);
+        let layout = Layout::new(g);
+        let views = moves.iter().map(|&m| move_view(g, &layout, m)).collect();
+        let reason = if moves.is_empty() { g.why_immobile(p) } else { None };
+        Ok(to_js(&PreviewView { legal, moves: views, reason }))
     }
 
     /// Plays a UHP move string. Returns the normalised move string.
@@ -227,17 +275,18 @@ impl HiveAi {
         self.ai.network.is_some()
     }
 
-    /// Chooses a move for the side to move. `level`: easy | medium | hard | expert.
-    pub fn choose(&mut self, game_str: &str, tournament: bool, level: &str, time_ms: f64) -> Result<JsValue, JsError> {
-        let mut g = parse_game_string(game_str, tournament).map_err(|e| JsError::new(&e))?;
+    /// Chooses a move for the side to move. `moves` is a ';'-separated list of
+    /// UHP move strings. `level`: easy | medium | hard | expert.
+    pub fn choose(&mut self, rules: JsValue, moves: &str, level: &str, time_ms: f64) -> Result<JsValue, JsError> {
+        let mut g = game_from_moves(parse_rules(rules)?, moves)?;
         let level = Level::parse(level).ok_or_else(|| JsError::new("Unknown level"))?;
         let t = if time_ms > 0.0 { Some(time_ms) } else { None };
         let r = self.ai.choose(&mut g, level, t);
         Ok(self.view(&mut g, r))
     }
 
-    pub fn analyze(&mut self, game_str: &str, tournament: bool, time_ms: f64) -> Result<JsValue, JsError> {
-        let mut g = parse_game_string(game_str, tournament).map_err(|e| JsError::new(&e))?;
+    pub fn analyze(&mut self, rules: JsValue, moves: &str, time_ms: f64) -> Result<JsValue, JsError> {
+        let mut g = game_from_moves(parse_rules(rules)?, moves)?;
         let r = self.ai.analyze(&mut g, time_ms);
         Ok(self.view(&mut g, r))
     }

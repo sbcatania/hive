@@ -28,33 +28,97 @@ impl Move {
     }
 }
 
+/// Standard number of each bug per player (Queen, Spider, Beetle, Grasshopper,
+/// Ant, Mosquito, Ladybug, Pillbug).
+pub const STANDARD_COUNTS: [u8; NUM_BUGS] = [1, 2, 2, 3, 3, 1, 1, 1];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct Rules {
     pub mosquito: bool,
     pub ladybug: bool,
     pub pillbug: bool,
     /// Tournament opening: no Queen on either player's first turn.
     pub tournament: bool,
+    // ---- Variants (all default to the official rules) ----
+    /// Pieces per player of each bug, at most the standard count ("Hive Lite" etc.).
+    pub counts: [u8; NUM_BUGS],
+    /// The Queen must be placed by this turn (official: 4).
+    pub queen_deadline: u8,
+    /// Occupied neighbours needed to capture a Queen (official: 6).
+    pub surround: u8,
+    /// If > 0, after this many turns each the less-surrounded Queen wins.
+    pub turn_limit: u16,
+    /// End the game as a draw when a position occurs for the third time.
+    pub repetition_draw: bool,
 }
 
 impl Default for Rules {
     fn default() -> Self {
-        Rules { mosquito: true, ladybug: true, pillbug: true, tournament: true }
+        Rules {
+            mosquito: true,
+            ladybug: true,
+            pillbug: true,
+            tournament: true,
+            counts: STANDARD_COUNTS,
+            queen_deadline: 4,
+            surround: 6,
+            turn_limit: 0,
+            repetition_draw: false,
+        }
     }
 }
 
 impl Rules {
     pub fn base() -> Self {
-        Rules { mosquito: false, ladybug: false, pillbug: false, tournament: true }
+        Rules { mosquito: false, ladybug: false, pillbug: false, ..Rules::default() }
+    }
+
+    pub fn with_expansions(mosquito: bool, ladybug: bool, pillbug: bool, tournament: bool) -> Self {
+        Rules { mosquito, ladybug, pillbug, tournament, ..Rules::default() }
     }
 
     pub fn enabled(&self, bug: Bug) -> bool {
-        match bug {
+        self.count(bug) > 0
+    }
+
+    /// Pieces of `bug` each player has in this game.
+    pub fn count(&self, bug: Bug) -> u8 {
+        let on = match bug {
             Bug::Mosquito => self.mosquito,
             Bug::Ladybug => self.ladybug,
             Bug::Pillbug => self.pillbug,
             _ => true,
+        };
+        if !on {
+            0
+        } else if bug == Bug::Queen {
+            1
+        } else {
+            self.counts[bug as usize].min(bug.count())
         }
+    }
+
+    /// Clamps variant settings to sensible, mutually consistent values.
+    pub fn normalized(mut self) -> Rules {
+        let min_deadline = if self.tournament { 2 } else { 1 };
+        self.queen_deadline = self.queen_deadline.clamp(min_deadline, 8);
+        self.surround = self.surround.clamp(4, 6);
+        for b in ALL_BUGS {
+            self.counts[b as usize] = self.counts[b as usize].min(b.count());
+        }
+        self.counts[Bug::Queen as usize] = 1;
+        self
+    }
+
+    /// True if only the official rules (plus any expansions) are in use.
+    pub fn is_standard(&self) -> bool {
+        let d = Rules::default();
+        ALL_BUGS.iter().all(|&b| self.counts[b as usize] >= b.count())
+            && self.queen_deadline == d.queen_deadline
+            && self.surround == d.surround
+            && self.turn_limit == 0
+            && !self.repetition_draw
     }
 
     /// UHP GameTypeString, e.g. `Base`, `Base+MP`.
@@ -77,7 +141,7 @@ impl Rules {
 
     pub fn parse_game_type(s: &str, tournament: bool) -> Option<Rules> {
         let s = s.trim();
-        let mut r = Rules { mosquito: false, ladybug: false, pillbug: false, tournament };
+        let mut r = Rules { mosquito: false, ladybug: false, pillbug: false, tournament, ..Rules::default() };
         if s == "Base" {
             return Some(r);
         }
@@ -195,7 +259,7 @@ pub struct Game {
 impl Game {
     pub fn new(rules: Rules) -> Game {
         Game {
-            rules,
+            rules: rules.normalized(),
             height: [0; CELLS],
             stack: [[NO_PIECE; MAX_HEIGHT]; CELLS],
             pos: [NO_CELL; NUM_PIECES],
@@ -276,7 +340,9 @@ impl Game {
     }
 
     pub fn piece_enabled(&self, p: PieceId) -> bool {
-        self.rules.enabled(bug_of(p))
+        let bug = bug_of(p);
+        let idx = (p as usize % PIECES_PER_COLOR) as u8 - BUG_START[bug as usize];
+        idx < self.rules.count(bug)
     }
 
     /// Cells occupied by at least one piece.
@@ -301,15 +367,12 @@ impl Game {
     /// Next piece of `bug` in `color`'s hand (pieces are placed in numeric order).
     pub fn next_in_hand(&self, color: Color, bug: Bug) -> Option<PieceId> {
         let start = (color.index() * PIECES_PER_COLOR) as u8 + BUG_START[bug as usize];
-        (start..start + bug.count()).find(|&p| self.in_hand(p))
+        (start..start + self.rules.count(bug)).find(|&p| self.in_hand(p))
     }
 
     pub fn hand_count(&self, color: Color, bug: Bug) -> u8 {
-        if !self.rules.enabled(bug) {
-            return 0;
-        }
         let start = (color.index() * PIECES_PER_COLOR) as u8 + BUG_START[bug as usize];
-        (start..start + bug.count()).filter(|&p| self.in_hand(p)).count() as u8
+        (start..start + self.rules.count(bug)).filter(|&p| self.in_hand(p)).count() as u8
     }
 
     // ---- Board mutation -------------------------------------------------
@@ -384,15 +447,39 @@ impl Game {
     }
 
     fn update_state(&mut self) {
-        let w = self.occupied_neighbors(queen_of(Color::White)) == 6;
-        let b = self.occupied_neighbors(queen_of(Color::Black)) == 6;
-        self.state = match (w, b) {
+        let need = self.rules.surround.clamp(1, 6);
+        let wn = self.occupied_neighbors(queen_of(Color::White));
+        let bn = self.occupied_neighbors(queen_of(Color::Black));
+        self.state = match (wn >= need, bn >= need) {
             (true, true) => GameState::Draw,
             (true, false) => GameState::BlackWins,
             (false, true) => GameState::WhiteWins,
             _ if self.ply == 0 => GameState::NotStarted,
+            _ if self.rules.repetition_draw && self.repetitions() >= 3 => GameState::Draw,
+            _ if self.rules.turn_limit > 0 && self.ply >= 2 * self.rules.turn_limit as u32 => match wn.cmp(&bn) {
+                std::cmp::Ordering::Less => GameState::WhiteWins,
+                std::cmp::Ordering::Greater => GameState::BlackWins,
+                std::cmp::Ordering::Equal => GameState::Draw,
+            },
             _ => GameState::InProgress,
         };
+    }
+
+    /// Why a finished game ended: "surround", "repetition" or "turn-limit".
+    pub fn end_reason(&self) -> Option<&'static str> {
+        if !self.state.is_over() {
+            return None;
+        }
+        let need = self.rules.surround.clamp(1, 6);
+        if self.occupied_neighbors(queen_of(Color::White)) >= need || self.occupied_neighbors(queen_of(Color::Black)) >= need {
+            Some("surround")
+        } else if self.rules.repetition_draw && self.repetitions() >= 3 {
+            Some("repetition")
+        } else if self.rules.turn_limit > 0 && self.ply >= 2 * self.rules.turn_limit as u32 {
+            Some("turn-limit")
+        } else {
+            None
+        }
     }
 
     /// Ends the game by agreement or resignation (not part of the move rules).
@@ -456,7 +543,7 @@ impl Game {
     fn generate_placements(&self, color: Color, out: &mut Vec<Move>) {
         let turn = self.turn_number_of(color);
         let queen_in_hand = !self.queen_placed(color);
-        let must_place_queen = turn == 4 && queen_in_hand;
+        let must_place_queen = turn >= self.rules.queen_deadline.max(1) as u32 && queen_in_hand;
 
         let mut pieces: [PieceId; NUM_BUGS] = [NO_PIECE; NUM_BUGS];
         let mut n = 0;
@@ -808,6 +895,59 @@ impl Game {
         }
     }
 
+    /// Where `p` could go if its owner were to move: legal moves when it's their
+    /// turn, otherwise its potential moves next turn (ignoring the stunned piece).
+    pub fn preview_moves(&mut self, p: PieceId) -> Vec<Move> {
+        if self.state.is_over() {
+            return Vec::new();
+        }
+        let color = color_of(p);
+        if color == self.to_move() {
+            return self.moves_for_piece(p);
+        }
+        let pinned = self.pinned_pieces();
+        let mut out = Vec::new();
+        self.generate_moves_for(color, NO_PIECE, pinned, &mut out);
+        out.retain(|m| m.piece == p && !m.is_pass());
+        out
+    }
+
+    /// Plain-English reason a piece of the side to move has no legal move, if any.
+    pub fn why_immobile(&mut self, p: PieceId) -> Option<String> {
+        if self.state.is_over() || !self.preview_moves(p).is_empty() {
+            return None;
+        }
+        let color = color_of(p);
+        let mine = color == self.to_move();
+        let turn = self.turn_number_of(color);
+        let bug = bug_of(p);
+        if self.in_hand(p) {
+            if bug == Bug::Queen && turn == 1 && self.rules.tournament {
+                return Some("Tournament rule: the Queen can't be placed on the first turn.".into());
+            }
+            if turn >= self.rules.queen_deadline as u32 && !self.queen_placed(color) && bug != Bug::Queen {
+                return Some(format!("The Queen must be placed by turn {}, so she has to go down now.", self.rules.queen_deadline));
+            }
+            return Some("There's nowhere to place it: new pieces may only touch their own colour.".into());
+        }
+        if !self.queen_placed(color) {
+            return Some("Pieces can't move until their Queen Bee is on the board.".into());
+        }
+        if mine && p == self.last_moved {
+            return Some("It was just moved by a Pillbug, so it's stunned for this turn.".into());
+        }
+        if !self.on_top(p) {
+            return Some("A beetle is sitting on it, so it's pinned underneath.".into());
+        }
+        if self.is_pinned(p, self.pinned_pieces()) {
+            return Some("One Hive rule: it's holding the hive together, and moving it would split it.".into());
+        }
+        Some(match bug {
+            Bug::Grasshopper => "There's no piece next to it to jump over in any direction.".into(),
+            _ => "Freedom to Move: every gap around it is too narrow to slide through.".into(),
+        })
+    }
+
     fn explain_illegal(&mut self, m: Move) -> String {
         if m.is_pass() {
             return "You can't pass when you have a legal move.".into();
@@ -823,8 +963,8 @@ impl Game {
             if bug_of(m.piece) == Bug::Queen && self.turn_number() == 1 && self.rules.tournament {
                 return "Tournament rule: the Queen can't be placed on your first turn.".into();
             }
-            if self.turn_number() == 4 && !self.queen_placed(color) && bug_of(m.piece) != Bug::Queen {
-                return "You must place your Queen Bee by your fourth turn.".into();
+            if self.turn_number() >= self.rules.queen_deadline as u32 && !self.queen_placed(color) && bug_of(m.piece) != Bug::Queen {
+                return format!("You must place your Queen Bee by turn {}.", self.rules.queen_deadline);
             }
             return "A new piece must touch only your own pieces.".into();
         }

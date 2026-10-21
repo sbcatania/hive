@@ -116,7 +116,8 @@ impl Ai {
             Level::Medium => self.pick_soft(g, 2, 35.0, 0.0, rotation, "Medium"),
             Level::Hard => self.alpha_beta(g, 12, time_ms.unwrap_or(1500.0), rotation, "Hard"),
             Level::Expert => {
-                if self.network.is_some() {
+                // The network was trained on the official rules only.
+                if self.network.is_some() && g.rules.is_standard() {
                     self.neural(g, time_ms.unwrap_or(3000.0), rotation)
                 } else {
                     self.alpha_beta(g, 16, time_ms.unwrap_or(4000.0), rotation, "Expert")
@@ -127,7 +128,7 @@ impl Ai {
 
     /// Hint / analysis: the strongest available search for the side to move.
     pub fn analyze(&mut self, g: &mut Game, time_ms: f64) -> AiMove {
-        if self.network.is_some() {
+        if self.network.is_some() && g.rules.is_standard() {
             self.neural(g, time_ms, 0)
         } else {
             self.alpha_beta(g, 16, time_ms, 0, "Analysis")
