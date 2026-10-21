@@ -1,4 +1,4 @@
-import type { AiResult, Level } from "./engine-types";
+import type { AiResult, Level, Rules } from "./engine-types";
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 
@@ -30,12 +30,12 @@ export class AiClient {
     });
   }
 
-  choose(gameString: string, tournament: boolean, level: Level, timeMs = 0) {
-    return this.call<AiResult>({ type: "choose", gameString, tournament, level, timeMs });
+  choose(rules: Rules, moves: string[], level: Level, timeMs = 0) {
+    return this.call<AiResult>({ type: "choose", rules, moves, level, timeMs });
   }
 
-  analyze(gameString: string, tournament: boolean, timeMs = 1200) {
-    return this.call<AiResult>({ type: "analyze", gameString, tournament, timeMs });
+  analyze(rules: Rules, moves: string[], timeMs = 1200) {
+    return this.call<AiResult>({ type: "analyze", rules, moves, timeMs });
   }
 
   info() {

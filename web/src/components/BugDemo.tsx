@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import Board2D from "./Board2D";
 import { Engine, loadEngine } from "@/lib/engine";
-import type { StateView } from "@/lib/engine-types";
+import type { PreviewView, StateView } from "@/lib/engine-types";
+import type { ThemeId } from "@/lib/themes";
 
 /** A small live board showing where one piece can move. Click a green cell to try it. */
-export function BugDemo({ gameString, focus }: { gameString: string; focus: string }) {
+export function BugDemo({ gameString, focus, theme = "field", height = "h-64 sm:h-72", caption }: { gameString: string; focus: string; theme?: ThemeId; height?: string; caption?: string }) {
   const [state, setState] = useState<StateView | null>(null);
-  const [initial, setInitial] = useState<StateView | null>(null);
-  const [moved, setMoved] = useState(false);
+  const [initial, setInitial] = useState<{ state: StateView; preview: PreviewView } | null>(null);
+  const [moved, setMoved] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -17,51 +18,53 @@ export function BugDemo({ gameString, focus }: { gameString: string; focus: stri
       if (!alive) return;
       const e = Engine.fromGameString(gameString, false);
       const s = e.state();
+      const p = e.preview(focus);
       e.free();
       setState(s);
-      setInitial(s);
+      setInitial({ state: s, preview: p });
     });
     return () => {
       alive = false;
     };
-  }, [gameString]);
+  }, [gameString, focus]);
 
-  if (!state) return <div className="h-64 animate-pulse rounded-xl bg-black/5" />;
+  if (!state || !initial) return <div className={`${height} animate-pulse rounded-2xl bg-card-2`} />;
 
-  const targets = moved ? [] : state.legalMoves.filter((m) => m.piece === focus);
+  const preview = initial.preview;
+  // Legal moves of the focus piece right now (including being thrown by a Pillbug).
+  const legal = initial.state.legalMoves.filter((m) => m.piece === focus);
+  const targets = moved ? [] : legal;
+  const coral = moved || legal.length ? [] : preview.moves;
 
   function tryMove(notation: string) {
     const e = Engine.fromGameString(gameString, false);
     e.play(notation);
     setState(e.state());
     e.free();
-    setMoved(true);
+    setMoved(notation);
   }
 
   return (
-    <div className="board-surface relative h-64 overflow-hidden rounded-xl border border-[var(--line)] sm:h-72">
-      <Board2D
-        state={{ ...state, lastMove: moved ? state.lastMove : null }}
-        selected={moved ? null : focus}
-        targets={targets}
-        theme="flat"
-        selectable={new Set()}
-        onTargetClick={(m) => tryMove(m.notation)}
-      />
-      <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/55 px-2 py-1 text-xs text-white">
-        {moved ? "Moved!" : `${targets.length} possible move${targets.length === 1 ? "" : "s"} — click one`}
+    <figure className="space-y-1.5">
+      <div className={`relative ${height} overflow-hidden rounded-2xl border border-line`}>
+        <Board2D state={state} selected={moved ? null : focus} targets={targets} previewTargets={coral} theme={theme} selectable={new Set()} onTargetClick={(m) => tryMove(m.notation)} hideLastMove={!moved} />
+        <div className="pointer-events-none absolute top-2 left-2 rounded-lg bg-ink/80 px-2 py-1 text-xs font-medium text-paper">
+          {moved ? `Played ${moved}` : legal.length ? `${legal.length} possible move${legal.length === 1 ? "" : "s"}: click one` : preview.moves.length ? `${preview.moves.length} cells next turn` : "No moves"}
+        </div>
+        {moved && (
+          <button
+            className="btn-ghost absolute right-2 bottom-2"
+            onClick={() => {
+              setState(initial.state);
+              setMoved(null);
+            }}
+          >
+            ↺ Reset
+          </button>
+        )}
+        {!moved && !legal.length && preview.reason && <div className="absolute right-2 bottom-2 left-2 rounded-xl border border-line bg-card/95 p-2 text-xs shadow">{preview.reason}</div>}
       </div>
-      {moved && (
-        <button
-          className="btn-ghost absolute bottom-2 right-2 text-xs"
-          onClick={() => {
-            setState(initial);
-            setMoved(false);
-          }}
-        >
-          Reset
-        </button>
-      )}
-    </div>
+      {caption && <figcaption className="text-xs text-muted italic">{caption}</figcaption>}
+    </figure>
   );
 }

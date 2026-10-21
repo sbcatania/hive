@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GameView } from "@/components/GameView";
-import { engineFromMoves, errorMessage, loadEngine } from "@/lib/engine";
+import { ClockFace, GameOverCard, NewGameLink } from "@/components/GameBits";
+import { GameView, type PlayerInfo } from "@/components/GameView";
+import { useAuth } from "@/lib/auth";
+import { engineFromMoves, errorMessage, loadEngine, withEngine } from "@/lib/engine";
 import { colorName, resultText, type ColorCode, type StateView } from "@/lib/engine-types";
+import { REASON_TEXT } from "@/lib/journal";
 import {
   answerTakeback,
   claimTimeout,
   createRematch,
   declineDraw,
   fetchGame,
+  fetchPlayers,
   joinGame,
   offerDraw,
   playMove,
@@ -21,37 +25,28 @@ import {
   serverOffset,
   subscribeGame,
   type OnlineGame,
+  type PlayerSummary,
   type Seat,
 } from "@/lib/online";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
-
-function fmtClock(ms: number) {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
-
-const REASONS: Record<string, string> = {
-  surround: "Queen surrounded",
-  resignation: "by resignation",
-  agreement: "by agreement",
-  time: "on time",
-};
+import { describeVariants, expansionLabel } from "@/lib/variants";
 
 function OnlineGameView() {
   const params = useSearchParams();
   const router = useRouter();
+  const { user, loading: authLoading, refreshProfile } = useAuth();
   const id = params.get("g") ?? "";
   const [row, setRow] = useState<OnlineGame | null>(null);
   const [seat, setSeat] = useState<Seat | null>(null);
+  const [players, setPlayers] = useState<Record<string, PlayerSummary>>({});
   const [engineReady, setEngineReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [theme, setTheme] = useState<ThemeId>("flat");
+  const [theme, setTheme] = useState<ThemeId>("bakelite");
   const [connected, setConnected] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [overlayClosed, setOverlayClosed] = useState(false);
   const offset = useRef(0);
   const timeoutClaimed = useRef<string | null>(null);
 
@@ -65,12 +60,14 @@ function OnlineGameView() {
     }
   }, [id]);
 
+  // Join once auth has settled, so a signed-in player's seat is linked to their account.
   useEffect(() => {
     setTheme(loadTheme());
     if (!id) {
       setError("Missing game id.");
       return;
     }
+    if (authLoading) return;
     let unsub: (() => void) | null = null;
     (async () => {
       try {
@@ -90,26 +87,43 @@ function OnlineGameView() {
       unsub?.();
       window.removeEventListener("focus", onFocus);
     };
-  }, [id, reload]);
+  }, [id, reload, authLoading, user?.id]);
 
-  // Poll as a fallback while realtime isn't connected.
   useEffect(() => {
     if (connected) return;
     const t = setInterval(reload, 4000);
     return () => clearInterval(t);
   }, [connected, reload]);
 
-  // Clock tick.
   useEffect(() => {
     if (!row?.base_ms || row.status !== "active") return;
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, [row?.base_ms, row?.status]);
 
+  // Player names and ratings.
+  useEffect(() => {
+    if (!row) return;
+    const ids = [row.white_player, row.black_player];
+    if (ids.every((x) => !x || players[x])) return;
+    fetchPlayers(ids).then((p) => setPlayers((cur) => ({ ...cur, ...p })));
+  }, [row, players]);
+
+  // Refresh my rating when a rated game ends.
+  useEffect(() => {
+    if (row?.status === "finished" && row.rated) {
+      refreshProfile();
+      setOverlayClosed(false);
+      fetchPlayers([row.white_player, row.black_player]).then((p) => setPlayers((cur) => ({ ...cur, ...p })));
+    }
+  }, [row?.status, row?.rated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const rules = useMemo(() => (row ? rulesFromRow(row) : null), [row]);
+
   const game = useMemo(() => {
-    if (!row || !engineReady) return null;
+    if (!row || !engineReady || !rules) return null;
     try {
-      const e = engineFromMoves(rulesFromRow(row), row.moves);
+      const e = engineFromMoves(rules, row.moves);
       if (row.result) e.setResult(row.result);
       const s = e.state();
       e.free();
@@ -117,7 +131,7 @@ function OnlineGameView() {
     } catch (err) {
       return { state: null, error: "This game contains an illegal move: " + errorMessage(err) };
     }
-  }, [row, engineReady]);
+  }, [row, engineReady, rules]);
 
   const state: StateView | null = game?.state ?? null;
   const toMove: ColorCode = (row?.moves.length ?? 0) % 2 === 0 ? "w" : "b";
@@ -131,7 +145,6 @@ function OnlineGameView() {
     };
   }, [row, now, toMove]);
 
-  // Flag fall: either client may ask the server to end the game.
   useEffect(() => {
     if (!clocks || !row || row.status !== "active") return;
     const key = `${row.id}:${row.moves.length}`;
@@ -141,135 +154,184 @@ function OnlineGameView() {
     }
   }, [clocks, row, toMove, reload]);
 
+  const getPreview = useCallback((piece: string) => withEngine(rules!, row!.moves, (e) => e.preview(piece)), [rules, row]);
+
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
     try {
       await fn();
-      await reload();
     } catch (e) {
       setError(errorMessage(e));
-      await reload();
     } finally {
+      await reload();
       setBusy(false);
     }
   }
 
   function play(notation: string) {
-    if (!row || !state) return;
-    let result: string | null = null;
+    if (!row || !state || !rules) return;
     try {
-      const e = engineFromMoves(rulesFromRow(row), row.moves);
-      const normalised = e.play(notation);
-      const s = e.state();
-      e.free();
-      if (s.status === "WhiteWins" || s.status === "BlackWins" || s.status === "Draw") result = s.status;
-      // Optimistic update so the move appears immediately.
+      const { normalised, result } = withEngine(rules, row.moves, (e) => {
+        const n = e.play(notation);
+        const s = e.state();
+        return { normalised: n, result: s.status === "WhiteWins" || s.status === "BlackWins" || s.status === "Draw" ? s.status : null, reason: s.endReason };
+      });
       setRow({ ...row, moves: [...row.moves, normalised], draw_offer: row.draw_offer === seat ? row.draw_offer : null, takeback_request: null });
-      act(() => playMove(row.id, row.moves.length, normalised, result));
+      const reason = result ? (withEngine(rules, [...row.moves, normalised], (e) => e.state().endReason) ?? "surround") : undefined;
+      act(() => playMove(row.id, row.moves.length, normalised, result, reason));
     } catch (e) {
       setError(errorMessage(e));
     }
   }
 
+  async function copy(text: string, what: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(what);
+    setTimeout(() => setCopied(null), 1500);
+  }
+
   if (error && !row) {
     return (
       <div className="mx-auto max-w-md p-8 text-center">
-        <p className="mb-4 text-red-600">{error}</p>
+        <p className="note-error mb-4">{error}</p>
         <Link className="btn" href="/">
           Back to start
         </Link>
       </div>
     );
   }
-  if (!row || !state || !seat) {
-    return <div className="p-8 text-center text-[var(--muted)]">{game?.error ?? "Connecting to game…"}</div>;
+  if (!row || !state || !seat || !rules) {
+    return <div className="grid h-[60vh] place-items-center text-muted">{game?.error ?? "Finding the game…"}</div>;
   }
 
-  const playing = seat !== "spectator";
+  const playing = seat === "w" || seat === "b";
   const opp: ColorCode | null = seat === "w" ? "b" : seat === "b" ? "w" : null;
   const canMove = playing && row.status === "active" && toMove === seat && !busy;
   const link = typeof window !== "undefined" ? `${window.location.origin}/online?g=${row.id}` : "";
 
-  const labelFor = (c: ColorCode) => {
+  const info = (c: ColorCode): PlayerInfo => {
+    const pid = c === "w" ? row.white_player : row.black_player;
+    const prof = pid ? players[pid] : null;
     const joined = c === "w" ? row.white_joined : row.black_joined;
-    const who = seat === c ? "You" : playing ? "Opponent" : colorName(c);
-    return `${who}${playing ? ` (${colorName(c)})` : ""}${joined ? "" : " · waiting to join"}`;
+    const you = seat === c;
+    const name = prof?.username ?? (you ? "You" : playing ? "Opponent" : colorName(c));
+    const parts = [you && prof ? "You" : null, colorName(c), prof && prof.rated_games > 0 ? `${prof.rating}` : prof ? "unrated" : "guest"].filter(Boolean);
+    return {
+      name,
+      sub: joined ? parts.join(" · ") : "waiting to join…",
+      clock: clocks ? <ClockFace ms={clocks[c]} running={row.status === "active" && toMove === c} /> : undefined,
+    };
   };
-  const clockNode = (c: ColorCode) =>
-    clocks ? (
-      <span
-        className={`rounded-md px-2 py-0.5 font-mono text-sm tabular-nums ${row.status === "active" && toMove === c ? (clocks[c] < 20_000 ? "bg-red-600 text-white" : "bg-neutral-800 text-white") : "bg-black/5 dark:bg-white/10"}`}
-      >
-        {fmtClock(clocks[c])}
-      </span>
-    ) : null;
 
   const status =
     row.status === "waiting"
       ? "Waiting for an opponent to join"
       : row.status === "finished"
-        ? `${resultText(row.result!)} ${REASONS[row.result_reason ?? ""] ?? ""}`
+        ? `${resultText(row.result!)} · ${REASON_TEXT[row.result_reason ?? ""] ?? ""}`
         : canMove
           ? state.mustPass
-            ? "You have no legal moves — pass"
+            ? "You have no legal move: pass"
             : "Your move"
           : `${colorName(toMove)} to move`;
 
   const youWon = row.result && ((row.result === "WhiteWins" && seat === "w") || (row.result === "BlackWins" && seat === "b"));
+  const myDelta = seat === "w" ? row.white_delta : seat === "b" ? row.black_delta : null;
+  const variants = describeVariants(rules);
 
-  const sidebar = (
-    <div className="space-y-3">
-      {error && <div className="rounded-lg bg-red-50 p-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</div>}
-      {game?.error && <div className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{game.error}</div>}
-
-      {row.status === "waiting" && playing && (
-        <div className="card space-y-2 text-sm">
-          <div className="font-semibold">Invite a friend</div>
-          <p className="text-[var(--muted)]">Send this link. The first person to open it plays {colorName(opp!)}; anyone after that can watch.</p>
-          <div className="flex gap-2">
-            <input readOnly value={link} className="min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--bg)] px-2 py-1 font-mono text-xs" onFocus={(e) => e.target.select()} />
-            <button
-              className="btn shrink-0"
-              onClick={async () => {
-                await navigator.clipboard.writeText(link);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!playing && <div className="rounded-lg bg-blue-50 p-2 text-sm text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">You&apos;re watching this game.</div>}
-
-      {row.status === "finished" && (
-        <div className="card text-center">
-          <div className="text-lg font-bold">{playing ? (row.result === "Draw" ? "Draw" : youWon ? "You win! 🎉" : "You lost") : resultText(row.result!)}</div>
-          <div className="text-xs text-[var(--muted)]">{REASONS[row.result_reason ?? ""] ?? ""}</div>
-          {playing && (
-            <div className="mt-3 flex justify-center gap-2">
-              {row.rematch_id ? (
+  const overlay =
+    row.status === "finished" && !overlayClosed ? (
+      <GameOverCard
+        tone={!playing ? "neutral" : row.result === "Draw" ? "draw" : youWon ? "win" : "loss"}
+        title={!playing ? resultText(row.result!) : row.result === "Draw" ? "A draw" : youWon ? "You win!" : "You lost"}
+        subtitle={REASON_TEXT[row.result_reason ?? ""]}
+        detail={
+          row.rated && row.white_delta !== null ? (
+            <span>
+              Rated game ·{" "}
+              {myDelta !== null ? (
+                <b className={myDelta >= 0 ? "text-leaf" : "text-danger"}>
+                  {myDelta >= 0 ? "+" : ""}
+                  {myDelta} Elo
+                </b>
+              ) : (
+                `White ${row.white_delta >= 0 ? "+" : ""}${row.white_delta}, Black ${row.black_delta! >= 0 ? "+" : ""}${row.black_delta}`
+              )}
+            </span>
+          ) : row.rated ? (
+            "Rated game (too short to count)"
+          ) : (
+            `${row.moves.length} moves`
+          )
+        }
+        onClose={() => setOverlayClosed(true)}
+        actions={
+          <>
+            {playing &&
+              (row.rematch_id ? (
                 <button className="btn" onClick={() => router.push(`/online?g=${row.rematch_id}`)}>
                   Join rematch
                 </button>
               ) : (
                 <button className="btn" disabled={busy} onClick={() => act(async () => router.push(`/online?g=${await createRematch(row.id)}`))}>
-                  Rematch (swap colours)
+                  Rematch
                 </button>
-              )}
-              <Link className="btn-secondary" href="/">
-                New game
-              </Link>
-            </div>
-          )}
+              ))}
+            <Link className="btn-secondary" href={`/replay?online=${row.id}`}>
+              Review game
+            </Link>
+            <NewGameLink />
+          </>
+        }
+      />
+    ) : null;
+
+  const sidebar = (
+    <div className="space-y-3">
+      {error && <div className="note-error">{error}</div>}
+      {game?.error && <div className="note-error">{game.error}</div>}
+
+      <div className="card !p-3 text-sm">
+        <div className="flex items-center justify-between">
+          <div className="font-display text-lg font-semibold">{row.rated ? "Rated game" : "Friendly game"}</div>
+          <span className="flex items-center gap-1.5 text-xs text-muted">
+            <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-leaf" : "bg-accent"}`} />
+            {connected ? "Live" : "Reconnecting"}
+          </span>
+        </div>
+        <div className="text-xs text-muted">
+          {expansionLabel(rules)}
+          {variants.length ? ` · ${variants.join(" · ")}` : ""} · {row.base_ms ? `${row.base_ms / 60000} min + ${row.increment_ms / 1000}s` : "untimed"} · game <span className="font-mono">{row.id}</span>
+        </div>
+      </div>
+
+      {seat === "login_required" && (
+        <div className="note-warn">
+          This is a rated game: <Link href={`/account?next=/online?g=${row.id}`} className="font-semibold underline">sign in</Link> to take the open seat. You can watch in the meantime.
+        </div>
+      )}
+      {seat === "same_account" && <div className="note-warn">You created this rated game, so you can&apos;t take the other seat. Send the link to a friend.</div>}
+
+      {row.status === "waiting" && playing && (
+        <div className="card space-y-2 !p-3 text-sm">
+          <div className="font-semibold">Invite a friend</div>
+          <p className="text-muted">
+            The first person to open this link plays {colorName(opp!)}
+            {row.rated ? " (they'll need an account)" : ""}. Anyone after that can watch.
+          </p>
+          <div className="flex gap-2">
+            <input readOnly value={link} className="input min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.target.select()} />
+            <button className="btn shrink-0" onClick={() => copy(link, "invite")}>
+              {copied === "invite" ? "Copied" : "Copy"}
+            </button>
+          </div>
         </div>
       )}
 
+      {!playing && seat === "spectator" && <div className="note-info">You&apos;re watching this game.</div>}
+
       {row.status === "active" && playing && row.draw_offer === opp && (
-        <div className="card space-y-2 text-sm">
+        <div className="note-warn space-y-2">
           <div>Your opponent offers a draw.</div>
           <div className="flex gap-2">
             <button className="btn flex-1" disabled={busy} onClick={() => act(() => offerDraw(row.id))}>
@@ -282,7 +344,7 @@ function OnlineGameView() {
         </div>
       )}
       {row.status === "active" && playing && row.takeback_request === opp && (
-        <div className="card space-y-2 text-sm">
+        <div className="note-warn space-y-2">
           <div>Your opponent asks to take back their last move.</div>
           <div className="flex gap-2">
             <button className="btn flex-1" disabled={busy} onClick={() => act(() => answerTakeback(row.id, true))}>
@@ -303,45 +365,35 @@ function OnlineGameView() {
 
       {row.status === "active" && playing && (
         <div className="grid grid-cols-2 gap-2">
-          <button
-            className="btn-secondary"
-            disabled={busy || row.takeback_request === seat || row.moves.length < (seat === "w" ? 1 : 2)}
-            onClick={() => act(() => requestTakeback(row.id))}
-          >
-            {row.takeback_request === seat ? "Takeback asked…" : "↶ Ask takeback"}
+          <button className="btn-secondary" disabled={busy || row.takeback_request === seat || row.moves.length < (seat === "w" ? 1 : 2)} onClick={() => act(() => requestTakeback(row.id))}>
+            {row.takeback_request === seat ? "Asked…" : "↶ Ask takeback"}
           </button>
           <button className="btn-secondary" disabled={busy || row.draw_offer === seat} onClick={() => act(() => offerDraw(row.id))}>
             {row.draw_offer === seat ? "Draw offered…" : "½ Offer draw"}
           </button>
-          <button
-            className="btn-secondary col-span-2"
-            disabled={busy}
-            onClick={() => {
-              if (confirm("Resign this game?")) act(() => resign(row.id));
-            }}
-          >
-            🏳 Resign
+          <button className="btn-secondary col-span-2" disabled={busy} onClick={() => confirm("Resign this game?") && act(() => resign(row.id))}>
+            ⚐ Resign
           </button>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
-        <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-green-500" : "bg-amber-500"}`} />
-        {connected ? "Live" : "Reconnecting (polling)"} · game <span className="font-mono">{row.id}</span>
-        {row.base_ms ? ` · ${row.base_ms / 60000} min + ${row.increment_ms / 1000}s` : " · untimed"}
+      <div className="flex flex-wrap gap-2">
         {playing && row.status !== "waiting" && (
-          <button
-            className="btn-ghost"
-            onClick={async () => {
-              await navigator.clipboard.writeText(`${window.location.origin}/online?g=${row.id}`);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            }}
-          >
-            {copied ? "Copied" : "Copy spectator link"}
+          <button className="btn-ghost" onClick={() => copy(link, "spectate")}>
+            {copied === "spectate" ? "Copied" : "Copy spectator link"}
+          </button>
+        )}
+        {row.status === "finished" && (
+          <button className="btn-ghost" onClick={() => setOverlayClosed(false)}>
+            Show result
           </button>
         )}
       </div>
+      {!user && playing && !row.rated && (
+        <p className="text-xs text-muted">
+          Playing as a guest. <Link href="/account" className="underline">Create an account</Link> to keep your online games and play rated.
+        </p>
+      )}
     </div>
   );
 
@@ -355,18 +407,19 @@ function OnlineGameView() {
       }}
       canMove={canMove}
       onPlay={play}
-      labels={{ w: labelFor("w"), b: labelFor("b") }}
-      clocks={clocks ? { w: clockNode("w"), b: clockNode("b") } : undefined}
+      getPreview={getPreview}
+      players={{ w: info("w"), b: info("b") }}
       bottom={seat === "b" ? "b" : "w"}
       status={status}
       sidebar={sidebar}
+      overlay={overlay}
     />
   );
 }
 
 export default function OnlinePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-[var(--muted)]">Loading…</div>}>
+    <Suspense fallback={<div className="grid h-[60vh] place-items-center text-muted">Finding the game…</div>}>
       <OnlineGameView />
     </Suspense>
   );

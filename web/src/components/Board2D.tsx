@@ -2,17 +2,49 @@
 
 import { useMemo, useRef, useState } from "react";
 import { hexPoints } from "./BugGlyph";
-import { PieceTile, TileDefs } from "./PieceTile";
+import { PieceTile, TileDefs, type TileStyle } from "./PieceTile";
 import type { BoardProps } from "./board-types";
+import type { MoveView } from "@/lib/engine-types";
 
 const S = 40; // hex radius in SVG units
 const SQ3 = Math.sqrt(3);
 
 export const hexToPixel = (q: number, r: number) => [S * SQ3 * (q + r / 2), S * 1.5 * r] as const;
-const levelOffset = (level: number) => [-level * S * 0.13, -level * S * 0.17] as const;
+const levelOffset = (level: number) => [-level * S * 0.12, -level * S * 0.2] as const;
 
-export default function Board2D({ state, selected, targets, hint, onPieceClick, onTargetClick, onBackgroundClick, theme, selectable }: BoardProps) {
-  const style = theme === "tiles" ? "tiles" : "flat";
+function Target({ m, kind, onClick }: { m: MoveView; kind: "legal" | "preview"; onClick?: (e: React.MouseEvent) => void }) {
+  const [x, y] = hexToPixel(m.to[0], m.to[1]);
+  const [ox, oy] = levelOffset(m.toLevel);
+  const climb = m.toLevel > 0;
+  const c = kind === "legal" ? "var(--leaf)" : "var(--coral)";
+  return (
+    <g
+      data-move={m.notation}
+      className={kind === "legal" ? "firefly cursor-pointer" : undefined}
+      onClick={onClick}
+      transform={`translate(${x + ox} ${y + oy})`}
+      pointerEvents={kind === "legal" ? undefined : "none"}
+    >
+      <polygon
+        points={hexPoints(0, 0, S * 0.88)}
+        fill={c}
+        fillOpacity={kind === "legal" ? (climb ? 0.34 : 0.22) : 0.06}
+        stroke={c}
+        strokeWidth={kind === "legal" ? 3 : 2.5}
+        strokeDasharray={kind === "legal" ? undefined : "5 6"}
+      />
+      {kind === "legal" ? <circle r={S * 0.15} fill={c} /> : <circle r={S * 0.13} fill="none" stroke={c} strokeWidth={2.5} />}
+      {climb && (
+        <text textAnchor="middle" y={S * 0.58} fontSize={S * 0.3} fontWeight={700} fill={c}>
+          ▲
+        </text>
+      )}
+    </g>
+  );
+}
+
+export default function Board2D({ state, selected, targets, previewTargets = [], hint, onPieceClick, onTargetClick, onBackgroundClick, theme, selectable, hideLastMove }: BoardProps) {
+  const style: TileStyle = theme === "field" ? "field" : theme === "clean" ? "clean" : "bakelite";
   const svgRef = useRef<SVGSVGElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
   const drag = useRef<{ id: number; x: number; y: number; vx: number; vy: number; moved: boolean } | null>(null);
@@ -47,8 +79,8 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
     const minH = S * 1.5 * 6;
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    const w = Math.max(maxX - minX + S * 3, minW);
-    const h = Math.max(maxY - minY + S * 3, minH);
+    const w = Math.max(maxX - minX + S * 3.2, minW);
+    const h = Math.max(maxY - minY + S * 3.2, minH);
     return { cells, viewBox: [cx - w / 2, cy - h / 2, w, h] as const };
   }, [state]);
 
@@ -62,12 +94,11 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
         items.push({ key: p.name, p, x: bx + ox, y: by + oy, height: list.length, names });
       }
     }
-    // Draw lower levels first, then top-to-bottom so tile sides overlap correctly.
     items.sort((a, b) => a.p.level - b.p.level || a.y - b.y);
     return items;
   }, [cells]);
 
-  function clientToSvgScale() {
+  function svgScale() {
     const svg = svgRef.current;
     if (!svg) return 1;
     const rect = svg.getBoundingClientRect();
@@ -78,8 +109,7 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const scale = clientToSvgScale();
-    // Pointer position relative to the centre of the viewBox, in SVG units.
+    const scale = svgScale();
     const px = (e.clientX - rect.left - rect.width / 2) * scale;
     const py = (e.clientY - rect.top - rect.height / 2) * scale;
     const factor = Math.exp(-e.deltaY * 0.0015);
@@ -121,7 +151,7 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
       svgRef.current?.setPointerCapture(e.pointerId);
     }
     if (d.moved) {
-      const scale = clientToSvgScale();
+      const scale = svgScale();
       setView((v) => ({ ...v, x: d.vx + dx * scale, y: d.vy + dy * scale }));
     }
   }
@@ -146,14 +176,15 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
     };
   }
 
-  const selectedPiece = state.pieces.find((p) => p.name === selected);
-  const lastFrom = state.lastMove?.from;
-  const lastTo = state.lastMove?.to;
+  const lastFrom = hideLastMove ? null : state.lastMove?.from;
+  const lastTo = hideLastMove ? null : state.lastMove?.to;
   const cx = viewBox[0] + viewBox[2] / 2;
   const cy = viewBox[1] + viewBox[3] / 2;
+  const legalCells = new Set(targets.map((m) => `${m.to[0]},${m.to[1]}`));
+  const preview = previewTargets.filter((m) => !legalCells.has(`${m.to[0]},${m.to[1]}`));
 
   return (
-    <div className="relative h-full w-full select-none">
+    <div className={`relative h-full w-full select-none ${style === "field" ? "board-paper" : "board-surface"}`}>
       <svg
         ref={svgRef}
         className="h-full w-full touch-none"
@@ -165,16 +196,27 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onClick={guard(() => onBackgroundClick?.())}
+        role="application"
+        aria-label="Hive board"
       >
-        {style === "tiles" && <TileDefs />}
+        <TileDefs />
         <defs>
           <marker id="hint-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-            <path d="M0 0 L10 5 L0 10 z" fill="var(--hint)" />
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--violet)" />
           </marker>
         </defs>
         <g transform={`translate(${view.x} ${view.y}) translate(${cx} ${cy}) scale(${view.k}) translate(${-cx} ${-cy})`}>
           {lastFrom && (
-            <polygon points={hexPoints(...hexToPixel(lastFrom[0], lastFrom[1]), S * 0.92)} fill="var(--last-move)" fillOpacity={0.18} stroke="var(--last-move)" strokeOpacity={0.6} strokeDasharray="6 5" strokeWidth={2.5} />
+            <polygon
+              points={hexPoints(...hexToPixel(lastFrom[0], lastFrom[1]), S * 0.9)}
+              fill="var(--accent)"
+              fillOpacity={0.12}
+              stroke="var(--accent)"
+              strokeOpacity={0.7}
+              strokeDasharray="3 6"
+              strokeLinecap="round"
+              strokeWidth={3}
+            />
           )}
 
           {pieceItems.map(({ key, p, x, y, height, names }) => {
@@ -184,21 +226,21 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
             return (
               <g
                 key={key}
-                style={{ transform: `translate(${x}px, ${y}px)`, transition: "transform 260ms ease-out" }}
+                style={{ transform: `translate(${x}px, ${y}px)`, transition: "transform 280ms cubic-bezier(.2,.8,.3,1)" }}
                 className={clickable ? "cursor-pointer" : undefined}
                 onClick={clickable ? guard(() => onPieceClick!(p.name)) : undefined}
               >
                 <title>{names.length > 1 ? `Stack (bottom → top): ${names.join(", ")}` : p.name}</title>
                 <PieceTile bug={p.bug} color={p.color} x={0} y={0} size={S} style={style} />
-                {isLast && <polygon points={hexPoints(0, 0, S * 0.93)} fill="none" stroke="var(--last-move)" strokeWidth={3.5} />}
+                {isLast && <polygon points={hexPoints(0, 0, S * 0.98)} fill="none" stroke="var(--accent)" strokeWidth={4} />}
                 {p.onTop && selectable.has(p.name) && !isSel && (
-                  <polygon points={hexPoints(0, 0, S * 0.93)} fill="none" stroke="var(--movable)" strokeOpacity={0.55} strokeWidth={2} />
+                  <polygon points={hexPoints(0, 0, S * 0.92)} fill="none" stroke="var(--leaf)" strokeOpacity={0.55} strokeWidth={2} />
                 )}
-                {isSel && <polygon points={hexPoints(0, 0, S * 0.96)} fill="none" stroke="var(--selected)" strokeWidth={5} />}
+                {isSel && <polygon points={hexPoints(0, 0, S * 1.02)} fill="none" stroke="var(--sky)" strokeWidth={5} />}
                 {p.onTop && height > 1 && (
-                  <g transform={`translate(${S * 0.55} ${-S * 0.62})`}>
-                    <circle r={S * 0.24} fill="var(--badge)" stroke="#fff" strokeWidth={2} />
-                    <text textAnchor="middle" dy="0.36em" fontSize={S * 0.3} fontWeight={700} fill="#fff">
+                  <g transform={`translate(${S * 0.58} ${-S * 0.62})`}>
+                    <circle r={S * 0.25} fill="var(--accent)" stroke="var(--paper)" strokeWidth={2.5} />
+                    <text textAnchor="middle" dy="0.36em" fontSize={S * 0.3} fontWeight={800} fill="var(--accent-ink)">
                       {height}
                     </text>
                   </g>
@@ -207,45 +249,35 @@ export default function Board2D({ state, selected, targets, hint, onPieceClick, 
             );
           })}
 
-          {targets.map((m) => {
-            const [x, y] = hexToPixel(m.to[0], m.to[1]);
-            const [ox, oy] = levelOffset(m.toLevel);
-            const climb = m.toLevel > 0;
-            return (
-              <g key={m.notation} className="cursor-pointer" onClick={guard(() => onTargetClick?.(m))} transform={`translate(${x + ox} ${y + oy})`}>
-                <polygon points={hexPoints(0, 0, S * 0.9)} fill="var(--target)" fillOpacity={climb ? 0.35 : 0.22} stroke="var(--target)" strokeWidth={3} strokeDasharray={climb ? "none" : "7 5"} />
-                {selectedPiece || m.from === null ? <circle r={S * 0.16} fill="var(--target)" /> : null}
-                {climb && (
-                  <text textAnchor="middle" y={S * 0.55} fontSize={S * 0.32} fontWeight={700} fill="var(--target)">
-                    ▲
-                  </text>
-                )}
-              </g>
-            );
-          })}
+          {preview.map((m) => (
+            <Target key={"p" + m.notation} m={m} kind="preview" />
+          ))}
+          {targets.map((m) => (
+            <Target key={m.notation} m={m} kind="legal" onClick={guard(() => onTargetClick?.(m))} />
+          ))}
 
           {hint && (
             <g pointerEvents="none">
-              {hint.from ? (
+              {hint.from && (
                 <line
                   x1={hexToPixel(hint.from[0], hint.from[1])[0]}
                   y1={hexToPixel(hint.from[0], hint.from[1])[1]}
                   x2={hexToPixel(hint.to[0], hint.to[1])[0]}
                   y2={hexToPixel(hint.to[0], hint.to[1])[1]}
-                  stroke="var(--hint)"
+                  stroke="var(--violet)"
                   strokeWidth={6}
                   strokeLinecap="round"
                   markerEnd="url(#hint-arrow)"
                   opacity={0.9}
                 />
-              ) : null}
-              <polygon points={hexPoints(...hexToPixel(hint.to[0], hint.to[1]), S * 0.95)} fill="none" stroke="var(--hint)" strokeWidth={5} />
+              )}
+              <polygon points={hexPoints(...hexToPixel(hint.to[0], hint.to[1]), S * 0.96)} fill="none" stroke="var(--violet)" strokeWidth={5} />
             </g>
           )}
         </g>
       </svg>
       {(view.x !== 0 || view.y !== 0 || view.k !== 1) && (
-        <button className="btn-ghost absolute right-2 top-2 text-xs" onClick={() => setView({ x: 0, y: 0, k: 1 })}>
+        <button className="btn-ghost absolute right-2 bottom-2" onClick={() => setView({ x: 0, y: 0, k: 1 })}>
           Re-centre
         </button>
       )}

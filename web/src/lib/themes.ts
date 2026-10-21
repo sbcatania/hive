@@ -1,4 +1,4 @@
-export type ThemeId = "flat" | "tiles" | "3d";
+export type ThemeId = "bakelite" | "field" | "clean" | "3d";
 
 export interface ThemeInfo {
   id: ThemeId;
@@ -7,9 +7,10 @@ export interface ThemeInfo {
 }
 
 export const THEMES: ThemeInfo[] = [
-  { id: "flat", name: "Clean 2D", blurb: "Crisp flat hexagons. Fast and phone-friendly." },
-  { id: "tiles", name: "Classic tiles", blurb: "Bevelled tiles that look like the physical game." },
-  { id: "3d", name: "3D", blurb: "Rotatable 3D board. Drag to orbit, scroll to zoom." },
+  { id: "bakelite", name: "Bakelite", blurb: "Glossy bevelled tiles, like the real game." },
+  { id: "field", name: "Field guide", blurb: "Ink and watercolour on graph paper." },
+  { id: "clean", name: "Clean", blurb: "Flat and high-contrast. Easiest to read on small screens." },
+  { id: "3d", name: "3D table", blurb: "Modelled tiles on a wooden table. Drag to orbit, scroll to zoom." },
 ];
 
 export interface TilePalette {
@@ -18,25 +19,47 @@ export interface TilePalette {
   side: string;
   ink: string;
   gradient: [string, string];
+  shine: string;
 }
 
 export const TILE: Record<"w" | "b", TilePalette> = {
-  w: { fill: "#f7f2e6", edge: "#bdb39c", side: "#cfc5ad", ink: "#232020", gradient: ["#fffdf6", "#e6dcc4"] },
-  b: { fill: "#2a2a2e", edge: "#0d0d10", side: "#121215", ink: "#f2eee4", gradient: ["#45454b", "#1c1c20"] },
+  w: { fill: "#f6f0e2", edge: "#b8ab8c", side: "#cdbf9f", ink: "#24201b", gradient: ["#fffdf7", "#e4d9bf"], shine: "#ffffff" },
+  b: { fill: "#2b2b30", edge: "#0b0b0d", side: "#141417", ink: "#f2eee4", gradient: ["#4a4a52", "#1b1b1f"], shine: "#9a9aa6" },
 };
 
-const KEY = "hive.theme";
+const KEY = "hive.board-style";
 
 export function loadTheme(): ThemeId {
   try {
     const v = localStorage.getItem(KEY);
-    if (v === "flat" || v === "tiles" || v === "3d") return v;
+    if (v === "bakelite" || v === "field" || v === "clean" || v === "3d") return v;
   } catch {}
-  return "flat";
+  return "bakelite";
 }
 
 export function saveTheme(t: ThemeId) {
   try {
     localStorage.setItem(KEY, t);
   } catch {}
+}
+
+/** Rounded-corner hexagon (pointy top) as an SVG path. */
+export function roundedHexPath(cx: number, cy: number, r: number, corner = 0.18): string {
+  const pts = Array.from({ length: 6 }, (_, i) => {
+    const a = ((60 * i - 90) * Math.PI) / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
+  });
+  const k = corner;
+  let d = "";
+  for (let i = 0; i < 6; i++) {
+    const [px, py] = pts[(i + 5) % 6];
+    const [x, y] = pts[i];
+    const [nx, ny] = pts[(i + 1) % 6];
+    const ax = x + (px - x) * k;
+    const ay = y + (py - y) * k;
+    const bx = x + (nx - x) * k;
+    const by = y + (ny - y) * k;
+    d += `${i === 0 ? "M" : "L"}${ax.toFixed(2)} ${ay.toFixed(2)} Q${x.toFixed(2)} ${y.toFixed(2)} ${bx.toFixed(2)} ${by.toFixed(2)} `;
+  }
+  return d + "Z";
 }

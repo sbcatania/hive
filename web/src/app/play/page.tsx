@@ -4,21 +4,23 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { EvalBar } from "@/components/EvalBar";
-import { GameView } from "@/components/GameView";
+import { ClockFace, GameOverCard, NewGameLink } from "@/components/GameBits";
+import { GameView, type PlayerInfo } from "@/components/GameView";
 import { AiClient } from "@/lib/ai-client";
+import { useAuth } from "@/lib/auth";
 import { Engine, engineFromMoves, errorMessage, loadEngine } from "@/lib/engine";
-import { colorName, LEVELS, resultText, type AiResult, type ColorCode, type StateView } from "@/lib/engine-types";
-import { loadSavedGame, saveGame, settingsFromQuery, settingsToQuery, type LocalSettings, type SavedGame } from "@/lib/settings";
+import { colorName, persona, resultText, type AiResult, type ColorCode, type StateView } from "@/lib/engine-types";
+import { currentGameId, getLocal, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
-
-type Result = SavedGame["result"];
+import { describeVariants, expansionLabel } from "@/lib/variants";
 
 function LocalGame() {
   const params = useSearchParams();
   const router = useRouter();
-  const [settings, setSettings] = useState<LocalSettings | null>(null);
+  const { user } = useAuth();
+  const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [state, setState] = useState<StateView | null>(null);
-  const [theme, setTheme] = useState<ThemeId>("flat");
+  const [theme, setTheme] = useState<ThemeId>("bakelite");
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<AiResult | null>(null);
@@ -26,14 +28,20 @@ function LocalGame() {
   const [showEval, setShowEval] = useState(false);
   const [evalResult, setEvalResult] = useState<AiResult | null>(null);
   const [evalLoading, setEvalLoading] = useState(false);
-  const [result, setResult] = useState<{ status: Result; reason?: string } | null>(null);
+  const [overlayClosed, setOverlayClosed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [clockLeft, setClockLeft] = useState<[number, number] | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const engine = useRef<Engine | null>(null);
   const cpu = useRef<AiClient | null>(null);
   const analyst = useRef<AiClient | null>(null);
-  /** Bumped on every position change so stale AI replies are ignored. */
   const generation = useRef(0);
+  const turnStart = useRef(Date.now());
+  const entryRef = useRef<JournalEntry | null>(null);
+  entryRef.current = entry;
+  const userRef = useRef(user);
+  userRef.current = user;
 
   // ---- Setup -----------------------------------------------------------
   useEffect(() => {
@@ -45,31 +53,24 @@ function LocalGame() {
     (async () => {
       await loadEngine();
       if (cancelled) return;
-      let s = settingsFromQuery(new URLSearchParams(params.toString()));
-      let moves: string[] = [];
-      let saved: SavedGame | null = null;
-      if (!s || params.get("resume")) {
-        saved = loadSavedGame();
-        if (!saved) {
-          router.replace("/");
-          return;
-        }
-        s = saved.settings;
-        moves = saved.moves;
+      const id = params.get("id") ?? (params.get("resume") ? currentGameId() : null);
+      const e = id ? getLocal(id) : null;
+      if (!e) {
+        router.replace("/");
+        return;
       }
       try {
-        engine.current = engineFromMoves(s.rules, moves);
-      } catch (e) {
-        setError("Saved game couldn't be restored: " + errorMessage(e));
-        engine.current = Engine.create(s.rules);
+        engine.current = engineFromMoves(e.rules, e.moves);
+      } catch (err) {
+        setError("This saved game couldn't be restored: " + errorMessage(err));
+        engine.current = Engine.create(e.rules);
       }
-      if (saved?.result) {
-        engine.current.setResult(saved.result);
-        setResult({ status: saved.result, reason: saved.resultReason });
-      }
-      setSettings(s);
+      if (e.result) engine.current.setResult(e.result);
+      setEntry(e);
+      if (e.clock?.baseMs) setClockLeft(e.clockLeft ?? [e.clock.baseMs, e.clock.baseMs]);
+      turnStart.current = Date.now();
       setState(engine.current.state());
-      if (!saved) saveGame({ settings: s, moves: [] });
+      if (!e.result) setCurrentGameId(e.id);
     })();
     return () => {
       cancelled = true;
@@ -81,77 +82,129 @@ function LocalGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const refresh = useCallback(
-    (res?: { status: Result; reason?: string } | null) => {
-      const e = engine.current;
-      if (!e || !settings) return;
-      generation.current++;
-      const s = e.state();
-      setState(s);
-      setHint(null);
-      const over = s.status === "WhiteWins" || s.status === "BlackWins" || s.status === "Draw";
-      const finalResult = res ?? (over ? { status: s.status as Result, reason: "surround" } : null);
-      setResult(finalResult);
-      saveGame({ settings, moves: s.history, result: finalResult?.status, resultReason: finalResult?.reason });
-    },
-    [settings],
-  );
+  /** Re-reads the engine state and saves the game to the journal. */
+  const commit = useCallback((patch: Partial<JournalEntry> = {}, left: [number, number] | null = null) => {
+    const e = engine.current;
+    const cur = entryRef.current;
+    if (!e || !cur) return;
+    generation.current++;
+    const s = e.state();
+    setState(s);
+    setHint(null);
+    setEvalResult(null);
+    const over = s.status === "WhiteWins" || s.status === "BlackWins" || s.status === "Draw";
+    const result: GameResult | undefined = "result" in patch ? patch.result : over ? (s.status as GameResult) : undefined;
+    const resultReason = "resultReason" in patch ? patch.resultReason : over ? (s.endReason ?? "surround") : undefined;
+    const next: JournalEntry = { ...cur, ...patch, moves: s.history, result, resultReason, clockLeft: left ?? cur.clockLeft, updatedAt: Date.now() };
+    setEntry(next);
+    saveLocal(next);
+    if (result) {
+      setCurrentGameId(null);
+      setOverlayClosed(false);
+    }
+    const u = userRef.current;
+    if (u && (result || next.moves.length % 6 === 0)) saveCloud(u.id, next).catch(() => {});
+  }, []);
 
-  const isCpuTurn = !!state && !!settings && settings.mode === "cpu" && state.toMove !== settings.human && !result;
+  /** Applies clock bookkeeping for the side that just moved. */
+  const tickClock = useCallback((mover: ColorCode, ply: number): [number, number] | null => {
+    const cur = entryRef.current;
+    if (!cur?.clock?.baseMs) return null;
+    const t = Date.now();
+    const elapsed = t - turnStart.current;
+    turnStart.current = t;
+    let left: [number, number] = [0, 0];
+    setClockLeft((prev) => {
+      const l: [number, number] = [...(prev ?? [cur.clock!.baseMs!, cur.clock!.baseMs!])] as [number, number];
+      const i = mover === "w" ? 0 : 1;
+      // The clock starts after White's first move.
+      if (ply > 0) l[i] = Math.max(0, l[i] - elapsed) + cur.clock!.incMs;
+      left = l;
+      return l;
+    });
+    return left;
+  }, []);
+
+  const result = entry?.result;
+  const isCpuTurn = !!state && !!entry && entry.mode === "cpu" && state.toMove !== entry.human && !result;
 
   // ---- CPU opponent ------------------------------------------------------
   useEffect(() => {
-    if (!isCpuTurn || !state || !settings || !engine.current) return;
+    if (!isCpuTurn || !state || !entry || !engine.current) return;
     const gen = generation.current;
     setThinking(true);
     const started = Date.now();
     cpu.current!
-      .choose(state.gameString, settings.rules.tournament, settings.level)
+      .choose(entry.rules, state.history, entry.level ?? "medium")
       .then(async (r) => {
-        // Keep very fast replies from feeling instant.
-        const wait = 450 - (Date.now() - started);
+        const wait = 500 - (Date.now() - started);
         if (wait > 0) await new Promise((res) => setTimeout(res, wait));
         if (gen !== generation.current || !engine.current) return;
         setThinking(false);
+        const mover = state.toMove;
         engine.current.play(r.best);
-        refresh();
+        commit({}, tickClock(mover, state.ply));
       })
       .catch((e) => {
-        if (gen === generation.current) setError("CPU error: " + errorMessage(e));
-      })
-      .finally(() => {
-        if (gen === generation.current) setThinking(false);
+        if (gen === generation.current) {
+          setThinking(false);
+          setError("CPU error: " + errorMessage(e));
+        }
       });
-  }, [isCpuTurn, state, settings, refresh]);
+  }, [isCpuTurn, state, entry, commit, tickClock]);
 
   // ---- Evaluation bar ----------------------------------------------------
   useEffect(() => {
-    if (!showEval || !state || !settings || result) return;
+    if (!showEval || !state || !entry || result) return;
     const gen = generation.current;
     setEvalLoading(true);
     analyst.current!
-      .analyze(state.gameString, settings.rules.tournament, 900)
-      .then((r) => {
-        if (gen === generation.current) setEvalResult(r);
-      })
+      .analyze(entry.rules, state.history, 900)
+      .then((r) => gen === generation.current && setEvalResult(r))
       .catch(() => {})
-      .finally(() => {
-        if (gen === generation.current) setEvalLoading(false);
-      });
-  }, [showEval, state, settings, result]);
+      .finally(() => gen === generation.current && setEvalLoading(false));
+  }, [showEval, state, entry, result]);
 
-  if (!state || !settings) {
-    return <div className="p-8 text-center text-[var(--muted)]">{error ?? "Loading game…"}</div>;
+  // ---- Clocks ------------------------------------------------------------------
+  const timed = !!entry?.clock?.baseMs && !!clockLeft;
+  const running = timed && !result && (state?.ply ?? 0) > 0;
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 200);
+    return () => clearInterval(t);
+  }, [running]);
+  const shown = (c: ColorCode) => {
+    if (!clockLeft) return 0;
+    const base = clockLeft[c === "w" ? 0 : 1];
+    return running && state?.toMove === c ? base - (now - turnStart.current) : base;
+  };
+  useEffect(() => {
+    if (!running || !state || !engine.current) return;
+    if (shown(state.toMove) <= 0) {
+      const status: GameResult = state.toMove === "w" ? "BlackWins" : "WhiteWins";
+      engine.current.setResult(status);
+      const left: [number, number] = [...clockLeft!] as [number, number];
+      left[state.toMove === "w" ? 0 : 1] = 0;
+      setClockLeft(left);
+      commit({ result: status, resultReason: "time" }, left);
+    }
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const getPreview = useCallback((piece: string) => engine.current!.preview(piece), []);
+
+  if (!state || !entry) {
+    return <div className="grid h-[60vh] place-items-center text-muted">{error ?? "Laying out the tiles…"}</div>;
   }
 
-  const humanCanMove = !result && (settings.mode === "local" || state.toMove === settings.human) && !thinking;
+  const humanCanMove = !result && (entry.mode === "local" || state.toMove === entry.human) && !thinking;
 
   function play(notation: string) {
-    if (!engine.current) return;
+    if (!engine.current || !state) return;
     try {
+      const mover = state.toMove;
       engine.current.play(notation);
       setError(null);
-      refresh();
+      commit({}, tickClock(mover, state.ply));
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -159,30 +212,33 @@ function LocalGame() {
 
   function undo() {
     const e = engine.current;
-    if (!e || !settings) return;
+    if (!e || !entry) return;
     generation.current++;
     setThinking(false);
     if (result) {
-      // Reopen a finished game: replay the moves without the result.
       const moves = e.state().history;
       e.free();
-      engine.current = engineFromMoves(settings.rules, moves);
+      engine.current = engineFromMoves(entry.rules, moves);
     }
-    const target = settings.mode === "cpu" ? settings.human : null;
+    const target = entry.mode === "cpu" ? entry.human : null;
     let n = 0;
     do {
       if (!engine.current!.undo()) break;
       n++;
     } while (target && engine.current!.state().toMove !== target && engine.current!.state().ply > 0);
-    if (n > 0 || result) refresh(null);
+    turnStart.current = Date.now();
+    if (n > 0 || result) {
+      commit({ result: undefined, resultReason: undefined });
+      setCurrentGameId(entry.id);
+    }
   }
 
   async function askHint() {
-    if (!state || !settings) return;
+    if (!state || !entry) return;
     setHintLoading(true);
     const gen = generation.current;
     try {
-      const r = await analyst.current!.analyze(state.gameString, settings.rules.tournament, 1500);
+      const r = await analyst.current!.analyze(entry.rules, state.history, 1500);
       if (gen === generation.current) setHint(r);
     } catch (e) {
       setError(errorMessage(e));
@@ -192,16 +248,35 @@ function LocalGame() {
   }
 
   function resign() {
-    if (!engine.current || !state) return;
-    const loser: ColorCode = settings!.mode === "cpu" ? settings!.human : state.toMove;
-    const status = loser === "w" ? "BlackWins" : "WhiteWins";
+    if (!engine.current || !state || !entry) return;
+    const loser: ColorCode = entry.mode === "cpu" ? entry.human : state.toMove;
+    const status: GameResult = loser === "w" ? "BlackWins" : "WhiteWins";
     engine.current.setResult(status);
-    refresh({ status, reason: "resignation" });
+    commit({ result: status, resultReason: "resignation" });
   }
 
   function agreeDraw() {
     engine.current?.setResult("Draw");
-    refresh({ status: "Draw", reason: "agreement" });
+    commit({ result: "Draw", resultReason: "agreement" });
+  }
+
+  function rematch() {
+    if (!entry) return;
+    const t = Date.now();
+    const next: JournalEntry = {
+      ...entry,
+      id: newId(),
+      moves: [],
+      result: undefined,
+      resultReason: undefined,
+      clockLeft: undefined,
+      human: entry.mode === "cpu" ? (entry.human === "w" ? "b" : "w") : "w",
+      createdAt: t,
+      updatedAt: t,
+    };
+    saveLocal(next);
+    setCurrentGameId(next.id);
+    window.location.href = `/play?id=${next.id}`;
   }
 
   async function copyGame() {
@@ -210,52 +285,68 @@ function LocalGame() {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  const levelName = LEVELS.find((l) => l.id === settings.level)?.name;
-  const labels: Record<ColorCode, React.ReactNode> =
-    settings.mode === "cpu"
-      ? {
-          w: settings.human === "w" ? "You (White)" : `CPU · ${levelName} (White)`,
-          b: settings.human === "b" ? "You (Black)" : `CPU · ${levelName} (Black)`,
-        }
-      : { w: "White", b: "Black" };
+  const cpuPersona = entry.level ? persona(entry.level) : null;
+  const players: Record<ColorCode, PlayerInfo> = {
+    w: { name: "White" },
+    b: { name: "Black" },
+  };
+  for (const c of ["w", "b"] as ColorCode[]) {
+    if (entry.mode === "cpu" && cpuPersona) {
+      players[c] =
+        c === entry.human
+          ? { name: "You", sub: `${colorName(c)}${user ? "" : " · playing as guest"}` }
+          : { name: cpuPersona.name, sub: `${cpuPersona.title} · ${colorName(c)}`, bug: cpuPersona.bug, thinking: thinking && state.toMove === c };
+    } else {
+      players[c] = { name: colorName(c), sub: "Pass & play" };
+    }
+    if (timed) players[c].clock = <ClockFace ms={shown(c)} running={running && state.toMove === c} />;
+  }
 
+  const youWon = result && entry.mode === "cpu" && ((result === "WhiteWins" && entry.human === "w") || (result === "BlackWins" && entry.human === "b"));
   const status = result
-    ? `${resultText(result.status!)}${result.reason && result.reason !== "surround" ? ` (${result.reason})` : ""}`
+    ? `${resultText(result)} · ${REASON_TEXT[entry.resultReason ?? ""] ?? ""}`
     : thinking
-      ? `${colorName(state.toMove)} (CPU) is thinking…`
-      : `${colorName(state.toMove)} to move · turn ${state.turn}`;
+      ? `${cpuPersona?.name ?? "CPU"} is thinking…`
+      : state.mustPass
+        ? `${colorName(state.toMove)} has no legal move and must pass`
+        : `${entry.mode === "local" ? colorName(state.toMove) : state.toMove === entry.human ? "Your" : colorName(state.toMove)}${entry.mode === "local" || state.toMove !== entry.human ? " to move" : " move"} · turn ${state.turn}`;
 
-  const youWon = result && settings.mode === "cpu" && ((result.status === "WhiteWins" && settings.human === "w") || (result.status === "BlackWins" && settings.human === "b"));
+  const variants = describeVariants(entry.rules);
+  const overlay =
+    result && !overlayClosed ? (
+      <GameOverCard
+        tone={entry.mode === "cpu" ? (result === "Draw" ? "draw" : youWon ? "win" : "loss") : "neutral"}
+        title={entry.mode === "cpu" ? (result === "Draw" ? "A draw" : youWon ? "You win!" : `${cpuPersona?.name} wins`) : resultText(result)}
+        subtitle={REASON_TEXT[entry.resultReason ?? ""]}
+        detail={`${state.history.length} moves · ${entry.label}`}
+        onClose={() => setOverlayClosed(true)}
+        actions={
+          <>
+            <button className="btn" onClick={rematch}>
+              {entry.mode === "cpu" ? "Rematch, swap colours" : "Play again"}
+            </button>
+            <Link className="btn-secondary" href={`/replay?local=${entry.id}`}>
+              Review game
+            </Link>
+            <NewGameLink />
+          </>
+        }
+      />
+    ) : null;
 
   const sidebar = (
     <div className="space-y-3">
-      {error && <div className="rounded-lg bg-red-50 p-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</div>}
-      {result && (
-        <div className="card text-center">
-          <div className="text-lg font-bold">
-            {settings.mode === "cpu" ? (result.status === "Draw" ? "Draw" : youWon ? "You win! 🎉" : "The CPU wins") : resultText(result.status!)}
-          </div>
-          <div className="text-xs text-[var(--muted)]">
-            {result.reason === "surround" ? "Queen surrounded" : result.reason === "resignation" ? "By resignation" : result.reason === "agreement" ? "By agreement" : ""}
-          </div>
-          <div className="mt-3 flex justify-center gap-2">
-            <button
-              className="btn"
-              onClick={() => {
-                const next = settings.mode === "cpu" ? { ...settings, human: (settings.human === "w" ? "b" : "w") as ColorCode } : settings;
-                window.location.href = `/play?${settingsToQuery(next)}`;
-              }}
-            >
-              Rematch{settings.mode === "cpu" ? " (swap colours)" : ""}
-            </button>
-            <Link className="btn-secondary" href="/">
-              New game
-            </Link>
-          </div>
+      {error && <div className="note-error">{error}</div>}
+      <div className="card !p-3 text-sm">
+        <div className="font-display text-lg font-semibold">{entry.label}</div>
+        <div className="text-xs text-muted">
+          {expansionLabel(entry.rules)}
+          {variants.length ? ` · ${variants.join(" · ")}` : ""}
+          {entry.clock?.baseMs ? ` · ${entry.clock.baseMs / 60000} + ${entry.clock.incMs / 1000}s` : ""}
         </div>
-      )}
+      </div>
       {state.mustPass && humanCanMove && (
-        <div className="card text-sm">
+        <div className="note-warn">
           <p className="mb-2">{colorName(state.toMove)} has no legal moves and must pass.</p>
           <button className="btn w-full" onClick={() => play("pass")}>
             Pass
@@ -264,54 +355,55 @@ function LocalGame() {
       )}
       <div className="grid grid-cols-2 gap-2">
         <button className="btn-secondary" onClick={undo} disabled={state.ply === 0 && !result}>
-          ↶ Undo
+          ↶ Take back
         </button>
         <button className="btn-secondary" onClick={askHint} disabled={!humanCanMove || hintLoading}>
-          {hintLoading ? "Thinking…" : "💡 Hint"}
+          {hintLoading ? "Thinking…" : "✦ Hint"}
         </button>
         {!result && (
           <>
-            <button className="btn-secondary" onClick={resign} disabled={state.ply === 0}>
-              🏳 Resign
+            <button className="btn-secondary" onClick={() => confirm("Resign this game?") && resign()} disabled={state.ply === 0}>
+              ⚐ Resign
             </button>
-            {settings.mode === "local" ? (
+            {entry.mode === "local" ? (
               <button className="btn-secondary" onClick={agreeDraw} disabled={state.ply === 0}>
                 ½ Agree draw
               </button>
             ) : (
-              <span />
+              <button className="btn-secondary" onClick={() => setShowEval((v) => (localStorage.setItem("hive.eval", v ? "0" : "1"), !v))}>
+                {showEval ? "Hide eval" : "◐ Show eval"}
+              </button>
             )}
           </>
         )}
       </div>
       {hint && (
-        <div className="rounded-lg border border-purple-300 bg-purple-50 p-2 text-sm dark:border-purple-800 dark:bg-purple-950/40">
-          Suggested: <span className="font-mono font-semibold">{hint.best}</span>
-          <span className="block text-xs text-[var(--muted)]">
+        <div className="note-hint">
+          Suggested move: <span className="font-mono font-semibold">{hint.best}</span>
+          <span className="block text-xs text-muted">
             {hint.engine} · {hint.depth ? `depth ${hint.depth}` : `${hint.nodes} simulations`}
             {hint.pv.length > 1 ? ` · line: ${hint.pv.slice(0, 4).join(", ")}` : ""}
           </span>
         </div>
       )}
-      {state.repetitions >= 3 && !result && (
-        <p className="text-xs text-[var(--muted)]">This position has now occurred {state.repetitions} times. Hive has no automatic repetition rule; agree a draw if you&apos;re going in circles.</p>
+      {state.repetitions >= 3 && !result && !entry.rules.repetitionDraw && (
+        <p className="note-info text-xs">This position has occurred {state.repetitions} times. Hive has no automatic repetition rule; agree a draw if you&apos;re going in circles.</p>
       )}
-      <div className="flex flex-wrap gap-2 text-xs">
+      <p className="text-xs text-muted">Tip: click any piece, including your opponent&apos;s, to see where it can go. Coral dashed cells are where it could move on its next turn.</p>
+      <div className="flex flex-wrap gap-2">
         <button className="btn-ghost" onClick={copyGame}>
-          {copied ? "Copied!" : "Copy game notation"}
+          {copied ? "Copied!" : "Copy notation"}
         </button>
-        <label className="btn-ghost cursor-pointer gap-1">
-          <input
-            type="checkbox"
-            className="accent-amber-500"
-            checked={showEval}
-            onChange={(e) => {
-              setShowEval(e.target.checked);
-              localStorage.setItem("hive.eval", e.target.checked ? "1" : "0");
-            }}
-          />
-          Evaluation bar
-        </label>
+        {entry.mode === "local" && (
+          <button className="btn-ghost" onClick={() => setShowEval((v) => (localStorage.setItem("hive.eval", v ? "0" : "1"), !v))}>
+            {showEval ? "Hide eval" : "Show eval"}
+          </button>
+        )}
+        {result && (
+          <button className="btn-ghost" onClick={() => setOverlayClosed(false)}>
+            Show result
+          </button>
+        )}
       </div>
     </div>
   );
@@ -326,19 +418,21 @@ function LocalGame() {
       }}
       canMove={humanCanMove}
       onPlay={play}
-      labels={labels}
-      bottom={settings.mode === "cpu" ? settings.human : "w"}
+      getPreview={getPreview}
+      players={players}
+      bottom={entry.mode === "cpu" ? entry.human : "w"}
       hint={hint?.best ?? null}
       status={status}
       sidebar={sidebar}
-      analysis={showEval ? <EvalBar result={evalResult} loading={evalLoading} /> : null}
+      analysis={showEval && !result ? <EvalBar result={evalResult} loading={evalLoading} /> : null}
+      overlay={overlay}
     />
   );
 }
 
 export default function PlayPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-[var(--muted)]">Loading…</div>}>
+    <Suspense fallback={<div className="grid h-[60vh] place-items-center text-muted">Laying out the tiles…</div>}>
       <LocalGame />
     </Suspense>
   );

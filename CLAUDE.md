@@ -14,6 +14,10 @@
 - `cargo run --release --features native --bin arena -- hard medium 16 300` — CPU strength check
 - Rust may not be on PATH: `export PATH="$HOME/.cargo/bin:$PATH"`
 
+## Web app map
+- `src/app`: `/` start screen, `/play?id=` CPU & pass-and-play (games live in the journal, `src/lib/journal.ts`), `/online?g=`, `/replay`, `/journal`, `/learn` (field guide), `/puzzles` (`src/lib/puzzles.json`, made by `cargo run --release --example find_puzzles`), `/account`, `/player?u=`, `/leaderboard`.
+- Design tokens are CSS variables in `src/app/globals.css` (day + `[data-theme=dark]` night); use the Tailwind token classes (`bg-card`, `text-ink`, `border-line`...) rather than raw colours so both themes stay readable. Design rationale: `docs/DESIGN.md`.
+
 ## Conventions
 - Types crossing the WASM boundary are mirrored in `web/src/lib/engine-types.ts` — keep in sync with `engine/src/wasm.rs`.
 - NN input encoding lives only in `engine/src/features.rs`; Python reads encoded data, never encodes. Changing features requires retraining.

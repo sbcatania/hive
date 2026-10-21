@@ -3,6 +3,12 @@
 Play the board game [Hive](https://www.gen42.com/games/hive) in the browser: against CPU opponents, pass-and-play on one device, or online with a friend by sharing a link. The Mosquito, Ladybug and Pillbug expansions can each be switched on or off, and there are three board styles (clean 2D, classic tiles, 3D).
 
 ## Features
+- **Themed throughout**: a "field guide by day, night garden by night" design (see [docs/DESIGN.md](docs/DESIGN.md) for the ten directions considered and the critique rounds), with light and dark themes.
+- **Board styles**: Bakelite (glossy bevelled tiles), Field guide (ink on graph paper), Clean (flat, high contrast) and a 3D table with modelled tiles.
+- **Click any piece**: legal moves in green; an opponent's piece shows where it could go next turn (coral, dashed); stuck pieces explain why (One Hive, beetle on top, too tight to slide...).
+- **Variants** in an Advanced rules drawer: piece counts (Hive Lite), Queen deadline, capture on 5 sides, turn limit, threefold-repetition draws, plus chess clocks for local games.
+- **Accounts (optional)**: email + password via Supabase Auth. Guests keep a local journal; signed-in players get a cloud journal, an Elo rating from rated online games, a profile and the leaderboard.
+- **Puzzles** (win in 1 / win in 2, generated and verified by the engine) and a replay viewer for every saved game.
 - **Full rules** including all three expansions and the tournament opening rule (toggle). Move generation is verified against [Mzinga](https://github.com/jonthysell/Mzinga)'s reference tests (perft counts and complete legal-move sets from championship games).
 - **CPU levels**: Easy, Medium, Hard (alpha-beta search) and Expert (neural network + MCTS when a trained model is installed, otherwise a deeper search). All AI runs in your browser.
 - **Analysis**: hints, evaluation bar, undo/takeback, move list in Universal Hive Protocol notation, copy/paste game import/export.

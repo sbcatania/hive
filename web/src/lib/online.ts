@@ -1,21 +1,10 @@
 // Online games through Supabase: a public `games` row per game, realtime
 // updates, and token-checked RPCs for every write (see supabase/migrations).
-import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
-import { gameTypeString, type ColorCode, type GameStatus, type Rules } from "./engine-types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { gameTypeString, isStandardRules, normalizeRules, type ColorCode, type GameStatus, type Rules } from "./engine-types";
+import { sb, supabaseAvailable } from "./supabase";
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-export function onlineAvailable() {
-  return !!(URL && KEY);
-}
-
-let client: SupabaseClient | null = null;
-function sb() {
-  if (!URL || !KEY) throw new Error("Online play is not configured.");
-  if (!client) client = createClient(URL, KEY, { auth: { persistSession: false } });
-  return client;
-}
+export const onlineAvailable = supabaseAvailable;
 
 export const TIME_CONTROLS: { id: string; name: string; baseMs: number | null; incMs: number }[] = [
   { id: "none", name: "Untimed", baseMs: null, incMs: 0 },
@@ -45,9 +34,32 @@ export interface OnlineGame {
   draw_offer: ColorCode | null;
   takeback_request: ColorCode | null;
   rematch_id: string | null;
+  variant: Partial<Rules> | null;
+  rated: boolean;
+  white_player: string | null;
+  black_player: string | null;
+  white_rating: number | null;
+  black_rating: number | null;
+  white_delta: number | null;
+  black_delta: number | null;
 }
 
-export type Seat = ColorCode | "spectator";
+export type Seat = ColorCode | "spectator" | "login_required" | "same_account";
+
+export interface PlayerSummary {
+  id: string;
+  username: string;
+  rating: number;
+  rated_games: number;
+}
+
+/** Usernames and ratings for the given profile ids. */
+export async function fetchPlayers(ids: (string | null)[]): Promise<Record<string, PlayerSummary>> {
+  const list = [...new Set(ids.filter((x): x is string => !!x))];
+  if (!list.length) return {};
+  const { data } = await sb().from("profiles").select("id, username, rating, rated_games").in("id", list);
+  return Object.fromEntries(((data as PlayerSummary[]) ?? []).map((p) => [p.id, p]));
+}
 
 const TOKENS_KEY = "hive.online.tokens";
 
@@ -93,17 +105,19 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-export async function createOnlineGame(rules: Rules, color: ColorCode | "random", timeControl: string) {
+export async function createOnlineGame(rules: Rules, color: ColorCode | "random", timeControl: string, rated = false) {
   const c = color === "random" ? (Math.random() < 0.5 ? "w" : "b") : color;
   const tc = TIME_CONTROLS.find((t) => t.id === timeControl) ?? TIME_CONTROLS[0];
   const token = newToken();
-  const id = await rpc<string>("create_game", {
+  const id = await rpc<string>("new_game", {
     p_game_type: gameTypeString(rules),
     p_tournament: rules.tournament,
     p_color: c,
     p_token: token,
     p_base_ms: tc.baseMs,
     p_increment_ms: tc.incMs,
+    p_variant: isStandardRules(rules) ? null : rules,
+    p_rated: rated,
   });
   storeToken(id, token);
   return { id, color: c };
@@ -159,5 +173,17 @@ export function subscribeGame(id: string, onChange: (g: OnlineGame) => void, onS
 
 export function rulesFromRow(g: OnlineGame): Rules {
   const ext = g.game_type.split("+")[1] ?? "";
-  return { mosquito: ext.includes("M"), ladybug: ext.includes("L"), pillbug: ext.includes("P"), tournament: g.tournament };
+  return normalizeRules({ ...(g.variant ?? {}), mosquito: ext.includes("M"), ladybug: ext.includes("L"), pillbug: ext.includes("P"), tournament: g.tournament });
+}
+
+/** Online games involving a player, newest first. */
+export async function gamesForPlayer(id: string, limit = 50): Promise<OnlineGame[]> {
+  const { data, error } = await sb()
+    .from("games")
+    .select("*")
+    .or(`white_player.eq.${id},black_player.eq.${id}`)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return data as OnlineGame[];
 }

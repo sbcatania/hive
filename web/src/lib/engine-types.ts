@@ -9,6 +9,39 @@ export interface Rules {
   ladybug: boolean;
   pillbug: boolean;
   tournament: boolean;
+  /** Pieces per player of each bug in BUG_ORDER (variants may lower these). */
+  counts: number[];
+  queenDeadline: number;
+  surround: number;
+  turnLimit: number;
+  repetitionDraw: boolean;
+}
+
+export const BUG_ORDER: BugLetter[] = ["Q", "S", "B", "G", "A", "M", "L", "P"];
+export const STANDARD_COUNTS = [1, 2, 2, 3, 3, 1, 1, 1];
+
+export function standardRules(partial: Partial<Rules> = {}): Rules {
+  return {
+    mosquito: true,
+    ladybug: true,
+    pillbug: true,
+    tournament: true,
+    counts: [...STANDARD_COUNTS],
+    queenDeadline: 4,
+    surround: 6,
+    turnLimit: 0,
+    repetitionDraw: false,
+    ...partial,
+  };
+}
+
+/** Fills in fields missing from older saved settings. */
+export function normalizeRules(r: Partial<Rules>): Rules {
+  return standardRules(Object.fromEntries(Object.entries(r).filter(([, v]) => v !== undefined)) as Partial<Rules>);
+}
+
+export function isStandardRules(r: Rules) {
+  return r.counts.every((c, i) => c >= STANDARD_COUNTS[i]) && r.queenDeadline === 4 && r.surround === 6 && r.turnLimit === 0 && !r.repetitionDraw;
 }
 
 export interface PieceView {
@@ -51,6 +84,15 @@ export interface StateView {
   gameString: string;
   queenNeighbors: [number, number];
   repetitions: number;
+  endReason: "surround" | "repetition" | "turn-limit" | null;
+  standardRules: boolean;
+}
+
+export interface PreviewView {
+  /** True when these are legal moves right now; false = where it could go next turn. */
+  legal: boolean;
+  moves: MoveView[];
+  reason: string | null;
 }
 
 export interface AiResult {
@@ -76,12 +118,27 @@ export const BUG_NAMES: Record<BugLetter, string> = {
   P: "Pillbug",
 };
 
-export const LEVELS: { id: Level; name: string; blurb: string }[] = [
-  { id: "easy", name: "Easy", blurb: "Looks one move ahead and often picks a so-so move." },
-  { id: "medium", name: "Medium", blurb: "Looks two moves ahead with a little randomness." },
-  { id: "hard", name: "Hard", blurb: "Deep alpha-beta search, about 1.5 seconds per move." },
-  { id: "expert", name: "Expert", blurb: "Neural network + tree search when a trained model is installed; otherwise a longer, deeper search." },
+export interface Persona {
+  id: Level;
+  name: string;
+  bug: BugLetter;
+  title: string;
+  temperament: string;
+  /** Rough playing strength, shown on the card. */
+  strength: number;
+}
+
+/** CPU opponents. Each level is a named bug with a temperament. */
+export const LEVELS: Persona[] = [
+  { id: "easy", name: "Pip", bug: "P", title: "the Pillbug", temperament: "Rolls around cheerfully. Looks one move ahead and often misses danger.", strength: 1 },
+  { id: "medium", name: "Greta", bug: "G", title: "the Grasshopper", temperament: "Jumps at any chance she sees. Looks two moves ahead, a little impulsive.", strength: 2 },
+  { id: "hard", name: "Sable", bug: "S", title: "the Spider", temperament: "Patient and precise. Searches deeply for about a second and a half.", strength: 3 },
+  { id: "expert", name: "Regina", bug: "Q", title: "the Queen", temperament: "Ruthless. Her deepest search, or a trained neural network when one is installed.", strength: 4 },
 ];
+
+export function persona(level: Level) {
+  return LEVELS.find((l) => l.id === level) ?? LEVELS[1];
+}
 
 export function colorName(c: ColorCode) {
   return c === "w" ? "White" : "Black";

@@ -3,8 +3,8 @@
 import init, { HiveAi } from "@/wasm/hive_engine";
 
 type Request =
-  | { id: number; type: "choose"; gameString: string; tournament: boolean; level: string; timeMs: number }
-  | { id: number; type: "analyze"; gameString: string; tournament: boolean; timeMs: number }
+  | { id: number; type: "choose"; rules: unknown; moves: string[]; level: string; timeMs: number }
+  | { id: number; type: "analyze"; rules: unknown; moves: string[]; timeMs: number }
   | { id: number; type: "info" };
 
 let ai: HiveAi | null = null;
@@ -35,9 +35,9 @@ self.onmessage = async (ev: MessageEvent<Request>) => {
     if (!ai) throw new Error("AI failed to load");
     let result: unknown;
     if (req.type === "choose") {
-      result = ai.choose(req.gameString, req.tournament, req.level, req.timeMs);
+      result = ai.choose(req.rules, req.moves.join(";"), req.level, req.timeMs);
     } else if (req.type === "analyze") {
-      result = ai.analyze(req.gameString, req.tournament, req.timeMs);
+      result = ai.analyze(req.rules, req.moves.join(";"), req.timeMs);
     } else {
       result = { network: networkName };
     }

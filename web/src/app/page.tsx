@@ -3,49 +3,109 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BugGlyph, hexPoints } from "@/components/BugGlyph";
+import { Avatar } from "@/components/Nameplate";
+import { BugGlyph } from "@/components/BugGlyph";
+import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
+import { TitleHive } from "@/components/TitleHive";
+import { useAuth } from "@/lib/auth";
 import { Engine, errorMessage, loadEngine } from "@/lib/engine";
-import { BUG_NAMES, LEVELS, type BugLetter, type ColorCode, type Level, type Rules } from "@/lib/engine-types";
+import { isStandardRules, LEVELS, normalizeRules, persona, standardRules, type BugLetter, type ColorCode, type Level, type Rules } from "@/lib/engine-types";
+import { listLocal, migrateLegacySave, newId, resultLabel, resumable, saveLocal, setCurrentGameId, type JournalEntry } from "@/lib/journal";
 import { createOnlineGame, onlineAvailable, TIME_CONTROLS } from "@/lib/online";
-import { DEFAULT_RULES, loadSavedGame, loadSetupPrefs, saveGame, saveSetupPrefs, settingsToQuery, type LocalMode } from "@/lib/settings";
-import { TILE } from "@/lib/themes";
+import { LOCAL_CLOCKS, loadSetupPrefs, saveSetupPrefs } from "@/lib/settings";
+import { roundedHexPath, TILE } from "@/lib/themes";
+import { describeVariants, expansionLabel } from "@/lib/variants";
 
-type Mode = LocalMode | "online";
+type Mode = "cpu" | "local" | "online";
 
 interface Prefs {
   mode: Mode;
   rules: Rules;
   level: Level;
   color: ColorCode | "random";
-  timeControl: string;
+  localClock: string;
+  onlineClock: string;
+  rated: boolean;
 }
 
-const DEFAULT_PREFS: Prefs = { mode: "cpu", rules: DEFAULT_RULES, level: "medium", color: "w", timeControl: "none" };
+const DEFAULT_PREFS: Prefs = { mode: "cpu", rules: standardRules(), level: "medium", color: "w", localClock: "none", onlineClock: "none", rated: false };
 
-function Tile({ bug, color = "w", size = 44 }: { bug: BugLetter; color?: ColorCode; size?: number }) {
-  const t = TILE[color];
+const MODES: { id: Mode; bug: BugLetter; title: string; latin: string; text: string }[] = [
+  { id: "cpu", bug: "S", title: "Play the computer", latin: "Arachne computatrix", text: "Four bug opponents, from cheerful beginner to ruthless Queen." },
+  { id: "local", bug: "L", title: "Pass & play", latin: "Coccinella amicorum", text: "Two players, one screen. Hand the device across the table." },
+  { id: "online", bug: "Q", title: "Play a friend online", latin: "Apis distantia", text: "Send a link. Clocks, takebacks, spectators and rated games." },
+];
+
+function ModeCard({ m, active, onClick, i }: { m: (typeof MODES)[number]; active: boolean; onClick: () => void; i: number }) {
+  const t = TILE[i === 1 ? "b" : "w"];
   return (
-    <svg viewBox="-50 -50 100 100" width={size} height={size}>
-      <polygon points={hexPoints(0, 0, 46)} fill={t.fill} stroke={t.edge} strokeWidth={3} />
-      <g transform="translate(-28 -28) scale(0.56)">
-        <BugGlyph bug={bug} ink={t.ink} />
-      </g>
-    </svg>
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`hex-card rise group flex flex-col items-start gap-3 p-5 text-left transition ${active ? "!border-accent !bg-accent-soft/50" : "hover:-translate-y-0.5"}`}
+      style={{ animationDelay: `${300 + i * 90}ms` }}
+    >
+      <div className="flex w-full items-start justify-between">
+        <svg viewBox="-50 -50 100 100" className="h-16 w-16 transition group-hover:rotate-6" aria-hidden>
+          <path d={roundedHexPath(0, 5, 46, 0.2)} fill={t.side} />
+          <path d={roundedHexPath(0, 0, 46, 0.2)} fill={t.fill} stroke={i === 1 ? "var(--tile-black-rim)" : t.edge} strokeWidth={3} />
+          <g transform="translate(-31 -31) scale(0.62)">
+            <BugGlyph bug={m.bug} ink={t.ink} />
+          </g>
+        </svg>
+        <span className={active ? "rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold tracking-wide text-accent-ink uppercase" : "specimen-label"}>{active ? "Selected" : `No. ${i + 1}`}</span>
+      </div>
+      <div>
+        <div className="font-display text-xl font-semibold">{m.title}</div>
+        <div className="specimen-label mt-0.5 italic">{m.latin}</div>
+        <p className="mt-2 text-sm text-ink-soft">{m.text}</p>
+      </div>
+    </button>
+  );
+}
+
+function PersonaCard({ level, active, onClick }: { level: Level; active: boolean; onClick: () => void }) {
+  const p = persona(level);
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex gap-3 rounded-2xl border p-3 text-left transition ${active ? "border-accent bg-accent-soft/40 ring-2 ring-accent/30" : "border-line bg-card hover:border-line-strong"}`}
+    >
+      <Avatar bug={p.bug} color={level === "hard" || level === "medium" ? "b" : "w"} size={46} />
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-display text-lg font-semibold">{p.name}</span>
+          <span className="text-xs text-muted">{p.title}</span>
+        </div>
+        <div className="mt-0.5 flex items-center gap-1" aria-label={`Strength ${p.strength} of 4`}>
+          {[1, 2, 3, 4].map((n) => (
+            <span key={n} className={`h-1.5 w-5 rounded-full ${n <= p.strength ? "bg-accent" : "bg-line"}`} />
+          ))}
+          <span className="ml-1 text-[11px] font-semibold tracking-wide text-muted uppercase">{level}</span>
+        </div>
+        <p className="mt-1 text-xs text-ink-soft">{p.temperament}</p>
+      </div>
+    </button>
   );
 }
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
-  const [hasSaved, setHasSaved] = useState(false);
+  const [resume, setResume] = useState<JournalEntry | null>(null);
+  const [recent, setRecent] = useState<JournalEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
 
   useEffect(() => {
-    setPrefs(loadSetupPrefs(DEFAULT_PREFS));
-    const saved = loadSavedGame();
-    setHasSaved(!!saved && saved.moves.length > 0 && !saved.result);
+    migrateLegacySave();
+    const p = loadSetupPrefs(DEFAULT_PREFS);
+    setPrefs({ ...p, rules: normalizeRules(p.rules) });
+    setResume(resumable());
+    setRecent(listLocal().filter((e) => e.result).slice(0, 3));
   }, []);
 
   function update(p: Partial<Prefs>) {
@@ -53,14 +113,17 @@ export default function Home() {
     setPrefs(next);
     saveSetupPrefs(next);
   }
-  const setRule = (k: keyof Rules, v: boolean) => update({ rules: { ...prefs.rules, [k]: v } });
+
+  const variant = !isStandardRules(prefs.rules);
+  const ratedAllowed = !!user && !variant;
 
   async function start() {
     setError(null);
+    const color: ColorCode = prefs.color === "random" ? (Math.random() < 0.5 ? "w" : "b") : prefs.color;
     if (prefs.mode === "online") {
       setBusy(true);
       try {
-        const { id } = await createOnlineGame(prefs.rules, prefs.color, prefs.timeControl);
+        const { id } = await createOnlineGame(prefs.rules, color, prefs.onlineClock, prefs.rated && ratedAllowed);
         router.push(`/online?g=${id}`);
       } catch (e) {
         setError(errorMessage(e));
@@ -68,184 +131,210 @@ export default function Home() {
       }
       return;
     }
-    const color = prefs.color === "random" ? (Math.random() < 0.5 ? "w" : "b") : prefs.color;
-    const q = settingsToQuery({ mode: prefs.mode, rules: prefs.rules, level: prefs.level, human: color });
-    router.push(`/play?${q}`);
+    const clock = LOCAL_CLOCKS.find((c) => c.id === prefs.localClock) ?? LOCAL_CLOCKS[0];
+    const now = Date.now();
+    const p = persona(prefs.level);
+    const entry: JournalEntry = {
+      id: newId(),
+      mode: prefs.mode,
+      rules: prefs.rules,
+      moves: [],
+      label: prefs.mode === "cpu" ? `vs ${p.name} ${p.title}` : "Pass & play",
+      human: prefs.mode === "cpu" ? color : "w",
+      level: prefs.mode === "cpu" ? prefs.level : undefined,
+      clock: clock.baseMs ? { baseMs: clock.baseMs, incMs: clock.incMs } : undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    saveLocal(entry);
+    setCurrentGameId(entry.id);
+    router.push(`/play?id=${entry.id}`);
   }
 
   async function importGame() {
     setError(null);
     try {
       await loadEngine();
-      const text = importText.trim();
-      const e = Engine.fromGameString(text, prefs.rules.tournament);
+      const e = Engine.fromGameString(importText.trim(), prefs.rules.tournament);
       const s = e.state();
       e.free();
-      saveGame({
-        settings: { mode: "local", rules: { ...s.rules, tournament: prefs.rules.tournament }, level: prefs.level, human: "w" },
-        moves: s.history,
-      });
-      router.push("/play?resume=1");
+      const now = Date.now();
+      const entry: JournalEntry = { id: newId(), mode: "local", rules: normalizeRules({ ...s.rules, tournament: prefs.rules.tournament }), moves: s.history, label: "Imported game", human: "w", createdAt: now, updatedAt: now };
+      saveLocal(entry);
+      setCurrentGameId(entry.id);
+      router.push(`/play?id=${entry.id}`);
     } catch (e) {
       setError("Couldn't load that game: " + errorMessage(e));
     }
   }
 
-  const expansions: { key: "mosquito" | "ladybug" | "pillbug"; bug: BugLetter; text: string }[] = [
-    { key: "mosquito", bug: "M", text: "Copies the movement of any piece it touches." },
-    { key: "ladybug", bug: "L", text: "Two steps over the top of the hive, then one down." },
-    { key: "pillbug", bug: "P", text: "Can lift an adjacent piece over itself to another side." },
-  ];
-
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <section className="mb-8 flex flex-col items-start gap-6 md:flex-row md:items-center">
-        <div className="flex-1">
-          <h1 className="text-4xl font-bold tracking-tight">Hive</h1>
-          <p className="mt-2 max-w-xl text-[var(--muted)]">
-            The bug-themed strategy game with no board. Surround your opponent&apos;s Queen Bee before they surround yours. Play against the
-            computer, pass-and-play on one device, or send a friend a link.
+    <div className="mx-auto max-w-6xl px-4 pb-16">
+      {/* Title moment */}
+      <section className="grid items-center gap-6 pt-8 pb-6 md:grid-cols-[1.1fr_1fr] md:pt-14">
+        <div className="rise">
+          <div className="specimen-label">A field guide to the board game</div>
+          <h1 className="font-display mt-1 text-6xl leading-[0.95] font-semibold tracking-tight sm:text-7xl">
+            Hive<span className="text-accent">.</span>
+          </h1>
+          <p className="mt-4 max-w-md text-lg text-ink-soft">
+            No board, no luck, just bugs. Surround your opponent&apos;s Queen Bee before they surround yours.
           </p>
-          <div className="mt-4 flex gap-3">
-            {hasSaved && (
-              <Link className="btn-secondary" href="/play?resume=1">
-                Resume last game
+          <div className="mt-5 flex flex-wrap gap-2">
+            {resume && (
+              <Link href={`/play?id=${resume.id}`} className="btn">
+                Continue: {resume.label} · move {resume.moves.length + 1}
               </Link>
             )}
-            <Link className="btn-secondary" href="/rules">
-              Learn the rules
+            <Link href="/learn" className="btn-secondary">
+              New to Hive? Read the field guide
+            </Link>
+            <Link href="/puzzles" className="btn-secondary">
+              Try a puzzle
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-1">
-          {(["Q", "A", "G", "S", "B", "M", "L", "P"] as BugLetter[]).map((b, i) => (
-            <Tile key={b} bug={b} color={i % 2 ? "b" : "w"} size={56} />
-          ))}
-        </div>
+        <TitleHive className="mx-auto w-full max-w-[240px] drop-shadow-sm sm:max-w-sm md:max-w-md" />
       </section>
 
-      <section className="card space-y-6">
-        <div>
-          <span className="label">Opponent</span>
-          <div className="seg">
-            {(
-              [
-                ["cpu", "Computer"],
-                ["local", "Pass & play"],
-                ["online", "Online friend"],
-              ] as [Mode, string][]
-            ).map(([m, name]) => (
-              <button key={m} aria-pressed={prefs.mode === m} onClick={() => update({ mode: m })}>
-                {name}
-              </button>
-            ))}
+      {/* Modes */}
+      <section className="grid gap-3 md:grid-cols-3">
+        {MODES.map((m, i) => (
+          <ModeCard key={m.id} m={m} i={i} active={prefs.mode === m.id} onClick={() => update({ mode: m.id })} />
+        ))}
+      </section>
+
+      {/* Setup sheet */}
+      <section className="card rise mt-4 space-y-6 !p-5 sm:!p-6" key={prefs.mode}>
+        {prefs.mode === "cpu" && (
+          <div>
+            <span className="label">Choose your opponent</span>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {LEVELS.map((l) => (
+                <PersonaCard key={l.id} level={l.id} active={prefs.level === l.id} onClick={() => update({ level: l.id })} />
+              ))}
+            </div>
           </div>
-          {prefs.mode === "online" && !onlineAvailable() && (
-            <p className="mt-2 text-sm text-red-600">Online play isn&apos;t configured on this deployment (missing Supabase settings).</p>
+        )}
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          {prefs.mode !== "local" && (
+            <div>
+              <span className="label">You play</span>
+              <div className="seg">
+                {(
+                  [
+                    ["w", "White · moves first"],
+                    ["b", "Black"],
+                    ["random", "Random"],
+                  ] as [Prefs["color"], string][]
+                ).map(([c, name]) => (
+                  <button key={c} aria-pressed={prefs.color === c} onClick={() => update({ color: c })}>
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <span className="label">Clock</span>
+            <div className="seg">
+              {(prefs.mode === "online" ? TIME_CONTROLS : LOCAL_CLOCKS).map((tc) => {
+                const key = prefs.mode === "online" ? "onlineClock" : "localClock";
+                return (
+                  <button key={tc.id} aria-pressed={prefs[key] === tc.id} onClick={() => update({ [key]: tc.id } as Partial<Prefs>)}>
+                    {tc.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {prefs.mode === "online" && (
+            <div className="sm:col-span-2">
+              <span className="label">Rating</span>
+              <label className={`flex items-start gap-3 text-sm ${ratedAllowed ? "" : "opacity-60"}`}>
+                <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--accent)]" disabled={!ratedAllowed} checked={prefs.rated && ratedAllowed} onChange={(e) => update({ rated: e.target.checked })} />
+                <span>
+                  <span className="font-medium">Rated game</span>
+                  <span className="block text-xs text-muted">
+                    {!user ? (
+                      <>
+                        <Link href="/account" className="underline">
+                          Sign in
+                        </Link>{" "}
+                        to play rated games. Both players need an account; ratings use Elo, starting at 1200.
+                      </>
+                    ) : variant ? (
+                      "Rated games use the official rules. Reset the advanced rules to enable rating."
+                    ) : (
+                      "Both players need an account. Win to gain Elo; your opponent must be signed in to join."
+                    )}
+                  </span>
+                </span>
+              </label>
+            </div>
           )}
         </div>
 
-        {prefs.mode === "cpu" && (
-          <div>
-            <span className="label">Difficulty</span>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {LEVELS.map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => update({ level: l.id })}
-                  className={`rounded-lg border p-3 text-left text-sm transition ${prefs.level === l.id ? "border-amber-500 bg-amber-50 ring-2 ring-amber-500/30 dark:bg-amber-950/30" : "border-[var(--line)] hover:border-amber-300"}`}
-                >
-                  <div className="font-semibold">{l.name}</div>
-                  <div className="mt-0.5 text-xs text-[var(--muted)]">{l.blurb}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {prefs.mode !== "local" && (
-          <div>
-            <span className="label">You play</span>
-            <div className="seg">
-              {(
-                [
-                  ["w", "White (moves first)"],
-                  ["b", "Black"],
-                  ["random", "Random"],
-                ] as [Prefs["color"], string][]
-              ).map(([c, name]) => (
-                <button key={c} aria-pressed={prefs.color === c} onClick={() => update({ color: c })}>
-                  {name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {prefs.mode === "online" && (
-          <div>
-            <span className="label">Time control</span>
-            <div className="seg">
-              {TIME_CONTROLS.map((tc) => (
-                <button key={tc.id} aria-pressed={prefs.timeControl === tc.id} onClick={() => update({ timeControl: tc.id })}>
-                  {tc.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div>
-          <span className="label">Expansion pieces</span>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {expansions.map((x) => (
-              <label
-                key={x.key}
-                className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition ${prefs.rules[x.key] ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30" : "border-[var(--line)] opacity-70"}`}
-              >
-                <input type="checkbox" className="h-4 w-4 accent-amber-500" checked={prefs.rules[x.key]} onChange={(e) => setRule(x.key, e.target.checked)} />
-                <Tile bug={x.bug} size={40} />
-                <div>
-                  <div className="font-semibold">{BUG_NAMES[x.bug]}</div>
-                  <div className="text-xs text-[var(--muted)]">{x.text}</div>
-                </div>
-              </label>
-            ))}
-          </div>
+          <span className="label">Expansion pieces · {expansionLabel(prefs.rules)}</span>
+          <ExpansionToggles rules={prefs.rules} onChange={(rules) => update({ rules })} />
         </div>
 
-        <div>
-          <span className="label">Opening rule</span>
-          <label className="flex cursor-pointer items-start gap-3 text-sm">
-            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-amber-500" checked={prefs.rules.tournament} onChange={(e) => setRule("tournament", e.target.checked)} />
-            <span>
-              <span className="font-medium">Tournament opening</span>
-              <span className="block text-xs text-[var(--muted)]">Neither player may place their Queen Bee on their first turn. Recommended; it prevents some drawish openings.</span>
-            </span>
-          </label>
-        </div>
+        <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button className="btn w-full py-3 text-base" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
-          {busy ? "Creating game…" : prefs.mode === "online" ? "Create game & get link" : "Start game"}
-        </button>
+        {prefs.mode === "online" && !onlineAvailable() && <p className="note-error">Online play isn&apos;t configured on this deployment.</p>}
+        {error && <p className="note-error">{error}</p>}
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs text-muted">
+            {prefs.mode === "cpu" ? `${persona(prefs.level).name} plays ${prefs.color === "w" ? "Black" : prefs.color === "b" ? "White" : "the other colour"}.` : prefs.mode === "local" ? "White moves first. Pass the device after each turn." : "You'll get a link to share."}
+          </div>
+          <button className="btn px-8 py-3 text-base" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
+            {busy ? "Creating game…" : prefs.mode === "online" ? "Create game & get link" : prefs.mode === "cpu" ? `Challenge ${persona(prefs.level).name}` : "Start game"}
+          </button>
+        </div>
       </section>
 
-      <details className="card mt-6">
-        <summary className="cursor-pointer text-sm font-medium">Load a game from notation</summary>
-        <p className="mt-2 text-xs text-[var(--muted)]">
-          Paste a game string in Universal Hive Protocol format, e.g. <code>Base+MLP;InProgress;White[2];wA1;bG1 -wA1</code>. It opens as a pass-and-play game you can continue or study.
-        </p>
-        <textarea
-          className="mt-2 h-24 w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] p-2 font-mono text-xs"
-          value={importText}
-          onChange={(e) => setImportText(e.target.value)}
-          placeholder="Base+MLP;InProgress;White[3];wS1;bS1 wS1-;..."
-        />
-        <button className="btn-secondary mt-2" onClick={importGame} disabled={!importText.trim()}>
-          Load game
-        </button>
-      </details>
+      {/* Below the fold */}
+      <section className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <span className="label mb-0">From your journal</span>
+            <Link href="/journal" className="text-xs text-muted underline">
+              All games
+            </Link>
+          </div>
+          {recent.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">Finished games appear here, ready to replay. {user ? "They're saved to your account." : "They're saved in this browser; sign in to keep them across devices."}</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-line">
+              {recent.map((e) => (
+                <li key={e.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{e.label}</div>
+                    <div className="text-xs text-muted">
+                      {resultLabel(e)} · {e.moves.length} moves
+                    </div>
+                  </div>
+                  <Link href={`/replay?local=${e.id}`} className="btn-ghost">
+                    Replay
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <details className="card">
+          <summary className="cursor-pointer text-sm font-semibold">Load a game from notation</summary>
+          <p className="mt-2 text-xs text-muted">
+            Paste a Universal Hive Protocol game string, e.g. <code className="font-mono">Base+MLP;InProgress;White[2];wA1;bG1 -wA1</code>. It opens as a pass-and-play game.
+          </p>
+          <textarea className="input mt-2 h-24 font-mono text-xs" value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Base+MLP;InProgress;White[3];wS1;bS1 wS1-;..." />
+          <button className="btn-secondary mt-2" onClick={importGame} disabled={!importText.trim()}>
+            Load game
+          </button>
+        </details>
+      </section>
     </div>
   );
 }
