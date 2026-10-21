@@ -26,7 +26,7 @@ export function MoveList({ history, current, onSelect }: { history: string[]; cu
     );
   };
   return (
-    <div ref={ref} className="max-h-64 overflow-y-auto rounded-xl border border-line bg-card font-mono text-xs">
+    <div ref={ref} className="max-h-64 overflow-y-auto sk border border-line bg-card font-mono text-xs">
       {rows.length === 0 ? (
         <div className="p-3 font-sans text-muted italic">No moves yet. The first piece is waiting to be played.</div>
       ) : (

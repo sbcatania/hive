@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { HiveMark } from "./HiveMark";
+import { Icon } from "./Icon";
+import { Avatar } from "./Nameplate";
 import { useAuth } from "@/lib/auth";
 import { applyThemeMode, loadThemeMode, type ThemeMode } from "@/lib/theme-mode";
 
@@ -28,7 +30,7 @@ function ThemeToggle() {
   const label = { system: "Theme: follows your device", light: "Theme: day", dark: "Theme: night" }[mode];
   return (
     <button
-      className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-card text-ink-soft transition hover:text-ink"
+      className="icon-btn !h-10 !w-10"
       title={label}
       aria-label={label}
       onClick={() => {
@@ -37,24 +39,7 @@ function ThemeToggle() {
         applyThemeMode(m);
       }}
     >
-      {mode === "light" ? (
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <circle cx="12" cy="12" r="4.5" />
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
-            <line key={a} x1="12" y1="2.5" x2="12" y2="5" transform={`rotate(${a} 12 12)`} strokeLinecap="round" />
-          ))}
-        </svg>
-      ) : mode === "dark" ? (
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" strokeLinejoin="round" />
-          <circle cx="17" cy="6" r="1" fill="currentColor" />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" />
-        </svg>
-      )}
+      <Icon name={mode === "light" ? "sun" : mode === "dark" ? "moon" : "auto"} />
     </button>
   );
 }
@@ -64,14 +49,14 @@ function AccountChip() {
   if (loading) return <div className="h-9 w-20" />;
   if (!user) {
     return (
-      <Link href="/account" className="btn-secondary h-9 px-3 py-0">
+      <Link href="/account" className="btn-secondary !min-h-10 !px-3 !py-0">
         Sign in
       </Link>
     );
   }
   return (
-    <Link href="/account" className="flex h-9 items-center gap-2 rounded-xl border border-line bg-card px-2.5 text-sm hover:bg-card-2" title="Your account">
-      <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-xs font-bold text-accent-ink">{(profile?.username ?? "?").slice(0, 1).toUpperCase()}</span>
+    <Link href="/account" className="sk flex h-10 items-center gap-2 border-[1.6px] border-line-strong bg-card px-2 text-sm hover:bg-card-2" title="Your account">
+      <Avatar color="w" initial={(profile?.username ?? "?").slice(0, 1).toUpperCase()} size={26} />
       <span className="hidden max-w-28 truncate font-medium sm:inline">{profile?.username ?? "Account"}</span>
       {profile && profile.rated_games > 0 && <span className="font-mono text-xs text-muted">{profile.rating}</span>}
     </Link>
@@ -84,7 +69,7 @@ export function SiteHeader() {
   useEffect(() => setOpen(false), [path]);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b-[1.5px] border-dashed border-line-strong bg-paper/90 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-4">
         <Link href="/" className="flex items-center gap-2" aria-label="Hive home">
           <HiveMark className="h-8 w-8" />
@@ -95,7 +80,7 @@ export function SiteHeader() {
             <Link
               key={n.href}
               href={n.href}
-              className={`rounded-lg px-3 py-1.5 text-sm transition ${active(n.href) ? "bg-card font-semibold text-ink shadow-sm ring-1 ring-line" : "text-ink-soft hover:text-ink"}`}
+              className={`px-2.5 py-1.5 text-[0.95rem] transition ${active(n.href) ? "scribble font-bold text-ink" : "text-ink-soft hover:text-ink"}`}
             >
               {n.label}
             </Link>
@@ -104,17 +89,15 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
           <AccountChip />
-          <button className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-card md:hidden" aria-label="Menu" onClick={() => setOpen((o) => !o)}>
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
-            </svg>
+          <button className="icon-btn !h-10 !w-10 md:hidden" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            <Icon name={open ? "close" : "menu"} />
           </button>
         </div>
       </div>
       {open && (
         <nav className="grid gap-1 border-t border-line bg-paper px-3 py-2 md:hidden">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className={`rounded-lg px-3 py-2 ${active(n.href) ? "bg-card font-semibold" : "text-ink-soft"}`}>
+            <Link key={n.href} href={n.href} className={`flex min-h-11 items-center px-3 text-lg ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}>
               {n.label}
             </Link>
           ))}

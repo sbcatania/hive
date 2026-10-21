@@ -162,7 +162,7 @@ export default function LearnPage() {
           <ol className="sticky top-20 space-y-1 text-sm">
             {CHAPTERS.map(([id, t], i) => (
               <li key={id}>
-                <a href={`#${id}`} className="flex gap-2 rounded-lg px-2 py-1 text-ink-soft hover:bg-card hover:text-ink">
+                <a href={`#${id}`} className="flex gap-2 sk px-2 py-1 text-ink-soft hover:bg-card hover:text-ink">
                   <span className="w-6 text-right font-display text-accent">{i + 1}.</span>
                   {t}
                 </a>
@@ -258,7 +258,7 @@ export default function LearnPage() {
             <div className="space-y-10">
               {SPECIMENS.map((s) => (
                 <div key={s.bug} className="grid gap-5 md:grid-cols-[1fr_1.1fr]">
-                  <div className="hex-card space-y-3 p-5">
+                  <div className="sketch space-y-3 p-5">
                     <div className="flex items-start gap-4">
                       <Plate bug={s.bug} />
                       <div>
@@ -271,7 +271,7 @@ export default function LearnPage() {
                       <div className="label mb-1">Movement</div>
                       <p className="text-sm">{s.movement}</p>
                     </div>
-                    <div className="rounded-xl border border-dashed border-line-strong bg-paper-2/60 p-3 text-sm">
+                    <div className="sk border border-dashed border-line-strong bg-paper-2/60 p-3 text-sm">
                       <span className="font-display font-semibold italic">Field note. </span>
                       {s.note}
                     </div>
@@ -289,7 +289,7 @@ export default function LearnPage() {
                 ["Stacks", "Only the top piece of a stack can move. A Beetle's stack counts as the Beetle's colour for placing. Stacks also block sliding at height: two tall stacks form a gate."],
                 ["Passing", "If you have no legal move or placement at all, you must pass. You can't pass otherwise."],
                 ["Draws", "Both Queens surrounded at once, or by agreement. Endless shuffling isn't an automatic draw in the official rules (there's a variant for that)."],
-                ["Click any piece", "On this site, clicking an opponent's piece shows where it could go on their next turn (coral). A piece that can't move tells you why."],
+                ["Click any piece", "On this site, clicking an opponent's piece shows where it could go on their next turn (dashed red ink). A piece that can't move tells you why."],
                 ["Hints", "Stuck? The Hint button asks the engine for a suggestion in CPU and pass-and-play games."],
               ].map(([k, v]) => (
                 <div key={k} className="card">
@@ -313,7 +313,7 @@ export default function LearnPage() {
                 ["Repetition draw", "A position occurring for the third time ends the game in a draw."],
                 ["Custom counts", "Set how many of each bug both players get."],
               ].map(([k, v]) => (
-                <div key={k} className="rounded-2xl border border-line bg-card p-4">
+                <div key={k} className="sk-lg border border-line bg-card p-4">
                   <div className="font-semibold">{k}</div>
                   <p className="mt-1 text-sm text-ink-soft">{v}</p>
                 </div>
@@ -331,7 +331,7 @@ export default function LearnPage() {
             </p>
           </Chapter>
 
-          <div className="hex-card flex flex-col items-center gap-3 p-8 text-center">
+          <div className="sketch flex flex-col items-center gap-3 p-8 text-center">
             <div className="font-display text-3xl font-semibold">Ready for the wild?</div>
             <p className="text-ink-soft">Test yourself on puzzles, or start with Pip the Pillbug, the gentlest opponent in the garden.</p>
             <div className="flex flex-wrap justify-center gap-2">

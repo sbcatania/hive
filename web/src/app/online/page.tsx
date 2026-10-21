@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClockFace, GameOverCard, NewGameLink } from "@/components/GameBits";
-import { GameView, type PlayerInfo } from "@/components/GameView";
+import { Icon } from "@/components/Icon";
+import { GameView, type GameAction, type PlayerInfo } from "@/components/GameView";
 import { useAuth } from "@/lib/auth";
 import { engineFromMoves, errorMessage, loadEngine, withEngine } from "@/lib/engine";
 import { colorName, resultText, type ColorCode, type StateView } from "@/lib/engine-types";
@@ -250,7 +251,7 @@ function OnlineGameView() {
             <span>
               Rated game ·{" "}
               {myDelta !== null ? (
-                <b className={myDelta >= 0 ? "text-leaf" : "text-danger"}>
+                <b className={myDelta >= 0 ? "text-move" : "text-danger"}>
                   {myDelta >= 0 ? "+" : ""}
                   {myDelta} Elo
                 </b>
@@ -295,7 +296,7 @@ function OnlineGameView() {
         <div className="flex items-center justify-between">
           <div className="font-display text-lg font-semibold">{row.rated ? "Rated game" : "Friendly game"}</div>
           <span className="flex items-center gap-1.5 text-xs text-muted">
-            <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-leaf" : "bg-accent"}`} />
+            <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-move" : "bg-accent"}`} />
             {connected ? "Live" : "Reconnecting"}
           </span>
         </div>
@@ -322,6 +323,7 @@ function OnlineGameView() {
           <div className="flex gap-2">
             <input readOnly value={link} className="input min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.target.select()} />
             <button className="btn shrink-0" onClick={() => copy(link, "invite")}>
+              <Icon name={copied === "invite" ? "check" : "copy"} size={17} />
               {copied === "invite" ? "Copied" : "Copy"}
             </button>
           </div>
@@ -363,28 +365,16 @@ function OnlineGameView() {
         </button>
       )}
 
-      {row.status === "active" && playing && (
-        <div className="grid grid-cols-2 gap-2">
-          <button className="btn-secondary" disabled={busy || row.takeback_request === seat || row.moves.length < (seat === "w" ? 1 : 2)} onClick={() => act(() => requestTakeback(row.id))}>
-            {row.takeback_request === seat ? "Asked…" : "↶ Ask takeback"}
-          </button>
-          <button className="btn-secondary" disabled={busy || row.draw_offer === seat} onClick={() => act(() => offerDraw(row.id))}>
-            {row.draw_offer === seat ? "Draw offered…" : "½ Offer draw"}
-          </button>
-          <button className="btn-secondary col-span-2" disabled={busy} onClick={() => confirm("Resign this game?") && act(() => resign(row.id))}>
-            ⚐ Resign
-          </button>
-        </div>
-      )}
-
       <div className="flex flex-wrap gap-2">
         {playing && row.status !== "waiting" && (
           <button className="btn-ghost" onClick={() => copy(link, "spectate")}>
+            <Icon name={copied === "spectate" ? "check" : "eye"} size={16} />
             {copied === "spectate" ? "Copied" : "Copy spectator link"}
           </button>
         )}
         {row.status === "finished" && (
           <button className="btn-ghost" onClick={() => setOverlayClosed(false)}>
+            <Icon name="eye" size={16} />
             Show result
           </button>
         )}
@@ -397,8 +387,27 @@ function OnlineGameView() {
     </div>
   );
 
+  const active = row.status === "active" && playing;
+  const actions: GameAction[] = active
+    ? [
+        {
+          id: "takeback",
+          icon: "undo",
+          label: row.takeback_request === seat ? "Asked…" : "Ask takeback",
+          short: "Takeback",
+          onClick: () => act(() => requestTakeback(row.id)),
+          disabled: busy || row.takeback_request === seat || row.moves.length < (seat === "w" ? 1 : 2),
+          active: row.takeback_request === seat,
+        },
+        { id: "draw", icon: "draw", label: row.draw_offer === seat ? "Draw offered…" : "Offer draw", short: "Draw", onClick: () => act(() => offerDraw(row.id)), disabled: busy || row.draw_offer === seat, active: row.draw_offer === seat },
+        { id: "share", icon: "share", label: copied === "spectate" ? "Copied" : "Spectator link", short: "Share", onClick: () => copy(link, "spectate") },
+        { id: "resign", icon: "flag", label: "Resign", onClick: () => confirm("Resign this game?") && act(() => resign(row.id)), disabled: busy },
+      ]
+    : [];
+
   return (
     <GameView
+      actions={actions}
       state={state}
       theme={theme}
       onThemeChange={(t) => {

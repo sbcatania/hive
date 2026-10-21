@@ -7,10 +7,10 @@ export interface ThemeInfo {
 }
 
 export const THEMES: ThemeInfo[] = [
+  { id: "field", name: "Sketchbook", blurb: "Ink and watercolour on graph paper." },
   { id: "bakelite", name: "Bakelite", blurb: "Glossy bevelled tiles, like the real game." },
-  { id: "field", name: "Field guide", blurb: "Ink and watercolour on graph paper." },
   { id: "clean", name: "Clean", blurb: "Flat and high-contrast. Easiest to read on small screens." },
-  { id: "3d", name: "3D table", blurb: "Modelled tiles on a wooden table. Drag to orbit, scroll to zoom." },
+  { id: "3d", name: "3D", blurb: "Moulded tiles with engraved bugs on a sheet of paper. Drag to orbit, pinch or scroll to zoom." },
 ];
 
 export interface TilePalette {
@@ -27,14 +27,14 @@ export const TILE: Record<"w" | "b", TilePalette> = {
   b: { fill: "#2b2b30", edge: "#0b0b0d", side: "#141417", ink: "#f2eee4", gradient: ["#4a4a52", "#1b1b1f"], shine: "#9a9aa6" },
 };
 
-const KEY = "hive.board-style";
+const KEY = "hive.board-style.v2";
 
 export function loadTheme(): ThemeId {
   try {
     const v = localStorage.getItem(KEY);
     if (v === "bakelite" || v === "field" || v === "clean" || v === "3d") return v;
   } catch {}
-  return "bakelite";
+  return "field";
 }
 
 export function saveTheme(t: ThemeId) {

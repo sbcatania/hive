@@ -1,5 +1,4 @@
-import { BugGlyph } from "./BugGlyph";
-import { roundedHexPath, TILE } from "@/lib/themes";
+import { PieceTile, TileDefs, type TileStyle } from "./PieceTile";
 import { BUG_NAMES, type ColorCode, type HandView } from "@/lib/engine-types";
 
 interface Props {
@@ -9,15 +8,15 @@ interface Props {
   /** Names of hand pieces that can be placed right now (by the local player). */
   placeable: Set<string>;
   onSelect?: (name: string) => void;
+  style?: TileStyle;
 }
 
-/** The tray of unplayed pieces for one player. Any piece can be clicked to inspect it. */
-export function HandPanel({ color, hand, selected, placeable, onSelect }: Props) {
-  const t = TILE[color];
+/** The tray of unplayed pieces for one player. Any piece can be tapped to inspect it. */
+export function HandPanel({ color, hand, selected, placeable, onSelect, style = "field" }: Props) {
   const left = hand.reduce((n, h) => n + h.count, 0);
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" aria-label={`${color === "w" ? "White" : "Black"} pieces in hand`}>
-      {hand.map((h) => {
+    <div className="-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 pt-1.5 pb-0.5 [scrollbar-width:none]" aria-label={`${color === "w" ? "White" : "Black"} pieces in hand`}>
+      {hand.map((h, i) => {
         const name = h.next;
         const can = !!name && placeable.has(name);
         const sel = !!name && name === selected;
@@ -26,28 +25,36 @@ export function HandPanel({ color, hand, selected, placeable, onSelect }: Props)
             key={h.bug}
             disabled={!name || !onSelect}
             onClick={() => name && onSelect?.(name)}
-            title={`${BUG_NAMES[h.bug]} × ${h.count}${can ? " (click to place)" : ""}`}
-            className={`relative h-11 w-10 shrink-0 transition-transform sm:h-12 sm:w-11 ${h.count === 0 ? "opacity-20" : ""} ${name && onSelect ? "cursor-pointer hover:-translate-y-0.5" : "cursor-default"} ${sel ? "-translate-y-1" : ""}`}
+            title={`${BUG_NAMES[h.bug]} × ${h.count}${can ? " (tap to place)" : ""}`}
+            aria-label={`${BUG_NAMES[h.bug]}, ${h.count} left`}
+            aria-pressed={sel}
+            className={`relative grid h-12 w-12 shrink-0 place-items-center transition-transform ${h.count === 0 ? "opacity-20" : ""} ${name && onSelect ? "cursor-pointer active:scale-95" : "cursor-default"} ${sel ? "-translate-y-1.5" : ""}`}
           >
-            <svg viewBox="-50 -50 100 100" className="h-full w-full overflow-visible">
-              <path d={roundedHexPath(0, 4, 45, 0.2)} fill={t.side} />
-              <path
-                d={roundedHexPath(0, 0, 45, 0.2)}
-                fill={t.fill}
-                stroke={sel ? "var(--sky)" : can ? "var(--leaf)" : color === "b" ? "var(--tile-black-rim)" : t.edge}
-                strokeWidth={sel ? 9 : can ? 6 : 3}
-              />
-              <g transform="translate(-27 -27) scale(0.54)">
-                <BugGlyph bug={h.bug} ink={t.ink} />
-              </g>
+            <svg viewBox="-50 -50 100 100" className="h-11 w-11 overflow-visible">
+              {style === "bakelite" && <TileDefs />}
+              {sel && <ellipse cx={3} cy={40} rx={34} ry={9} fill="var(--ink)" opacity={0.16} />}
+              <PieceTile bug={h.bug} color={color} x={0} y={0} size={42} style={style} seed={i * 7 + (color === "w" ? 1 : 2)} />
+              {(sel || can) && (
+                <path
+                  d="M0 -50 L43.3 -25 L43.3 25 L0 50 L-43.3 25 L-43.3 -25 Z"
+                  fill="none"
+                  stroke={sel ? "var(--select)" : "var(--move)"}
+                  strokeWidth={sel ? 4.5 : 2.6}
+                  strokeDasharray={sel ? undefined : "1 6"}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
             </svg>
             {h.count > 1 && (
-              <span className="absolute -top-1 -right-1 rounded-full bg-ink px-1.5 text-[10px] leading-4 font-bold text-paper">{h.count}</span>
+              <span className="absolute -top-0.5 right-0 font-hand text-lg leading-none font-semibold text-ink-soft" aria-hidden>
+                ×{h.count}
+              </span>
             )}
           </button>
         );
       })}
-      {left === 0 && <span className="text-xs text-muted italic">All pieces in play</span>}
+      {left === 0 && <span className="hand-note px-1 !text-base">all pieces in play</span>}
     </div>
   );
 }

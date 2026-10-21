@@ -84,3 +84,30 @@ belongs to Hive, without hurting how readable the board is, in light mode and in
 | Rules | "Field guide" chapters with live boards, then puzzles (win in 1, win in 2) checked by the engine |
 | Accounts | Optional; anonymous play keeps a local journal. Signed-in players get a cloud journal, an Elo rating (rated online games only), a profile and the leaderboard |
 | Variants | Standard expansions plus an advanced drawer: piece counts ("Hive Lite"), Queen deadline, surround-to-win threshold, turn limit with adjudication, automatic threefold-repetition draw, and chess clocks for local games |
+
+## Round 4: feedback on the first build, and what changes
+
+What still read as "generic AI web app" once it was live:
+
+1. **Leaf-green accents and soft rounded cards** are a very common default look. Green carried most of the interactive meaning (legal moves, success), so the whole UI inherited that genericness.
+2. **The hex-cut card corners** didn't read as "hexagonal"; they read as a rendering bug, because nothing explained the cut.
+3. **The hero tiles** used the thick Bakelite side-extrusion, so tiles drawn in front of other tiles looked like they were stacked on top of each other.
+4. **Mixed systems:** the Field-guide drawing style was the one part that felt *authored*, but it only appeared on one board style and one page.
+5. **3D tiles** had a top face whose colour didn't match the body, so the bug looked like a sticker on a block, not engraved into it. Selection rings floated above pieces.
+6. **Icons were Unicode glyphs** (↶ ✦ ⚐ ◐) with mismatched weights and baselines.
+7. **Touch:** tiny tap targets, `click` events that misfire after small finger drift, no drag-to-move, and controls below the fold on phones.
+
+### Decision: one aesthetic, the naturalist's sketchbook
+
+- **Paper and ink everywhere.** Day: aged sketchbook paper with sepia ink. Night: a *cyanotype* (the blue photographic print used for 19th-century botanical plates), with white-ink linework. Both come from the same tradition, so the two themes are siblings, not opposites.
+- **Ink colours, not UI colours.**
+  - Ultramarine ink (blue): your moves and selections.
+  - Vermilion: the opponent's reach and danger.
+  - Ochre wash: the last move.
+  - No green anywhere.
+- **Hand-drawn chrome.** Cards and buttons get a sketched pen border (an SVG mask, so it follows the theme colour), specimen cards are held on with masking tape, and annotations use a handwriting face (Caveat). Body text moves from Inter to Alegreya Sans, a humanist face designed for books.
+- **The default board is the sketchbook.** Tiles are drawn as ink outlines with a slightly *mis-registered watercolour* wash (the fill is offset from the line, as in real ink-and-wash drawings). Bakelite, Clean and 3D remain as alternatives.
+- **Hero = a page from the sketchbook.** The hive is drawn line by line on load, with handwritten labels and arrows. No stacked tiles.
+- **3D:** one material per tile, with the top face the same colour as the body. The bug is *engraved* through a height map and painted inside the groove. The table becomes a sheet of sketch paper on a desk. The selected piece lifts with a soft ink shadow, and targets are watercolour dots painted on the paper.
+- **Icons:** a single drawn icon set (same stroke weight and round caps) used for every control.
+- **Touch-first board:** pointer-event gestures with tap / drag-to-move / pan / pinch disambiguation, 48px minimum hit areas, haptic ticks on Android, and a compact action bar directly under the board on phones.

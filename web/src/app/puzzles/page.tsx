@@ -9,6 +9,7 @@ import { errorMessage, loadEngine, withEngine } from "@/lib/engine";
 import { colorName, normalizeRules, type ColorCode, type MoveView, type StateView } from "@/lib/engine-types";
 import PUZZLES from "@/lib/puzzles.json";
 import { loadTheme, type ThemeId } from "@/lib/themes";
+import { Icon } from "@/components/Icon";
 
 interface Puzzle {
   kind: "win1" | "win2";
@@ -129,7 +130,7 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
 
   return (
     <div className="space-y-3">
-      <div className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${phase === "solved" ? "border-leaf bg-leaf/10" : phase === "wrong" ? "border-danger bg-danger/10" : "border-line bg-card"}`}>
+      <div className={`card flex items-center justify-between gap-3 !px-4 !py-3 ${phase === "solved" ? "!border-move !bg-[color-mix(in_oklab,var(--move)_10%,var(--card))]" : phase === "wrong" ? "!border-danger !bg-[color-mix(in_oklab,var(--danger)_9%,var(--card))]" : ""}`}>
         <div>
           <div className="font-display text-xl font-semibold">
             {colorName(solver)} to play and win in {puzzle.kind === "win1" ? "one" : "two"}
@@ -138,24 +139,27 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
         </div>
         {phase === "solved" && (
           <button className="btn shrink-0" onClick={onNext}>
-            Next puzzle →
+            Next puzzle
+            <Icon name="next" size={18} />
           </button>
         )}
       </div>
-      <div className="relative h-[52vh] min-h-80 overflow-hidden rounded-2xl border border-line">
+      <div className="card relative h-[52vh] min-h-80 overflow-hidden !p-0">
         <Board2D state={state} selected={selected} targets={targets} theme={theme} selectable={selectable} onPieceClick={onPieceClick} onTargetClick={play} onBackgroundClick={() => setSelected(null)} hideLastMove={moves.length === puzzle.moves.length} />
       </div>
       <HandPanel color={solver} hand={state.hands[solver === "w" ? 0 : 1]} selected={selected} placeable={placeable} onSelect={(n) => setSelected(n === selected ? null : n)} />
       <div className="flex gap-2">
         <button className="btn-ghost" onClick={() => (setMoves(puzzle.moves), setPhase("solve"), setMessage(null))}>
-          ↺ Restart
+          <Icon name="refresh" size={16} />
+          Restart
         </button>
         <button
           className="btn-ghost"
           onClick={() => setMessage(`Hint: the key piece is your ${puzzle.solutions[0].split(" ")[0]}.`)}
           disabled={phase === "solved"}
         >
-          ✦ Hint
+          <Icon name="hint" size={16} />
+          Hint
         </button>
       </div>
     </div>
@@ -198,12 +202,12 @@ export default function PuzzlesPage() {
             <li key={q.id}>
               <button
                 onClick={() => setCurrent(i)}
-                className={`flex aspect-square w-full flex-col items-center justify-center rounded-xl border text-sm transition ${i === current ? "border-accent bg-accent-soft/60 ring-2 ring-accent/30" : "border-line bg-card hover:border-line-strong"}`}
+                className={`flex aspect-square w-full flex-col items-center justify-center sk border text-sm transition ${i === current ? "border-accent bg-accent-soft/60 ring-2 ring-accent/30" : "border-line bg-card hover:border-line-strong"}`}
                 title={`${q.kind === "win1" ? "Win in 1" : "Win in 2"} · ${q.rules}`}
               >
                 <span className="font-display text-lg font-semibold">{i + 1}</span>
                 <span className="text-[10px] text-muted">{q.kind === "win1" ? "in 1" : "in 2"}</span>
-                {solved.has(q.id) && <span className="text-xs text-leaf">✓</span>}
+                {solved.has(q.id) && <Icon name="check" size={16} className="text-move" title="Solved" />}
               </button>
             </li>
           ))}
@@ -211,7 +215,7 @@ export default function PuzzlesPage() {
         {ready && p ? (
           <PuzzlePlayer puzzle={p} onSolved={() => markSolved(p.id)} onNext={() => setCurrent((c) => (c + 1) % LIST.length)} />
         ) : (
-          <div className="h-[52vh] animate-pulse rounded-2xl bg-card-2" />
+          <div className="h-[52vh] animate-pulse sk-lg bg-card-2" />
         )}
       </div>
     </div>

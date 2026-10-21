@@ -5,9 +5,9 @@ export interface BoardProps {
   state: StateView;
   /** Selected piece name (on the board or the next piece from a hand). */
   selected: string | null;
-  /** Legal destinations for the selected piece (green). */
+  /** Legal destinations for the selected piece (blue ink). */
   targets: MoveView[];
-  /** Where the selected piece could go on its owner's next turn (coral, dashed). */
+  /** Where the selected piece could go on its owner's next turn (vermilion, dashed). */
   previewTargets?: MoveView[];
   hint?: MoveView | null;
   onPieceClick?: (name: string) => void;

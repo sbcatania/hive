@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Icon } from "./Icon";
+import { MiniTile, PieceTile, sketchHexPath } from "./PieceTile";
 
 export function fmtClock(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -13,7 +15,8 @@ export function ClockFace({ ms, running }: { ms: number; running: boolean }) {
   const low = ms < 20_000;
   return (
     <span
-      className={`rounded-lg px-2 py-1 font-mono text-sm tabular-nums transition ${running ? (low ? "bg-danger text-white" : "bg-ink text-paper") : "bg-paper-2 text-ink-soft ring-1 ring-line"}`}
+      className={`border-[1.6px] px-2 py-0.5 font-mono text-sm tabular-nums transition ${running ? (low ? "border-danger bg-danger text-white" : "border-ink bg-ink text-paper") : "border-line-strong bg-paper text-ink-soft"}`}
+      style={{ borderRadius: "10px 4px 11px 5px / 5px 11px 4px 10px" }}
       aria-label={`Clock ${fmtClock(ms)}`}
     >
       {fmtClock(ms)}
@@ -30,21 +33,56 @@ interface OverProps {
   onClose: () => void;
 }
 
+/** A drawn emblem for the result: a rosette for a win, a surrounded Queen otherwise. */
+function Emblem({ tone }: { tone: OverProps["tone"] }) {
+  if (tone === "win") {
+    return (
+      <svg viewBox="-50 -50 100 110" width={84} height={92} className="mx-auto overflow-visible" aria-hidden>
+        <path d="M-14 18 -24 56 -11 49 -4 60 4 22M14 18l10 38-13-7-7 11-4-38" fill="var(--threat)" fillOpacity={0.75} stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" />
+        {Array.from({ length: 12 }, (_, i) => {
+          const a = (i * Math.PI) / 6;
+          return <circle key={i} cx={Math.cos(a) * 26} cy={Math.sin(a) * 26} r={11} fill="var(--accent)" fillOpacity={0.7} stroke="var(--ink)" strokeWidth={1.6} />;
+        })}
+        <circle r={22} fill="var(--card)" stroke="var(--ink)" strokeWidth={2} />
+        <PieceTile bug="Q" color="w" x={0} y={0} size={17} style="field" seed={5} />
+      </svg>
+    );
+  }
+  if (tone === "draw") {
+    return (
+      <div className="flex justify-center gap-1" aria-hidden>
+        <MiniTile bug="Q" color="w" size={56} seed={3} />
+        <MiniTile bug="Q" color="b" size={56} seed={8} />
+      </div>
+    );
+  }
+  // The Queen, surrounded: what every Hive game ends with.
+  const ring = Array.from({ length: 6 }, (_, i) => {
+    const a = ((60 * i - 30) * Math.PI) / 180;
+    return [Math.cos(a) * 30, Math.sin(a) * 30] as const;
+  });
+  return (
+    <svg viewBox="-50 -50 100 100" width={92} height={92} className="mx-auto overflow-visible" aria-hidden>
+      {ring.map(([x, y], i) => (
+        <path key={i} d={sketchHexPath(x, y, 16, i * 5 + 2, 0.06)} fill="var(--card-2)" stroke="var(--ink-soft)" strokeWidth={1.6} strokeDasharray={i % 2 ? undefined : "3 3"} />
+      ))}
+      <PieceTile bug="Q" color={tone === "loss" ? "w" : "b"} x={0} y={0} size={18} style="field" seed={2} />
+    </svg>
+  );
+}
+
 /** The end-of-game card shown over the board. */
 export function GameOverCard({ title, subtitle, detail, tone, actions, onClose }: OverProps) {
-  const emblem = tone === "win" ? "🏆" : tone === "loss" ? "🐞" : tone === "draw" ? "🤝" : "🐝";
   return (
     <div className="absolute inset-0 z-10 grid place-items-center bg-paper/55 p-4 backdrop-blur-[2px]">
-      <div className="rise hex-card w-full max-w-sm p-6 text-center">
-        <button className="absolute top-3 right-4 text-muted hover:text-ink" onClick={onClose} aria-label="Look at the board">
-          ✕
+      <div className="rise card tape w-full max-w-sm !p-6 text-center">
+        <button className="icon-btn absolute top-2 right-2 !h-10 !w-10 border-transparent bg-transparent" onClick={onClose} aria-label="Look at the board">
+          <Icon name="close" />
         </button>
-        <div className="text-4xl" aria-hidden>
-          {emblem}
-        </div>
+        <Emblem tone={tone} />
         <div className="font-display mt-2 text-3xl font-semibold">{title}</div>
-        {subtitle && <div className="specimen-label mt-1">{subtitle}</div>}
-        {detail && <div className="mt-3 text-sm text-ink-soft">{detail}</div>}
+        {subtitle && <div className="hand-note mt-1">{subtitle}</div>}
+        {detail && <div className="mt-2 text-sm text-muted">{detail}</div>}
         <div className="mt-5 flex flex-wrap justify-center gap-2">{actions}</div>
       </div>
     </div>

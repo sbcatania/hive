@@ -4,6 +4,7 @@ import { BugGlyph } from "./BugGlyph";
 import { roundedHexPath, TILE } from "@/lib/themes";
 import { BUG_NAMES, BUG_ORDER, STANDARD_COUNTS, type BugLetter, type Rules } from "@/lib/engine-types";
 import { describeVariants, PRESETS } from "@/lib/variants";
+import { Icon } from "./Icon";
 
 function MiniTile({ bug, size = 36, off }: { bug: BugLetter; size?: number; off?: boolean }) {
   const t = TILE.w;
@@ -33,7 +34,7 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
             key={x.key}
             onClick={() => onChange({ ...rules, [x.key]: !on })}
             aria-pressed={on}
-            className={`flex items-center gap-3 rounded-xl border p-2.5 text-left text-sm transition ${on ? "border-accent bg-accent-soft/50 ring-1 ring-accent/30" : "border-line bg-paper-2/60 hover:border-line-strong"}`}
+            className={`flex items-center gap-3 sk border p-2.5 text-left text-sm transition ${on ? "border-accent bg-accent-soft/50 ring-1 ring-accent/30" : "border-line bg-paper-2/60 hover:border-line-strong"}`}
           >
             <MiniTile bug={x.bug} off={!on} />
             <div className="min-w-0">
@@ -52,13 +53,13 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
 
 function Stepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
-    <div className="inline-flex items-center rounded-lg border border-line bg-paper">
-      <button className="px-2 py-1 text-ink-soft hover:text-ink disabled:opacity-30" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label="Fewer">
-        −
+    <div className="inline-flex items-center border-[1.5px] border-line-strong bg-paper" style={{ borderRadius: "10px 4px 11px 5px / 5px 11px 4px 10px" }}>
+      <button className="grid h-9 w-9 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label="Fewer">
+        <Icon name="minus" size={16} />
       </button>
       <span className="w-5 text-center font-mono text-sm tabular-nums">{value}</span>
-      <button className="px-2 py-1 text-ink-soft hover:text-ink disabled:opacity-30" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="More">
-        +
+      <button className="grid h-9 w-9 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="More">
+        <Icon name="plus" size={16} />
       </button>
     </div>
   );
@@ -69,20 +70,20 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
   const changes = describeVariants(rules);
   const expOn = (b: BugLetter) => (b === "M" ? rules.mosquito : b === "L" ? rules.ladybug : b === "P" ? rules.pillbug : true);
   return (
-    <details className="group rounded-2xl border border-line bg-paper-2/50" open={changes.length > 0 ? undefined : undefined}>
+    <details className="group card !bg-paper-2/50 !p-0" open={changes.length > 0 ? undefined : undefined}>
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
         <div>
           <div className="font-semibold">Advanced rules &amp; variants</div>
           <div className="text-xs text-muted">{changes.length ? changes.join(" · ") : "Official tournament rules"}</div>
         </div>
-        <span className="text-muted transition group-open:rotate-180">▾</span>
+        <Icon name="chevron" className="shrink-0 text-muted transition group-open:rotate-180" />
       </summary>
       <div className="space-y-5 border-t border-line px-4 py-4">
         <div>
           <span className="label">Presets</span>
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((p) => (
-              <button key={p.id} className="rounded-xl border border-line bg-card px-3 py-2 text-left text-sm transition hover:border-accent" onClick={() => onChange(p.apply(rules))} title={p.blurb}>
+              <button key={p.id} className="sk border border-line bg-card px-3 py-2 text-left text-sm transition hover:border-accent" onClick={() => onChange(p.apply(rules))} title={p.blurb}>
                 <div className="font-semibold">{p.name}</div>
                 <div className="max-w-52 text-xs text-muted">{p.blurb}</div>
               </button>
@@ -145,7 +146,7 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
             {BUG_ORDER.map((b, i) => {
               const on = expOn(b);
               return (
-                <div key={b} className={`flex items-center justify-between gap-2 rounded-xl border border-line bg-card px-2 py-1.5 ${on ? "" : "opacity-40"}`}>
+                <div key={b} className={`flex items-center justify-between gap-2 sk border border-line bg-card px-2 py-1.5 ${on ? "" : "opacity-40"}`}>
                   <div className="flex min-w-0 items-center gap-1.5">
                     <MiniTile bug={b} size={28} />
                     <span className="truncate text-xs font-medium">{BUG_NAMES[b]}</span>

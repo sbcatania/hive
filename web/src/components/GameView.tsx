@@ -7,6 +7,7 @@ import { HandPanel } from "./HandPanel";
 import { MoveList } from "./MoveList";
 import { Nameplate } from "./Nameplate";
 import { ThemePicker } from "./ThemePicker";
+import { Icon, type IconName } from "./Icon";
 import { BUG_NAMES, colorName, type BugLetter, type ColorCode, type MoveView, type PreviewView, type StateView } from "@/lib/engine-types";
 import type { ThemeId } from "@/lib/themes";
 
@@ -14,6 +15,19 @@ const Board3D = dynamic(() => import("./Board3D"), {
   ssr: false,
   loading: () => <div className="grid h-full place-items-center text-sm text-muted">Setting the table…</div>,
 });
+
+/** A game control. Shown as an icon bar under the board on phones and as labelled buttons in the sidebar. */
+export interface GameAction {
+  id: string;
+  icon: IconName;
+  label: string;
+  /** Shorter label for the phone action bar. */
+  short?: string;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  busy?: boolean;
+}
 
 export interface PlayerInfo {
   name: string;
@@ -40,6 +54,7 @@ interface Props {
   sidebar?: React.ReactNode;
   analysis?: React.ReactNode;
   overlay?: React.ReactNode;
+  actions?: GameAction[];
 }
 
 function describePiece(name: string) {
@@ -48,7 +63,7 @@ function describePiece(name: string) {
   return { color, bug, label: `${colorName(color)} ${BUG_NAMES[bug]}` };
 }
 
-export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay }: Props) {
+export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [] }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   useEffect(() => setSelected(null), [state.ply, canMove]);
 
@@ -108,7 +123,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
         need={need}
         clock={players[c].clock}
       />
-      <HandPanel color={c} hand={state.hands[c === "w" ? 0 : 1]} selected={selected} placeable={state.toMove === c ? placeable : new Set()} onSelect={over ? undefined : select} />
+      <HandPanel color={c} hand={state.hands[c === "w" ? 0 : 1]} selected={selected} placeable={state.toMove === c ? placeable : new Set()} onSelect={over ? undefined : select} style={theme === "3d" ? "field" : theme} />
     </div>
   );
 
@@ -131,58 +146,94 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
   const owner = sel ? colorName(sel.color) : "";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 p-3 lg:h-[calc(100dvh-3.5rem)] lg:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 px-2 py-2 sm:p-3 lg:h-[calc(100dvh-3.5rem)] lg:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">
         {seat(top)}
-        <div className="relative h-[56vh] min-h-[320px] overflow-hidden rounded-2xl border border-line shadow-[var(--shadow)] lg:h-auto lg:min-h-0 lg:flex-1">
-          {theme === "3d" ? <Board3D {...boardProps} /> : <Board2D {...boardProps} />}
-          <div className="pointer-events-none absolute top-2 left-2 max-w-[70%] rounded-lg bg-ink/80 px-2.5 py-1 text-xs font-medium text-paper backdrop-blur">{status}</div>
+        <div className="card relative h-[54dvh] min-h-[300px] !p-0 lg:h-auto lg:min-h-0 lg:flex-1">
+          <div className="absolute inset-[3px] overflow-hidden" style={{ borderRadius: "11px 3px 13px 4px / 4px 13px 3px 11px" }}>
+            {theme === "3d" ? <Board3D {...boardProps} /> : <Board2D {...boardProps} />}
+          </div>
+          <div className="pointer-events-none absolute top-2 left-2 max-w-[75%] -rotate-1 border border-line-strong bg-card/90 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink shadow-sm" style={{ borderRadius: "8px 3px 9px 3px / 3px 9px 3px 8px" }}>
+            {status}
+          </div>
           {sel && (
-            <div className="rise absolute right-2 bottom-2 left-2 sm:right-auto sm:max-w-sm">
-              <div className="flex items-start gap-3 rounded-xl border border-line bg-card/95 p-3 text-sm shadow-lg backdrop-blur">
-                <div className="min-w-0 flex-1">
+            <div className="rise absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm">
+              <div className="flex items-start gap-2 border-[1.6px] border-ink-soft bg-card/95 py-2 pr-1 pl-3 text-sm shadow-lg backdrop-blur" style={{ borderRadius: "14px 5px 16px 6px / 6px 16px 5px 14px" }}>
+                <div className="min-w-0 flex-1 py-0.5">
                   <div className="font-semibold">
                     {sel.label} <span className="font-mono text-xs text-muted">{selected}</span>
                     {inHand && <span className="ml-1 text-xs text-muted">(in hand)</span>}
                   </div>
-                  <ul className="mt-1 space-y-0.5 text-xs text-ink-soft">
+                  <ul className="mt-1 space-y-0.5 text-[0.82rem] text-ink-soft">
                     {targets.length > 0 && (
                       <li className="flex items-center gap-1.5">
-                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-leaf" />
+                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-move" />
                         {targets.length} legal {inHand ? "placement" : "move"}
                         {targets.length === 1 ? "" : "s"}
                         {sel.color !== state.toMove ? " for your Pillbug to throw it" : ""}
+                        <span className="text-muted">· tap one, or drag the piece</span>
                       </li>
                     )}
                     {previewTargets.length > 0 && (
                       <li className="flex items-center gap-1.5">
-                        <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-dashed border-coral" />
+                        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-dashed border-threat" />
                         {preview?.legal ? `Can reach ${previewTargets.length} cell${previewTargets.length === 1 ? "" : "s"} this turn` : `Could reach ${previewTargets.length} cell${previewTargets.length === 1 ? "" : "s"} on ${owner}'s next turn`}
                       </li>
                     )}
                     {preview?.reason && targets.length === 0 && <li className="text-ink">{preview.reason}</li>}
                   </ul>
                 </div>
-                <button className="text-muted hover:text-ink" onClick={() => setSelected(null)} aria-label="Close">
-                  ✕
+                <button className="grid h-10 w-10 shrink-0 place-items-center text-muted hover:text-ink" onClick={() => setSelected(null)} aria-label="Close">
+                  <Icon name="close" />
                 </button>
               </div>
             </div>
           )}
           {overlay}
         </div>
+        {actions.length > 0 && (
+          <div className="flex items-stretch justify-around gap-1 lg:hidden" role="toolbar" aria-label="Game controls">
+            {actions.map((a) => (
+              <button
+                key={a.id}
+                onClick={a.onClick}
+                disabled={a.disabled}
+                aria-pressed={a.active}
+                className={`flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[0.72rem] leading-none font-semibold transition select-none active:scale-95 disabled:opacity-35 ${a.active ? "text-ink" : "text-ink-soft"}`}
+              >
+                <span
+                  className={`grid h-8 w-11 place-items-center border-[1.5px] ${a.active ? "border-ink-soft bg-accent-soft" : "border-line-strong bg-card"}`}
+                  style={{ borderRadius: "12px 6px 13px 7px / 7px 13px 6px 12px" }}
+                >
+                  <Icon name={a.icon} size={19} className={a.busy ? "pulse-ink" : undefined} />
+                </span>
+                <span className="truncate">{a.short ?? a.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {seat(bottom)}
       </div>
-      <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[22rem] lg:overflow-y-auto">
-        <div className="flex items-center justify-between gap-2">
-          <span className="label mb-0">Board</span>
-          <ThemePicker value={theme} onChange={onThemeChange} />
-        </div>
+      <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[22rem] lg:overflow-y-auto lg:pr-1">
+        {actions.length > 0 && (
+          <div className="hidden grid-cols-2 gap-2 lg:grid">
+            {actions.map((a) => (
+              <button key={a.id} className="btn-secondary !justify-start" onClick={a.onClick} disabled={a.disabled} aria-pressed={a.active}>
+                <Icon name={a.icon} size={18} className={a.busy ? "pulse-ink" : undefined} />
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
         {analysis}
         {sidebar}
         <div>
           <span className="label">Field notes</span>
           <MoveList history={state.history} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="label mb-0">Board style</span>
+          <ThemePicker value={theme} onChange={onThemeChange} />
         </div>
       </aside>
     </div>

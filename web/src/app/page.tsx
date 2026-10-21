@@ -3,17 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Avatar } from "@/components/Nameplate";
-import { BugGlyph } from "@/components/BugGlyph";
 import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
-import { TitleHive } from "@/components/TitleHive";
+import { SketchHero } from "@/components/SketchHero";
+import { Icon } from "@/components/Icon";
+import { MiniTile, sketchHexPath } from "@/components/PieceTile";
 import { useAuth } from "@/lib/auth";
 import { Engine, errorMessage, loadEngine } from "@/lib/engine";
 import { isStandardRules, LEVELS, normalizeRules, persona, standardRules, type BugLetter, type ColorCode, type Level, type Rules } from "@/lib/engine-types";
 import { listLocal, migrateLegacySave, newId, resultLabel, resumable, saveLocal, setCurrentGameId, type JournalEntry } from "@/lib/journal";
 import { createOnlineGame, onlineAvailable, TIME_CONTROLS } from "@/lib/online";
 import { LOCAL_CLOCKS, loadSetupPrefs, saveSetupPrefs } from "@/lib/settings";
-import { roundedHexPath, TILE } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
 
 type Mode = "cpu" | "local" | "online";
@@ -37,23 +36,23 @@ const MODES: { id: Mode; bug: BugLetter; title: string; latin: string; text: str
 ];
 
 function ModeCard({ m, active, onClick, i }: { m: (typeof MODES)[number]; active: boolean; onClick: () => void; i: number }) {
-  const t = TILE[i === 1 ? "b" : "w"];
   return (
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`hex-card rise group flex flex-col items-start gap-3 p-5 text-left transition ${active ? "!border-accent !bg-accent-soft/50" : "hover:-translate-y-0.5"}`}
-      style={{ animationDelay: `${300 + i * 90}ms` }}
+      className={`card tape rise group flex flex-col items-start gap-3 !p-5 text-left transition ${active ? "wash !border-ink-soft" : "hover:-translate-y-0.5"}`}
+      style={{ animationDelay: `${300 + i * 90}ms`, rotate: `${[-0.6, 0.4, -0.3][i]}deg` }}
     >
       <div className="flex w-full items-start justify-between">
-        <svg viewBox="-50 -50 100 100" className="h-16 w-16 transition group-hover:rotate-6" aria-hidden>
-          <path d={roundedHexPath(0, 5, 46, 0.2)} fill={t.side} />
-          <path d={roundedHexPath(0, 0, 46, 0.2)} fill={t.fill} stroke={i === 1 ? "var(--tile-black-rim)" : t.edge} strokeWidth={3} />
-          <g transform="translate(-31 -31) scale(0.62)">
-            <BugGlyph bug={m.bug} ink={t.ink} />
-          </g>
-        </svg>
-        <span className={active ? "rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold tracking-wide text-accent-ink uppercase" : "specimen-label"}>{active ? "Selected" : `No. ${i + 1}`}</span>
+        <MiniTile bug={m.bug} color={i === 1 ? "b" : "w"} size={64} seed={i * 5 + 2} className="transition group-hover:rotate-6" />
+        {active ? (
+          <span className="flex items-center gap-1 font-hand text-xl text-ink">
+            <Icon name="check" size={20} className="text-move" />
+            chosen
+          </span>
+        ) : (
+          <span className="specimen-label">No. {i + 1}</span>
+        )}
       </div>
       <div>
         <div className="font-display text-xl font-semibold">{m.title}</div>
@@ -70,22 +69,25 @@ function PersonaCard({ level, active, onClick }: { level: Level; active: boolean
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`flex gap-3 rounded-2xl border p-3 text-left transition ${active ? "border-accent bg-accent-soft/40 ring-2 ring-accent/30" : "border-line bg-card hover:border-line-strong"}`}
+      className={`sk-lg flex gap-3 border-[1.6px] p-3 text-left transition ${active ? "wash border-ink-soft" : "border-line bg-card hover:border-line-strong"}`}
     >
-      <Avatar bug={p.bug} color={level === "hard" || level === "medium" ? "b" : "w"} size={46} />
+      <MiniTile bug={p.bug} color={level === "hard" || level === "medium" ? "b" : "w"} size={48} seed={p.strength * 3} />
       <div className="min-w-0">
         <div className="flex items-baseline gap-1.5">
           <span className="font-display text-lg font-semibold">{p.name}</span>
           <span className="text-xs text-muted">{p.title}</span>
         </div>
         <div className="mt-0.5 flex items-center gap-1" aria-label={`Strength ${p.strength} of 4`}>
-          {[1, 2, 3, 4].map((n) => (
-            <span key={n} className={`h-1.5 w-5 rounded-full ${n <= p.strength ? "bg-accent" : "bg-line"}`} />
-          ))}
+          <svg viewBox="0 0 50 12" className="h-3 w-[50px]" aria-hidden>
+            {[0, 1, 2, 3].map((n) => (
+              <path key={n} d={sketchHexPath(6 + n * 12.5, 6, 5.2, n + p.strength * 4, 0.08)} fill={n < p.strength ? "var(--accent)" : "none"} fillOpacity={0.85} stroke="var(--ink-soft)" strokeWidth={1.1} />
+            ))}
+          </svg>
           <span className="ml-1 text-[11px] font-semibold tracking-wide text-muted uppercase">{level}</span>
         </div>
         <p className="mt-1 text-xs text-ink-soft">{p.temperament}</p>
       </div>
+      {active && <Icon name="check" size={18} className="ml-auto shrink-0 text-move" />}
     </button>
   );
 }
@@ -175,7 +177,7 @@ export default function Home() {
         <div className="rise">
           <div className="specimen-label">A field guide to the board game</div>
           <h1 className="font-display mt-1 text-6xl leading-[0.95] font-semibold tracking-tight sm:text-7xl">
-            Hive<span className="text-accent">.</span>
+            <span className="scribble">Hive</span>
           </h1>
           <p className="mt-4 max-w-md text-lg text-ink-soft">
             No board, no luck, just bugs. Surround your opponent&apos;s Queen Bee before they surround yours.
@@ -183,6 +185,7 @@ export default function Home() {
           <div className="mt-5 flex flex-wrap gap-2">
             {resume && (
               <Link href={`/play?id=${resume.id}`} className="btn">
+                <Icon name="play" size={18} />
                 Continue: {resume.label} · move {resume.moves.length + 1}
               </Link>
             )}
@@ -194,18 +197,18 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <TitleHive className="mx-auto w-full max-w-[240px] drop-shadow-sm sm:max-w-sm md:max-w-md" />
+        <SketchHero className="mx-auto w-full max-w-md md:max-w-lg" />
       </section>
 
       {/* Modes */}
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-5 pt-3 md:grid-cols-3">
         {MODES.map((m, i) => (
           <ModeCard key={m.id} m={m} i={i} active={prefs.mode === m.id} onClick={() => update({ mode: m.id })} />
         ))}
       </section>
 
       {/* Setup sheet */}
-      <section className="card rise mt-4 space-y-6 !p-5 sm:!p-6" key={prefs.mode}>
+      <section className="card rise mt-6 space-y-6 !p-5 sm:!p-6" key={prefs.mode}>
         {prefs.mode === "cpu" && (
           <div>
             <span className="label">Choose your opponent</span>
@@ -289,7 +292,7 @@ export default function Home() {
           <div className="text-xs text-muted">
             {prefs.mode === "cpu" ? `${persona(prefs.level).name} plays ${prefs.color === "w" ? "Black" : prefs.color === "b" ? "White" : "the other colour"}.` : prefs.mode === "local" ? "White moves first. Pass the device after each turn." : "You'll get a link to share."}
           </div>
-          <button className="btn px-8 py-3 text-base" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
+          <button className="btn-accent !px-8 !py-3 !text-base" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
             {busy ? "Creating game…" : prefs.mode === "online" ? "Create game & get link" : prefs.mode === "cpu" ? `Challenge ${persona(prefs.level).name}` : "Start game"}
           </button>
         </div>

@@ -14,7 +14,7 @@ function when(t: number | string) {
 }
 
 function Badge({ text, tone }: { text: string; tone: "win" | "loss" | "draw" | "open" }) {
-  const cls = { win: "bg-leaf/15 text-leaf ring-leaf/40", loss: "bg-danger/10 text-danger ring-danger/30", draw: "bg-paper-2 text-ink-soft ring-line", open: "bg-accent-soft text-ink ring-accent/40" }[tone];
+  const cls = { win: "bg-move/15 text-move ring-move/40", loss: "bg-danger/10 text-danger ring-danger/30", draw: "bg-paper-2 text-ink-soft ring-line", open: "bg-accent-soft text-ink ring-accent/40" }[tone];
   return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${cls}`}>{text}</span>;
 }
 

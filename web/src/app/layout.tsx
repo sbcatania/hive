@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/fraunces";
-import "@fontsource-variable/inter";
+import "@fontsource/alegreya-sans/400.css";
+import "@fontsource/alegreya-sans/500.css";
+import "@fontsource/alegreya-sans/700.css";
+import "@fontsource/caveat/600.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -18,8 +21,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5efe0" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1714" },
+    { media: "(prefers-color-scheme: light)", color: "#f2ead8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f2338" },
   ],
 };
 

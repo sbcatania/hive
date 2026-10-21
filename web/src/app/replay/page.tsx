@@ -13,6 +13,7 @@ import { getLocal, listCloud, newId, REASON_TEXT, saveLocal, setCurrentGameId } 
 import { fetchGame, fetchPlayers, rulesFromRow } from "@/lib/online";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
+import { Icon } from "@/components/Icon";
 
 interface Source {
   title: string;
@@ -171,31 +172,34 @@ function Replay() {
         <input type="range" min={0} max={total} value={ply} onChange={(e) => setPly(Number(e.target.value))} className="w-full accent-[var(--accent)]" aria-label="Move" />
         <div className="flex items-center justify-between gap-1">
           <button className="btn-secondary !px-3" onClick={() => setPly(0)} aria-label="Start">
-            ⏮
+            <Icon name="first" />
           </button>
           <button className="btn-secondary !px-3" onClick={() => setPly((p) => Math.max(0, p - 1))} aria-label="Back">
-            ◀
+            <Icon name="prev" />
           </button>
           <button className="btn !px-4" onClick={() => (ply >= total ? (setPly(0), setPlaying(true)) : setPlaying((p) => !p))}>
+            <Icon name={playing ? "pause" : "play"} size={18} />
             {playing ? "Pause" : "Play"}
           </button>
           <button className="btn-secondary !px-3" onClick={() => setPly((p) => Math.min(total, p + 1))} aria-label="Forward">
-            ▶
+            <Icon name="next" />
           </button>
           <button className="btn-secondary !px-3" onClick={() => setPly(total)} aria-label="End">
-            ⏭
+            <Icon name="last" />
           </button>
         </div>
         <div className="text-center text-xs text-muted">
           Move {ply} of {total}
-          {ply > 0 ? ` · ${src.moves[ply - 1]}` : ""} · use ← → keys
+          {ply > 0 ? ` · ${src.moves[ply - 1]}` : ""}
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
         <button className="btn-ghost" onClick={() => setEvalOn((x) => !x)}>
+          <Icon name="eval" size={16} />
           {evalOn ? "Hide evaluation" : "Evaluate positions"}
         </button>
         <button className="btn-ghost" onClick={continueFromHere}>
+          <Icon name="play" size={16} />
           Play on from here
         </button>
       </div>

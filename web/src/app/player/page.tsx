@@ -33,7 +33,7 @@ function PlayerInner() {
   const total = profile.wins + profile.losses + profile.draws;
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="hex-card flex items-center gap-4 p-6">
+      <div className="sketch flex items-center gap-4 p-6">
         <Avatar color="w" initial={profile.username.slice(0, 1).toUpperCase()} size={72} />
         <div>
           <div className="specimen-label">Player</div>
@@ -71,7 +71,7 @@ function PlayerInner() {
             const delta = me === "w" ? g.white_delta : g.black_delta;
             return (
               <li key={g.id} className="card flex items-center gap-3 !p-3 text-sm">
-                <span className={`w-12 font-semibold ${g.result === "Draw" ? "text-muted" : won ? "text-leaf" : "text-danger"}`}>{g.result === "Draw" ? "Draw" : won ? "Win" : "Loss"}</span>
+                <span className={`w-12 font-semibold ${g.result === "Draw" ? "text-muted" : won ? "text-move" : "text-danger"}`}>{g.result === "Draw" ? "Draw" : won ? "Win" : "Loss"}</span>
                 <span className="min-w-0 flex-1 truncate">
                   vs {oppId ? (players[oppId]?.username ?? "player") : "guest"} · {g.moves.length} moves
                 </span>

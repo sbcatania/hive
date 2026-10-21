@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { EvalBar } from "@/components/EvalBar";
 import { ClockFace, GameOverCard, NewGameLink } from "@/components/GameBits";
-import { GameView, type PlayerInfo } from "@/components/GameView";
+import { Icon } from "@/components/Icon";
+import { GameView, type GameAction, type PlayerInfo } from "@/components/GameView";
 import { AiClient } from "@/lib/ai-client";
 import { useAuth } from "@/lib/auth";
 import { Engine, engineFromMoves, errorMessage, loadEngine } from "@/lib/engine";
@@ -353,30 +354,6 @@ function LocalGame() {
           </button>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2">
-        <button className="btn-secondary" onClick={undo} disabled={state.ply === 0 && !result}>
-          ↶ Take back
-        </button>
-        <button className="btn-secondary" onClick={askHint} disabled={!humanCanMove || hintLoading}>
-          {hintLoading ? "Thinking…" : "✦ Hint"}
-        </button>
-        {!result && (
-          <>
-            <button className="btn-secondary" onClick={() => confirm("Resign this game?") && resign()} disabled={state.ply === 0}>
-              ⚐ Resign
-            </button>
-            {entry.mode === "local" ? (
-              <button className="btn-secondary" onClick={agreeDraw} disabled={state.ply === 0}>
-                ½ Agree draw
-              </button>
-            ) : (
-              <button className="btn-secondary" onClick={() => setShowEval((v) => (localStorage.setItem("hive.eval", v ? "0" : "1"), !v))}>
-                {showEval ? "Hide eval" : "◐ Show eval"}
-              </button>
-            )}
-          </>
-        )}
-      </div>
       {hint && (
         <div className="note-hint">
           Suggested move: <span className="font-mono font-semibold">{hint.best}</span>
@@ -389,18 +366,15 @@ function LocalGame() {
       {state.repetitions >= 3 && !result && !entry.rules.repetitionDraw && (
         <p className="note-info text-xs">This position has occurred {state.repetitions} times. Hive has no automatic repetition rule; agree a draw if you&apos;re going in circles.</p>
       )}
-      <p className="text-xs text-muted">Tip: click any piece, including your opponent&apos;s, to see where it can go. Coral dashed cells are where it could move on its next turn.</p>
+      <p className="hand-note !text-lg">Tap any piece, even your opponent&apos;s, to see where it can go. Dashed red rings are where it could move on its next turn.</p>
       <div className="flex flex-wrap gap-2">
         <button className="btn-ghost" onClick={copyGame}>
-          {copied ? "Copied!" : "Copy notation"}
+          <Icon name={copied ? "check" : "copy"} size={16} />
+          {copied ? "Copied" : "Copy notation"}
         </button>
-        {entry.mode === "local" && (
-          <button className="btn-ghost" onClick={() => setShowEval((v) => (localStorage.setItem("hive.eval", v ? "0" : "1"), !v))}>
-            {showEval ? "Hide eval" : "Show eval"}
-          </button>
-        )}
         {result && (
           <button className="btn-ghost" onClick={() => setOverlayClosed(false)}>
+            <Icon name="eye" size={16} />
             Show result
           </button>
         )}
@@ -408,8 +382,22 @@ function LocalGame() {
     </div>
   );
 
+  const toggleEval = () => setShowEval((v) => (localStorage.setItem("hive.eval", v ? "0" : "1"), !v));
+  const actions: GameAction[] = [
+    { id: "undo", icon: "undo", label: "Take back", short: "Undo", onClick: undo, disabled: state.ply === 0 && !result },
+    { id: "hint", icon: "hint", label: hintLoading ? "Thinking…" : "Hint", onClick: askHint, disabled: !humanCanMove || hintLoading, busy: hintLoading, active: !!hint },
+    { id: "eval", icon: "eval", label: showEval ? "Hide eval" : "Show eval", short: "Eval", onClick: toggleEval, active: showEval, disabled: !!result },
+    ...(result
+      ? [{ id: "result", icon: "eye" as const, label: "Show result", short: "Result", onClick: () => setOverlayClosed(false) }]
+      : [
+          ...(entry.mode === "local" ? [{ id: "draw", icon: "draw" as const, label: "Agree draw", short: "Draw", onClick: agreeDraw, disabled: state.ply === 0 }] : []),
+          { id: "resign", icon: "flag" as const, label: "Resign", onClick: () => confirm("Resign this game?") && resign(), disabled: state.ply === 0 },
+        ]),
+  ];
+
   return (
     <GameView
+      actions={actions}
       state={state}
       theme={theme}
       onThemeChange={(t) => {
