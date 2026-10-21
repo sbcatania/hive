@@ -18,9 +18,9 @@ const TILES: { q: number; r: number; bug: BugLetter; color: ColorCode }[] = [
 ];
 
 // Handwritten specimen labels with arrows pointing at their tile.
-const NOTES: { text: string; sub?: string; at: [number, number]; to: [number, number]; anchor: "start" | "end" }[] = [
+const NOTES: { text: string; sub?: string; at: [number, number]; to: [number, number]; from?: [number, number]; anchor: "start" | "end" }[] = [
   { text: "the Queen Bee", sub: "surround her to win", at: [-205, -100], to: [-16, -20], anchor: "start" },
-  { text: "Soldier Ant", sub: "goes anywhere", at: [212, 14], to: [94, 4], anchor: "end" },
+  { text: "Soldier Ant", sub: "goes anywhere", at: [212, 14], to: [94, 4], from: [108, 30], anchor: "end" },
   { text: "Grasshopper", sub: "jumps in a line", at: [-205, 118], to: [-42, 70], anchor: "start" },
   { text: "Beetle", sub: "climbs on top", at: [212, 118], to: [44, 72], anchor: "end" },
 ];
@@ -54,8 +54,8 @@ export function SketchHero({ className }: { className?: string }) {
       {NOTES.map((n, i) => {
         const [ax, ay] = n.at;
         const [bx, by] = n.to;
-        const sx = ax + (n.anchor === "start" ? 1 : -1) * (n.text.length * 5.5);
-        const sy = ay + (ay < 0 ? 26 : ay > 60 ? -24 : 26);
+        const sx = n.from?.[0] ?? ax + (n.anchor === "start" ? 1 : -1) * (n.text.length * 5.5);
+        const sy = n.from?.[1] ?? ay + (ay < 0 ? 26 : ay > 60 ? -24 : 26);
         const cx = (sx + bx) / 2;
         const cy = (sy + by) / 2 + (ay < 0 ? 22 : -16);
         const delay = t0 + TILES.length * 110 + 300 + i * 260;

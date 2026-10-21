@@ -60,7 +60,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             {ask?.cancel ?? "Cancel"}
           </button>
           <button
-            className={`btn ${ask?.danger ? "[--bc:var(--danger)] [--fill:var(--danger)] text-white" : ""}`}
+            className={`btn ${ask?.danger ? "[--bc:var(--danger)] [--fill:var(--danger)] !text-paper" : ""}`}
             onClick={() => {
               haptic(true);
               finish(true);

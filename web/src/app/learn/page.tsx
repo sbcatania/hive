@@ -274,7 +274,7 @@ export default function LearnPage() {
           </Chapter>
 
           <Chapter id="bugs" n={3} title="The bugs">
-            <p className="text-ink-soft">Each specimen below is a real position. The coloured cells show where the highlighted bug can go; click one to watch it move.</p>
+            <p className="text-ink-soft">Each specimen below is a real position. The coloured cells show where the highlighted bug can go; tap one to watch it move.</p>
             <div className="space-y-10">
               {SPECIMENS.map((s) => (
                 <div key={s.bug} className="grid gap-5 md:grid-cols-[1fr_1.1fr]">
@@ -282,15 +282,14 @@ export default function LearnPage() {
                     <div className="flex items-start gap-4">
                       <Plate bug={s.bug} />
                       <div>
-                        <div className="text-sm text-muted">{s.count}{s.expansion ? " (expansion)" : ""}</div>
                         <h3 className="font-display text-2xl font-semibold">{s.name}</h3>
-                        <div className="font-display text-sm text-muted italic">{s.latin}</div>
+                        <div className="text-sm text-muted">
+                          <span className="font-display italic">{s.latin}</span> · {s.count}
+                          {s.expansion ? " (expansion)" : ""}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="label mb-1">Movement</div>
-                      <p className="text-sm">{s.movement}</p>
-                    </div>
+                    <p className="text-sm">{s.movement}</p>
                     <div className="pencil pencil-clear pencil-dashed p-3 text-sm">
                       <span className="font-display font-semibold italic">Field note. </span>
                       {s.note}

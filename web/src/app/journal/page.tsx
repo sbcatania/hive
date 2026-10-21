@@ -93,7 +93,7 @@ export default function JournalPage() {
   }, [user]);
 
   async function remove(e: JournalEntry) {
-    if (!(await dialogs.confirm({ title: "Delete this game?", message: "It will be removed from this device and your account.", confirm: "Delete", danger: true }))) return;
+    if (!(await dialogs.confirm({ title: "Delete this game?", message: user ? "It will be removed from this device and your account." : "It will be removed from this device.", confirm: "Delete", danger: true }))) return;
     deleteLocal(e.id);
     if (user) await deleteCloud(e.id).catch(() => {});
     setEntries((list) => list.filter((x) => x.id !== e.id));

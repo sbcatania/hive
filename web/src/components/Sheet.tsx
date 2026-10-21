@@ -149,7 +149,9 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
         <div className="shrink-0 select-none">
           <div className="flex items-center justify-between px-3 pt-2">
             <span className="w-10" />
-            <span className="h-[5px] w-10 rounded-full bg-line-strong/60" />
+            <svg viewBox="0 0 40 6" className="h-1.5 w-10 text-line-strong" aria-hidden>
+              <path d="M3 3.4C12 2.4 27 2.6 37 3" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" />
+            </svg>
             <button className="grid h-10 w-10 place-items-center text-ink-soft" onClick={() => closeRef.current()} aria-label="Close">
               <Icon name="close" />
             </button>

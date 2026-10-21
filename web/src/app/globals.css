@@ -3,14 +3,14 @@
 /* A naturalist's sketchbook, drawn by hand throughout.
    Day: graphite ink on white sketchbook paper. Night: chalk and coloured pencil
    on neutral charcoal paper, like the black Hive tiles. Colour is kept for
-   meaning (moves, threats, the last move) and the bugs themselves. Every box and button outline is drawn
-   through the same pencil filter (#pencil, defined in layout.tsx); there are no
-   drop shadows, blurs or geometric outlines. Ink colours carry meaning:
+   meaning (moves, threats, the last move) and the bugs themselves. Outlines are
+   smooth ink lines with gently irregular hand-drawn corners (the --br radii); there
+   are no drop shadows, blurs or geometric outlines. Ink colours carry meaning:
      --move    blue pencil: your legal moves
      --select  your selection
      --threat  red pencil: the opponent's reach, danger
      --accent  honey: last move, small highlights only
-   See docs/DESIGN.md (round 5). */
+   See docs/DESIGN.md (rounds 5-7). */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -42,7 +42,12 @@
   --tile-white: #ffffff;
   --tile-black: #2b2c2f;
   --tile-black-rim: #0c0d0e;
+  /* Ink drawn on the tiles: fixed, since the tiles keep their colours in both themes. */
+  --tile-white-ink: #1f2023;
+  --tile-black-ink: #eceae6;
   --grain-opacity: 0.05;
+  --tape: color-mix(in oklab, #e2a628 28%, transparent);
+  --scrim: rgb(0 0 0 / 0.35);
 }
 
 [data-theme="dark"] {
@@ -74,6 +79,8 @@
   --tile-black: #0f1012;
   --tile-black-rim: #8d9197;
   --grain-opacity: 0.1;
+  --tape: color-mix(in oklab, #e6b13d 22%, transparent);
+  --scrim: rgb(0 0 0 / 0.5);
 }
 
 @theme inline {
@@ -213,6 +220,12 @@ a.btn-ghost:active {
   }
 }
 
+/* Keyboard focus: one dashed honey ring that follows each control's own corners. */
+:focus-visible {
+  outline: 2px dashed var(--accent-strong);
+  outline-offset: 3px;
+}
+
 /* Don't let text get selected or a callout appear on long-press of controls. */
 button,
 [role="button"],
@@ -248,7 +261,7 @@ nav a {
   max-width: 34rem;
   background: var(--paper);
   border: 1.8px solid var(--ink-soft);
-  border-radius: 42px;
+  border-radius: 42px 38px 44px 40px / 40px 44px 38px 42px;
   padding-bottom: max(calc(env(safe-area-inset-bottom) - var(--inset)), 10px);
   will-change: transform;
   contain: layout paint;
@@ -262,21 +275,12 @@ nav a {
   width: 84px;
   height: 22px;
   transform: translateX(-50%) rotate(-3deg);
-  background: color-mix(in oklab, var(--chalk) 55%, transparent);
+  background: var(--tape);
   clip-path: polygon(3% 0, 97% 6%, 100% 48%, 96% 100%, 2% 94%, 0 52%);
   z-index: 2;
   pointer-events: none;
 }
 
-
-/* Hand-drawn underline for headings and links. */
-.scribble {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'%3E%3Cpath d='M2 6 C 40 2, 80 9, 120 5 S 180 3, 198 6' fill='none' stroke='%23e0a526' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-size: 100% 0.35em;
-  background-position: 0 100%;
-  padding-bottom: 0.12em;
-}
 
 .board-paper {
   background-color: var(--board);
@@ -290,7 +294,8 @@ nav a {
 .nav-link {
   position: relative;
 }
-.nav-link[aria-current="page"]::after {
+.nav-link[aria-current="page"]::after,
+[aria-current="page"] > .nav-link::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -324,6 +329,12 @@ summary::-webkit-details-marker {
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--line-strong) transparent;
+  }
+  /* One underline style for text links (utilities like decoration-accent still win). */
+  .underline {
+    text-decoration-color: var(--line-strong);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
   }
 }
 
@@ -363,41 +374,40 @@ input[type="checkbox"]:focus-visible {
   outline-offset: 2px;
 }
 
-/* Pencil slider: a drawn track and a round ink thumb. */
+/* Pencil slider: a drawn track and a little hex tile for a thumb (like the switch). */
 input[type="range"] {
   appearance: none;
-  height: 28px;
+  height: 30px;
   background: transparent;
   cursor: pointer;
 }
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 6px;
+  height: 8px;
   border: 1.6px solid var(--ink-soft);
-  border-radius: 999px;
+  border-radius: 8px 6px 9px 7px / 7px 9px 6px 8px;
   background: var(--card);
 }
 input[type="range"]::-moz-range-track {
-  height: 6px;
+  height: 8px;
   border: 1.6px solid var(--ink-soft);
-  border-radius: 999px;
+  border-radius: 8px 6px 9px 7px / 7px 9px 6px 8px;
   background: var(--card);
 }
 input[type="range"]::-webkit-slider-thumb {
   appearance: none;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 26px;
   margin-top: -10px;
-  border-radius: 50%;
   background: var(--ink);
-  border: 3px solid var(--paper);
-  box-shadow: 0 0 0 1.6px var(--ink);
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
 }
 input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  width: 22px;
+  height: 24px;
+  border: 0;
+  border-radius: 0;
   background: var(--ink);
-  border: 3px solid var(--paper);
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
 }
 
 /* On/off switches in the sketch style: a hand-drawn track with a little hex tile for
@@ -433,157 +443,7 @@ input[type="range"]::-moz-range-thumb {
 }
 .switch:checked::after {
   background: var(--accent);
-  transform: translateX(19px) rotate(30deg);
-}
-.switch:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* The current page in the nav: a small honey tile under the word. */
-.nav-link {
-  position: relative;
-}
-.nav-link[aria-current="page"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -3px;
-  width: 9px;
-  height: 10px;
-  transform: translateX(-50%);
-  background: var(--accent);
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-}
-
-/* A scroll panel on phones: content fades out under its bottom edge, hinting that
-   there is more below, like a native list. */
-@media (max-width: 639px) {
-  .scroll-fade {
-    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent);
-  }
-}
-
-/* No system disclosure triangles: our summaries draw their own chevron. */
-summary {
-  list-style: none;
-}
-summary::-webkit-details-marker {
-  display: none;
-}
-
-/* Thin, quiet scrollbars where a panel scrolls on desktop. In the base layer, so a
-   utility like [scrollbar-width:none] still wins. */
-@layer base {
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--line-strong) transparent;
-  }
-}
-
-/* Pencil checkboxes: a hand-drawn box with an inked tick (no system checkbox). */
-input[type="checkbox"]:not(.switch) {
-  appearance: none;
-  position: relative;
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  margin: 1px 0 0;
-  border: 1.8px solid var(--ink-soft);
-  border-radius: 8px 6px 9px 7px / 7px 9px 6px 8px;
-  background: var(--card);
-  cursor: pointer;
-  transition: background-color 120ms;
-}
-input[type="checkbox"]:not(.switch):checked {
-  background: var(--ink);
-  border-color: var(--ink);
-}
-input[type="checkbox"]:not(.switch):checked::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--paper);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
-}
-input[type="checkbox"]:disabled,
-.switch:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-input[type="checkbox"]:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Pencil slider: a drawn track and a round ink thumb. */
-input[type="range"] {
-  appearance: none;
-  height: 28px;
-  background: transparent;
-  cursor: pointer;
-}
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 6px;
-  border: 1.6px solid var(--ink-soft);
-  border-radius: 999px;
-  background: var(--card);
-}
-input[type="range"]::-moz-range-track {
-  height: 6px;
-  border: 1.6px solid var(--ink-soft);
-  border-radius: 999px;
-  background: var(--card);
-}
-input[type="range"]::-webkit-slider-thumb {
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  margin-top: -10px;
-  border-radius: 50%;
-  background: var(--ink);
-  border: 3px solid var(--paper);
-  box-shadow: 0 0 0 1.6px var(--ink);
-}
-input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--ink);
-  border: 3px solid var(--paper);
-}
-
-/* A pencil-drawn on/off switch for checkboxes with class="switch" (role="switch"). */
-.switch {
-  appearance: none;
-  position: relative;
-  flex-shrink: 0;
-  width: 46px;
-  height: 28px;
-  border: 1.8px solid var(--ink-soft);
-  border-radius: 999px 900px 999px 950px / 950px 999px 900px 999px;
-  background: var(--card);
-  cursor: pointer;
-  transition: background-color 160ms;
-}
-.switch::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  background: var(--ink-soft);
-  transition: transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
-}
-.switch:checked {
-  background: var(--ink);
-}
-.switch:checked::after {
-  background: var(--paper);
-  transform: translateX(18px);
+  transform: translateX(19px) rotate(60deg);
 }
 .switch:focus-visible {
   outline: 2px solid var(--accent);
@@ -641,13 +501,6 @@ input[type="range"]::-moz-range-thumb {
   background-image: linear-gradient(transparent calc(100% - 1px), color-mix(in oklab, var(--line) 70%, transparent) 1px);
   background-size: 100% 1.75rem;
   line-height: 1.75rem;
-}
-
-.specimen-label {
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
-  font-size: 0.78rem;
-  color: var(--muted);
 }
 
 /* Hand-drawn corner radii for small inline boxes. */
@@ -824,12 +677,13 @@ input[type="range"]::-moz-range-thumb {
 /* ---- Components ------------------------------------------------------------ */
 
 @layer components {
-  /* Anything with an outline: the fill and the line are drawn together on a
-     pseudo-element run through the pencil filter, so edges wobble like a pen line
-     while the text stays crisp. Tune with --fill, --bc (line colour), --bw, --bs. */
+  /* Anything with an outline: the fill and the line are drawn on a pseudo-element with
+     hand-drawn corners. Tune with --fill, --bc (line colour), --bw, --bs, --br. The
+     element itself shares the radius so focus rings follow the same shape. */
   .pencil {
     position: relative;
     isolation: isolate;
+    border-radius: var(--br);
     --fill: var(--card);
     --bc: var(--line-strong);
     --bw: 1.7px;
@@ -845,6 +699,11 @@ input[type="range"]::-moz-range-thumb {
     border: var(--bw) var(--bs) var(--bc);
     border-radius: var(--br);
     pointer-events: none;
+  }
+  /* Small controls (bar icons, tags, steppers) get tighter corners so they don't
+     turn into pills. */
+  .pencil-sm {
+    --br: 11px 9px 12px 10px / 10px 12px 9px 11px;
   }
   .pencil-strong {
     --bc: var(--ink-soft);
@@ -876,6 +735,7 @@ input[type="range"]::-moz-range-thumb {
   .note-hint {
     position: relative;
     isolation: isolate;
+    border-radius: var(--br);
     --fill: var(--card);
     --bc: var(--line-strong);
     --bw: 1.7px;
@@ -907,7 +767,7 @@ input[type="range"]::-moz-range-thumb {
   .btn-secondary,
   .btn-ghost,
   .icon-btn {
-    @apply inline-flex items-center justify-center gap-2 transition select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45;
+    @apply inline-flex items-center justify-center gap-2 transition select-none active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45;
     --br: 18px 15px 19px 16px / 16px 19px 15px 18px;
   }
   .btn,
@@ -941,10 +801,12 @@ input[type="range"]::-moz-range-thumb {
     --fill: transparent;
     --bs: dashed;
     --bw: 1.4px;
+    --br: 11px 9px 12px 10px / 10px 12px 9px 11px;
   }
   .icon-btn {
     @apply h-11 w-11 text-ink-soft hover:text-ink;
-    --br: 16px 13px 17px 14px / 14px 17px 13px 16px;
+    --bc: var(--ink-soft);
+    --br: 13px 11px 14px 12px / 12px 14px 11px 13px;
   }
   .card {
     @apply p-4 text-ink;
@@ -969,6 +831,7 @@ input[type="range"]::-moz-range-thumb {
   }
   .seg > button {
     @apply relative isolate min-h-10 px-3 py-1.5 text-ink-soft transition hover:text-ink;
+    border-radius: 16px 13px 17px 14px / 14px 17px 13px 16px;
   }
   .seg > button[aria-pressed="true"] {
     @apply font-bold text-ink;

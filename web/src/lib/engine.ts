@@ -80,7 +80,7 @@ export function withEngine<T>(rules: Partial<Rules>, moves: string[], fn: (e: En
 }
 
 export function errorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
-  return String(e);
+  const raw = e instanceof Error ? e.message : e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : String(e);
+  if (/Failed to fetch|NetworkError|Load failed/i.test(raw)) return "Can't reach the game server. Check your connection and try again.";
+  return raw;
 }

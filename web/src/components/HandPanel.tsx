@@ -27,8 +27,7 @@ export function HandPanel({ color, hand, selected, placeable, onSelect, small, c
             key={h.bug}
             disabled={!name || !onSelect}
             onClick={() => name && onSelect?.(name)}
-            title={`${BUG_NAMES[h.bug]} × ${h.count}${can ? " (tap to place)" : ""}`}
-            aria-label={`${BUG_NAMES[h.bug]}, ${h.count} left`}
+            aria-label={`${BUG_NAMES[h.bug]}, ${h.count} left${can ? ", tap to place" : ""}`}
             aria-pressed={sel}
             className={`relative grid shrink-0 place-items-center transition-transform ${small ? "h-9 w-9 lg:h-12 lg:w-12" : "h-11 w-11 lg:h-12 lg:w-12"} ${h.count === 0 ? "opacity-20" : ""} ${name && onSelect ? "cursor-pointer active:scale-95" : "cursor-default"} ${sel ? "-translate-y-1.5" : ""}`}
           >

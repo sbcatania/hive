@@ -7,11 +7,11 @@ import { sb, supabaseAvailable } from "./supabase";
 export const onlineAvailable = supabaseAvailable;
 
 export const TIME_CONTROLS: { id: string; name: string; baseMs: number | null; incMs: number }[] = [
-  { id: "none", name: "Untimed", baseMs: null, incMs: 0 },
-  { id: "3+2", name: "3 min + 2s", baseMs: 3 * 60_000, incMs: 2000 },
-  { id: "5+5", name: "5 min + 5s", baseMs: 5 * 60_000, incMs: 5000 },
-  { id: "10+10", name: "10 min + 10s", baseMs: 10 * 60_000, incMs: 10_000 },
-  { id: "20+20", name: "20 min + 20s", baseMs: 20 * 60_000, incMs: 20_000 },
+  { id: "none", name: "None", baseMs: null, incMs: 0 },
+  { id: "3+2", name: "3 + 2", baseMs: 3 * 60_000, incMs: 2000 },
+  { id: "5+5", name: "5 + 5", baseMs: 5 * 60_000, incMs: 5000 },
+  { id: "10+10", name: "10 + 10", baseMs: 10 * 60_000, incMs: 10_000 },
+  { id: "20+20", name: "20 + 20", baseMs: 20 * 60_000, incMs: 20_000 },
 ];
 
 export interface OnlineGame {

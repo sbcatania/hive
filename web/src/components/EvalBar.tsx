@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AiResult } from "@/lib/engine-types";
 
 /** Eases a displayed number toward its target with a critically damped spring, so the
@@ -45,6 +45,7 @@ export function EvalBar({ result, loading }: { result: AiResult | null; loading?
   const pct = Math.round(target * 100);
   const forced = result && Math.abs(result.scoreWhite) >= 999_000;
   const label = !result && lastRef.current === 0.5 ? "—" : !result ? `White ${pct}%, Black ${100 - pct}%` : forced ? (result.scoreWhite > 0 ? "White wins by force" : "Black wins by force") : `White ${pct}%, Black ${100 - pct}%`;
+  const uid = useId().replace(/:/g, "");
   const L = 4;
   const R = 196;
   const x = L + p * (R - L);
@@ -56,16 +57,16 @@ export function EvalBar({ result, loading }: { result: AiResult | null; loading?
       </div>
       <svg viewBox="0 0 200 22" className="h-5 w-full" preserveAspectRatio="none" aria-hidden>
         <defs>
-          <pattern id="eval-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(40)">
+          <pattern id={`${uid}-hatch`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(40)">
             <line x1="0" y1="0" x2="0" y2="5" stroke="var(--ink)" strokeWidth="2.2" />
           </pattern>
-          <clipPath id="eval-clip">
+          <clipPath id={`${uid}-clip`}>
             <path d={`M${L} 6 Q100 4.5 ${R} 6 L${R} 16 Q100 17.5 ${L} 16Z`} />
           </clipPath>
         </defs>
-        <g clipPath="url(#eval-clip)">
+        <g clipPath={`url(#${uid}-clip)`}>
           <rect x={L} y={0} width={R - L} height={22} fill="var(--card)" />
-          <rect x={x} y={0} width={R - x} height={22} fill="url(#eval-hatch)" opacity={0.85} />
+          <rect x={x} y={0} width={R - x} height={22} fill={`url(#${uid}-hatch)`} opacity={0.85} />
         </g>
         <path d={`M${L} 6 Q100 4.5 ${R} 6 L${R} 16 Q100 17.5 ${L} 16Z`} fill="none" stroke="var(--ink-soft)" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
         {/* even */}

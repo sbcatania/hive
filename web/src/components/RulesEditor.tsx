@@ -43,14 +43,19 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
   );
 }
 
+/** Marks the official setting in a row of options. */
+function OfficialMark() {
+  return <span aria-label="official" className="ml-1 inline-block h-[7px] w-[6px] bg-accent align-middle [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />;
+}
+
 function Stepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
-    <div className="pencil pencil-clear inline-flex items-center">
-      <button className="grid h-9 w-9 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label="Fewer">
+    <div className="inline-flex items-center">
+      <button className="grid h-9 w-8 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label="Fewer">
         <Icon name="minus" size={16} />
       </button>
       <span className="w-5 text-center text-sm font-semibold tabular-nums">{value}</span>
-      <button className="grid h-9 w-9 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="More">
+      <button className="grid h-9 w-8 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="More">
         <Icon name="plus" size={16} />
       </button>
     </div>
@@ -62,11 +67,11 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
   const changes = describeVariants(rules);
   const expOn = (b: BugLetter) => (b === "M" ? rules.mosquito : b === "L" ? rules.ladybug : b === "P" ? rules.pillbug : true);
   return (
-    <details className="group card !bg-paper-2/50 !p-0" open={changes.length > 0 ? undefined : undefined}>
+    <details className="group card !p-0 [--fill:color-mix(in_oklab,var(--paper-2)_50%,transparent)]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
         <div>
           <div className="font-semibold">Advanced rules &amp; variants</div>
-          <div className="text-xs text-muted">{changes.length ? changes.join(" · ") : "Official tournament rules"}</div>
+          <div className="text-xs text-muted">{changes.length ? changes.join(", ") : "Official tournament rules"}</div>
         </div>
         <Icon name="chevron" className="shrink-0 text-muted transition group-open:rotate-180" />
       </summary>
@@ -75,7 +80,7 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
           <span className="label">Presets</span>
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((p) => (
-              <button key={p.id} className="pencil px-3 py-2 text-left text-sm transition hover:[--fill:var(--card-2)]" onClick={() => onChange(p.apply(rules))} title={p.blurb}>
+              <button key={p.id} className="pencil px-3 py-2 text-left text-sm transition hover:[--fill:var(--card-2)]" onClick={() => onChange(p.apply(rules))}>
                 <div className="font-semibold">{p.name}</div>
                 <div className="max-w-52 text-xs text-muted">{p.blurb}</div>
               </button>
@@ -104,7 +109,7 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
               {[2, 3, 4, 5, 6].map((n) => (
                 <button key={n} aria-pressed={rules.queenDeadline === n} disabled={n < 2 && rules.tournament} onClick={() => onChange({ ...rules, queenDeadline: n })}>
                   {n}
-                  {n === 4 ? "·" : ""}
+                  {n === 4 && <OfficialMark />}
                 </button>
               ))}
             </div>
@@ -114,18 +119,19 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
             <div className="mt-1 seg">
               {[6, 5].map((n) => (
                 <button key={n} aria-pressed={rules.surround === n} onClick={() => onChange({ ...rules, surround: n })}>
-                  {n} sides{n === 6 ? " ·" : ""}
+                  {n} sides{n === 6 && <OfficialMark />}
                 </button>
               ))}
             </div>
           </div>
           <div className="text-sm sm:col-span-2">
-            <div className="font-medium">Turn limit</div>
-            <div className="text-xs text-muted">When reached, the player whose Queen is less surrounded wins (equal = draw).</div>
-            <div className="mt-1 seg">
+            <div className="font-medium">Turn limit (turns each)</div>
+            <div className="text-xs text-muted">The less-surrounded Queen wins when it&apos;s reached.</div>
+            <div className="mt-1 seg seg-fill">
               {[0, 20, 30, 40, 60].map((n) => (
                 <button key={n} aria-pressed={rules.turnLimit === n} onClick={() => onChange({ ...rules, turnLimit: n })}>
-                  {n === 0 ? "None ·" : `${n} turns`}
+                  {n === 0 ? "None" : n}
+                  {n === 0 && <OfficialMark />}
                 </button>
               ))}
             </div>
@@ -141,7 +147,7 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
                 <div key={b} className={`pencil pencil-clear flex items-center justify-between gap-2 px-2 py-1.5 ${on ? "" : "opacity-40"}`}>
                   <div className="flex min-w-0 items-center gap-1.5">
                     <Tile bug={b} size={28} />
-                    <span className="truncate text-xs font-medium">{BUG_NAMES[b]}</span>
+                    <span className="truncate text-xs font-medium max-sm:hidden">{BUG_NAMES[b]}</span>
                   </div>
                   {b === "Q" ? (
                     <span className="px-2 text-sm font-semibold">1</span>
@@ -161,7 +167,9 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
               );
             })}
           </div>
-          <p className="mt-2 text-xs text-muted">Expansion pieces are switched on and off above. Variants are played by the CPU too, but rated games use the official rules.</p>
+          <p className="mt-2 text-xs text-muted">
+            <OfficialMark /> marks the official setting. Rated games always use the official rules.
+          </p>
         </div>
       </div>
     </details>

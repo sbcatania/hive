@@ -29,7 +29,7 @@ export default function LeaderboardPage() {
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="font-display text-4xl font-semibold">Rankings</h1>
       <p className="mt-1 text-sm text-ink-soft">
-        Elo ratings from rated online games. Everyone starts at 1200. New players move faster (K = 40 for the first 20 games, then 20).
+        Elo ratings from rated online games. Everyone starts at 1200.
       </p>
       {error && <p className="note-error mt-4">{error}</p>}
       {!rows ? (

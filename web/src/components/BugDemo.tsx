@@ -68,7 +68,7 @@ export function BugDemo({ gameString, focus, theme = "field", height = "h-64 sm:
         )}
         {!moved && !legal.length && preview.reason && <div className="absolute right-2 bottom-2 left-2 note !p-2 text-xs [--fill:var(--card)]">{preview.reason}</div>}
       </div>
-      {caption && <figcaption className="text-xs text-muted italic">{caption}</figcaption>}
+      {caption && <figcaption className="font-hand text-base text-muted">{caption}</figcaption>}
     </figure>
   );
 }

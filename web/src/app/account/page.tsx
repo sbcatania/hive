@@ -28,6 +28,8 @@ function AuthForms() {
     setBusy(true);
     setMsg(null);
     try {
+      if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw new Error("Enter your email address.");
+      if (tab !== "reset" && password.length < 6) throw new Error("Passwords are at least 6 characters.");
       if (tab === "signin") {
         await signIn(email, password);
         if (next) router.push(next);
@@ -66,7 +68,7 @@ function AuthForms() {
             </button>
           ))}
         </div>
-        <form onSubmit={submit} className="space-y-3">
+        <form onSubmit={submit} noValidate className="space-y-3">
           {tab === "signup" && (
             <label className="block text-sm">
               <span className="label">Username</span>
@@ -101,11 +103,11 @@ function AuthForms() {
             <button className="underline" onClick={() => setTab("signin")}>
               Back to sign in
             </button>
-          ) : (
+          ) : tab === "signin" ? (
             <button className="underline" onClick={() => (setTab("reset"), setMsg(null))}>
               Forgot your password?
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

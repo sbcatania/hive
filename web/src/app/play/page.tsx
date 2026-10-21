@@ -368,7 +368,7 @@ function LocalGame() {
       )}
       {hint && (
         <div className="note-hint">
-          {hintText(state, hint.best)} It&apos;s the purple arrow on the board.
+          {hintText(state, hint.best)} {state.legalMoves.find((m) => m.notation === hint.best)?.from === null ? "It's circled in purple." : "Follow the purple arrow."}
         </div>
       )}
       {state.repetitions >= 3 && !result && !entry.rules.repetitionDraw && (
@@ -384,7 +384,7 @@ function LocalGame() {
         {entry.clock?.baseMs ? `, ${entry.clock.baseMs / 60000} min + ${entry.clock.incMs / 1000}s clock` : ""}
         {entry.mode === "cpu" ? `. Help used: ${assistText(entry)}` : ""}
       </span>
-      <button className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-ink" onClick={copyGame}>
+      <button className="inline-flex items-center gap-1 underline hover:text-ink" onClick={copyGame}>
         <Icon name={copied ? "check" : "copy"} size={14} />
         {copied ? "Copied" : "Copy notation"}
       </button>

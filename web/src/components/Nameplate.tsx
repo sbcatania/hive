@@ -5,7 +5,7 @@ import type { BugLetter, ColorCode } from "@/lib/engine-types";
 export function QueenDanger({ count, need, compact }: { count: number; need: number; compact?: boolean }) {
   const danger = count >= need - 1 && count > 0;
   return (
-    <div className="flex items-center gap-1" title={`Queen surrounded on ${count} of ${need} sides needed to capture`}>
+    <div className="flex items-center gap-1" role="img" aria-label={`Queen surrounded on ${count} of ${need} sides needed to capture`}>
       <svg viewBox="0 0 76 14" className={compact ? "h-2.5 w-[54px]" : "h-3.5 w-[76px]"} aria-hidden>
         {Array.from({ length: 6 }, (_, i) => {
           const filled = i < count;
@@ -36,8 +36,8 @@ export function Avatar({ bug, color, initial, size = 40 }: { bug?: BugLetter; co
   const white = color === "w";
   return (
     <svg viewBox="-50 -50 100 100" width={size} height={size} className="shrink-0 overflow-visible" aria-hidden>
-      <path d={sketchHexPath(0, 0, 44, 4)} fill={white ? "var(--tile-white)" : "var(--tile-black)"} stroke={white ? "#1f2023" : "var(--tile-black-rim)"} strokeWidth={3} strokeLinejoin="round" />
-      <text textAnchor="middle" dy="0.34em" fontSize="46" fill={white ? "#1f2023" : "#eceae6"} fontFamily="var(--font-hand)">
+      <path d={sketchHexPath(0, 0, 44, 4)} fill={white ? "var(--tile-white)" : "var(--tile-black)"} stroke={white ? "var(--tile-white-ink)" : "var(--tile-black-rim)"} strokeWidth={3} strokeLinejoin="round" />
+      <text textAnchor="middle" dy="0.34em" fontSize="46" fill={white ? "var(--tile-white-ink)" : "var(--tile-black-ink)"} fontFamily="var(--font-hand)">
         {initial}
       </text>
     </svg>

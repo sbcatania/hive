@@ -13,16 +13,23 @@ const SQ3 = Math.sqrt(3);
 export const hexToPixel = (q: number, r: number) => [S * SQ3 * (q + r / 2), S * 1.5 * r] as const;
 const levelOffset = (level: number) => [-level * S * 0.12, -level * S * 0.2] as const;
 
-/** A loose pen loop, the way you'd circle a spot on a map. */
+/** A loose pen loop, the way you'd circle a spot on a map: a smooth curve through
+ * jittered points (quadratic segments between midpoints), overlapping at the end. */
 function inkLoop(cx: number, cy: number, r: number, seed: number) {
-  const n = 9;
-  let d = "";
-  for (let i = 0; i <= n + 1; i++) {
+  const n = 10;
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= n + 2; i++) {
     const a = (i / n) * Math.PI * 2 + seed;
-    const rr = r * (1 + 0.07 * Math.sin(i * 2.3 + seed * 3) + (i > n ? 0.08 : 0));
-    const x = cx + rr * Math.cos(a);
-    const y = cy + rr * Math.sin(a) * 0.96;
-    d += i === 0 ? `M${x.toFixed(1)} ${y.toFixed(1)}` : ` L${x.toFixed(1)} ${y.toFixed(1)}`;
+    const rr = r * (1 + 0.06 * Math.sin(i * 2.3 + seed * 3) + (i > n ? 0.07 : 0));
+    pts.push([cx + rr * Math.cos(a), cy + rr * Math.sin(a) * 0.96]);
+  }
+  const mid = (p: [number, number], q: [number, number]) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  const f = (v: number) => v.toFixed(1);
+  const m0 = mid(pts[0], pts[1]);
+  let d = `M${f(m0[0])} ${f(m0[1])}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const m = mid(pts[i], pts[i + 1]);
+    d += ` Q${f(pts[i][0])} ${f(pts[i][1])} ${f(m[0])} ${f(m[1])}`;
   }
   return d;
 }
@@ -306,6 +313,8 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
 
   const lastFrom = hideLastMove ? null : state.lastMove?.from;
   const lastTo = hideLastMove ? null : state.lastMove?.to;
+  // A piece just placed from the hand is set down with a little drop (it mounts fresh).
+  const justPlaced = state.lastMove && !state.lastMove.from ? state.lastMove.piece : null;
   const legalCells = new Set(targets.map((m) => `${m.to[0]},${m.to[1]}`));
   const preview = previewTargets.filter((m) => !legalCells.has(`${m.to[0]},${m.to[1]}`));
   const dragging = ghost?.piece.name;
@@ -351,7 +360,9 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
                 className={clickable ? "cursor-pointer" : undefined}
               >
                 <title>{names.length > 1 ? `Stack (bottom → top): ${names.join(", ")}` : p.name}</title>
-                <PieceTile bug={p.bug} color={p.color} x={0} y={0} size={S} seed={pieceSeed(p.name)} />
+                <g className={p.name === justPlaced ? "tile-set" : undefined}>
+                  <PieceTile bug={p.bug} color={p.color} x={0} y={0} size={S} seed={pieceSeed(p.name)} />
+                </g>
                 {p.onTop && selectable.has(p.name) && !isSel && (
                   <path d={sketchHexPath(0, 0, S * 0.98, pieceSeed(p.name) + 11, 0.03)} fill="none" stroke="var(--move)" strokeOpacity={0.5} strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" />
                 )}

@@ -150,10 +150,10 @@ export default function Home() {
       <section className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-3 pb-1 sm:pt-10 sm:pb-2">
         <p className="hidden max-w-md text-lg text-ink-soft sm:block">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
         <div className="flex w-full items-center justify-between gap-x-4 sm:w-auto sm:justify-end">
-          <Link href="/learn" className="font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4">
+          <Link href="/learn" className="font-hand text-xl md:hidden text-ink underline decoration-line-strong decoration-1 underline-offset-4">
             How to play
           </Link>
-          <Link href="/puzzles" className="font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4">
+          <Link href="/puzzles" className="font-hand text-xl md:hidden text-ink underline decoration-line-strong decoration-1 underline-offset-4">
             Puzzles
           </Link>
           {resume && (
@@ -262,7 +262,7 @@ export default function Home() {
                 <span className="min-w-0 truncate">
                   {gameTitle(e)} <span className="text-sm text-muted">{resultLabel(e).toLowerCase()}, {e.moves.length} moves</span>
                 </span>
-                <Link href={`/replay?local=${e.id}`} className="font-hand shrink-0 text-lg text-ink-soft underline underline-offset-4">
+                <Link href={`/replay?local=${e.id}`} className="font-hand shrink-0 text-lg text-ink-soft underline">
                   replay
                 </Link>
               </li>

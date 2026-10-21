@@ -8,7 +8,7 @@ import Board2D from "@/components/Board2D";
 import { HandPanel } from "@/components/HandPanel";
 import { AiClient } from "@/lib/ai-client";
 import { errorMessage, loadEngine, withEngine } from "@/lib/engine";
-import { colorName, normalizeRules, type ColorCode, type MoveView, type StateView } from "@/lib/engine-types";
+import { BUG_NAMES, colorName, normalizeRules, type BugLetter, type ColorCode, type MoveView, type StateView } from "@/lib/engine-types";
 import PUZZLES from "@/lib/puzzles.json";
 import { loadTheme, type ThemeId } from "@/lib/themes";
 import { Icon } from "@/components/Icon";
@@ -153,13 +153,13 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
       </div>
       <HandPanel className="shrink-0" color={solver} hand={state.hands[solver === "w" ? 0 : 1]} selected={selected} placeable={placeable} onSelect={(n) => setSelected(n === selected ? null : n)} />
       <div className="flex shrink-0 gap-2" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }}>
-        <button className="btn-ghost" onClick={() => (setMoves(puzzle.moves), setPhase("solve"), setMessage(null))}>
+        <button className="btn-secondary" onClick={() => (setMoves(puzzle.moves), setPhase("solve"), setMessage(null))}>
           <Icon name="refresh" size={16} />
           Restart
         </button>
         <button
-          className="btn-ghost"
-          onClick={() => setMessage(`Hint: the key piece is your ${puzzle.solutions[0].split(" ")[0]}.`)}
+          className="btn-secondary"
+          onClick={() => setMessage(`Hint: the key piece is your ${BUG_NAMES[puzzle.solutions[0][1] as BugLetter] ?? "piece"}.`)}
           disabled={phase === "solved"}
         >
           <Icon name="hint" size={16} />
@@ -205,11 +205,11 @@ export default function PuzzlesPage() {
               setList(false);
             }}
             className={`pencil flex aspect-square w-full flex-col items-center justify-center text-sm transition ${i === current ? "pencil-honey pencil-strong" : "pencil-clear hover:[--fill:var(--card)]"}`}
-            title={`${q.kind === "win1" ? "Win in 1" : "Win in 2"} · ${q.rules}`}
+            aria-label={`Puzzle ${i + 1}, win in ${q.kind === "win1" ? 1 : 2}${solved.has(q.id) ? ", solved" : ""}`}
           >
             <span className="font-display text-lg font-semibold">{i + 1}</span>
-            <span className="text-[10px] text-muted">{q.kind === "win1" ? "in 1" : "in 2"}</span>
-            {solved.has(q.id) && <Icon name="check" size={16} className="text-move" title="Solved" />}
+            <span className="font-hand text-sm leading-none text-muted">{q.kind === "win1" ? "in 1" : "in 2"}</span>
+            {solved.has(q.id) && <span className="anim-pop absolute top-1.5 right-1.5 h-[11px] w-[10px] bg-accent [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" aria-hidden />}
           </button>
         </li>
       ))}

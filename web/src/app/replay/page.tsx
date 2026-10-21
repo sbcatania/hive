@@ -179,8 +179,8 @@ function Replay() {
   const actions: GameAction[] = [
     { id: "first", icon: "first", label: "Start", onClick: () => setPly(0), disabled: ply === 0 },
     { id: "prev", icon: "prev", label: "Back", onClick: () => setPly((p) => Math.max(0, p - 1)), disabled: ply === 0 },
-    { id: "play", icon: playing ? "pause" : "play", label: playing ? "Pause" : "Play", onClick: () => (ply >= total ? (setPly(0), setPlaying(true)) : setPlaying((p) => !p)), active: playing },
-    { id: "next", icon: "next", label: "Forward", short: "Next", onClick: () => setPly((p) => Math.min(total, p + 1)), disabled: ply >= total },
+    { id: "play", icon: playing ? "pause" : "play", label: playing ? "Pause" : "Autoplay", onClick: () => (ply >= total ? (setPly(0), setPlaying(true)) : setPlaying((p) => !p)), active: playing },
+    { id: "next", icon: "next", label: "Next", onClick: () => setPly((p) => Math.min(total, p + 1)), disabled: ply >= total },
     { id: "last", icon: "last", label: "End", onClick: () => setPly(total), disabled: ply >= total },
     { id: "eval", icon: "eval", label: evalOn ? "Hide evaluation" : "Evaluate positions", onClick: () => setEvalOn((x) => !x), active: evalOn, menu: true },
     { id: "playon", icon: "play", label: "Play on from here", onClick: continueFromHere, menu: true },

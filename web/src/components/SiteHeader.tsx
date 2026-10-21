@@ -34,7 +34,6 @@ function ThemeToggle() {
   return (
     <button
       className="icon-btn !h-10 !w-10"
-      title={label}
       aria-label={label}
       onClick={() => {
         const m = next[mode];
@@ -44,6 +43,33 @@ function ThemeToggle() {
     >
       <Icon name={mode === "light" ? "sun" : mode === "dark" ? "moon" : "auto"} />
     </button>
+  );
+}
+
+/** Day / night / auto as a segmented control, for the menu sheet where there's room. */
+function ThemeSeg() {
+  const [mode, setMode] = useState<ThemeMode>("system");
+  useEffect(() => setMode(loadThemeMode()), []);
+  const opts: [ThemeMode, string][] = [
+    ["light", "Day"],
+    ["dark", "Night"],
+    ["system", "Auto"],
+  ];
+  return (
+    <div className="seg">
+      {opts.map(([m, n]) => (
+        <button
+          key={m}
+          aria-pressed={mode === m}
+          onClick={() => {
+            setMode(m);
+            applyThemeMode(m);
+          }}
+        >
+          {n}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -58,7 +84,7 @@ function AccountChip() {
     );
   }
   return (
-    <Link href="/account" className="pencil flex h-10 items-center gap-2 px-2 text-sm" title="Your account">
+    <Link href="/account" className="pencil flex h-10 items-center gap-2 px-2 text-sm" aria-label="Your account">
       <Avatar color="w" initial={(profile?.username ?? "?").slice(0, 1).toUpperCase()} size={26} />
       <span className="hidden max-w-28 truncate font-medium sm:inline">{profile?.username ?? "Account"}</span>
       {profile && profile.rated_games > 0 && <span className="text-xs text-muted tabular-nums">{profile.rating}</span>}
@@ -70,7 +96,7 @@ export function SiteHeader() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [path]);
-  const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  const active = (href: string) => (href === "/" ? path === "/" || path.startsWith("/play") : path.startsWith(href));
   const router = useRouter();
   // Detail screens get a back button: there's no browser back button or swipe in a
   // home-screen app. With no history (opened from a link), go to the parent list.
@@ -102,7 +128,7 @@ export function SiteHeader() {
           <span className="hidden sm:block">
             <ThemeToggle />
           </span>
-          <AccountChip />
+          {!path.startsWith("/account") && <AccountChip />}
           <button className="icon-btn !h-10 !w-10 md:hidden" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(true)}>
             <Icon name="menu" />
           </button>
@@ -111,13 +137,19 @@ export function SiteHeader() {
       <Sheet open={open} onClose={() => setOpen(false)}>
         <nav className="grid gap-1 pb-2">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className={`flex min-h-12 items-center px-1 text-xl ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}>
-              {n.label}
+            <Link
+              key={n.href}
+              href={n.href}
+              onClick={() => setOpen(false)}
+              aria-current={active(n.href) ? "page" : undefined}
+              className={`flex min-h-12 items-center px-1 text-xl ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}
+            >
+              <span className="nav-link">{n.label}</span>
             </Link>
           ))}
           <div className="mt-2 flex items-center justify-between border-t border-dashed border-line-strong pt-3">
-            <span className="text-ink-soft">Day / night</span>
-            <ThemeToggle />
+            <span className="text-ink-soft">Theme</span>
+            <ThemeSeg />
           </div>
         </nav>
       </Sheet>

@@ -43,14 +43,14 @@ export function Wordmark({
     >
       {LETTERS.map((t, i) => {
         const x = i * W;
-        const ink = t.white ? "#1f2023" : "#eceae6";
+        const ink = t.white ? "var(--tile-white-ink)" : "var(--tile-black-ink)";
         return (
           <g key={t.ch} transform={`rotate(${t.rot} ${x} 0)`}>
             <g {...set(i, x, 0)}>
               <path
                 d={sketchHexPath(x, 0, R * 0.97, i * 11 + 3, 0.035)}
                 fill={t.white ? "var(--tile-white)" : "var(--tile-black)"}
-                stroke={t.white ? "#1f2023" : "var(--tile-black-rim)"}
+                stroke={t.white ? "var(--tile-white-ink)" : "var(--tile-black-rim)"}
                 strokeWidth={2.2}
                 strokeLinejoin="round"
               />

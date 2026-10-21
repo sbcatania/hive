@@ -16,7 +16,7 @@ export function ClockFace({ ms, running }: { ms: number; running: boolean }) {
   const low = ms < 20_000;
   return (
     <span
-      className={`pencil px-2 py-0.5 font-display text-base font-semibold tabular-nums ${running ? (low ? "text-white [--bc:var(--danger)] [--fill:var(--danger)]" : "text-paper [--bc:var(--ink)] [--fill:var(--ink)]") : "text-ink-soft [--fill:transparent]"}`}
+      className={`pencil px-2 py-0.5 font-display text-base font-semibold tabular-nums ${running ? (low ? "text-paper [--bc:var(--danger)] [--fill:var(--danger)]" : "text-paper [--bc:var(--ink)] [--fill:var(--ink)]") : "text-ink-soft [--fill:transparent]"}`}
       aria-label={`Clock ${fmtClock(ms)}`}
     >
       {fmtClock(ms)}
@@ -77,7 +77,7 @@ export function GameOverCard({ title, subtitle, detail, tone, actions, onClose }
     <div className="absolute inset-0 z-10 grid place-items-center overflow-y-auto bg-paper/70 p-3 sm:p-4">
       <div className="rise card w-full max-w-sm !px-4 !pt-5 !pb-4 text-center sm:!p-6">
         <Tape />
-        <button className="icon-btn absolute top-2 right-2 !h-10 !w-10 border-transparent bg-transparent" onClick={onClose} aria-label="Look at the board">
+        <button className="icon-btn absolute top-2 right-2 !h-10 !w-10 [--bc:transparent] [--fill:transparent]" onClick={onClose} aria-label="Look at the board">
           <Icon name="close" />
         </button>
         <div className="mx-auto w-fit origin-top scale-75 -mb-5 sm:mb-0 sm:scale-100">

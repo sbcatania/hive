@@ -72,7 +72,7 @@ function InkBug({ bug, ink, washOpacity }: { bug: BugLetter; ink: string; washOp
  * pen stroke, and the bug over a slightly mis-registered watercolour wash. */
 export function PieceTile({ bug, color, x, y, size, dim, seed = 0 }: Props) {
   const white = color === "w";
-  const line = white ? "#1f2023" : "#eceae6";
+  const line = white ? "var(--tile-white-ink)" : "var(--tile-black-ink)";
   const paper = white ? "var(--tile-white)" : "var(--tile-black)";
   const s = size * 1.02;
   return (
