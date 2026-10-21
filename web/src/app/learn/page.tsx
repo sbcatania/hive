@@ -3,7 +3,7 @@ import { BugDemo } from "@/components/BugDemo";
 import { BugGlyph } from "@/components/BugGlyph";
 import { Diagram } from "@/components/Diagram";
 import type { BugLetter } from "@/lib/engine-types";
-import { roundedHexPath, TILE } from "@/lib/themes";
+import { MiniTile } from "@/components/PieceTile";
 
 export const metadata = { title: "Field guide: how to play" };
 
@@ -122,21 +122,13 @@ const CHAPTERS = [
 ];
 
 function Plate({ bug }: { bug: BugLetter }) {
-  return (
-    <svg viewBox="-50 -50 100 100" className="h-20 w-20 shrink-0" aria-hidden>
-      <path d={roundedHexPath(0, 5, 46, 0.2)} fill={TILE.w.side} />
-      <path d={roundedHexPath(0, 0, 46, 0.2)} fill={TILE.w.fill} stroke={TILE.w.edge} strokeWidth={2.5} />
-      <g transform="translate(-33 -33) scale(0.66)">
-        <BugGlyph bug={bug} ink={TILE.w.ink} />
-      </g>
-    </svg>
-  );
+  return <MiniTile bug={bug} size={80} seed={bug.charCodeAt(0)} />;
 }
 
 function Chapter({ id, n, title, children }: { id: string; n: number; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="scroll-mt-20 space-y-4">
-      <div className="flex items-baseline gap-3 border-b border-line pb-2">
+      <div className="flex items-baseline gap-3 border-b border-dashed border-line-strong pb-2">
         <span className="font-display text-3xl text-accent">{["I", "II", "III", "IV", "V", "VI", "VII"][n]}</span>
         <h2 className="font-display text-3xl font-semibold">{title}</h2>
       </div>
@@ -258,7 +250,7 @@ export default function LearnPage() {
             <div className="space-y-10">
               {SPECIMENS.map((s) => (
                 <div key={s.bug} className="grid gap-5 md:grid-cols-[1fr_1.1fr]">
-                  <div className="sketch space-y-3 p-5">
+                  <div className="card space-y-3 p-5">
                     <div className="flex items-start gap-4">
                       <Plate bug={s.bug} />
                       <div>
@@ -271,7 +263,7 @@ export default function LearnPage() {
                       <div className="label mb-1">Movement</div>
                       <p className="text-sm">{s.movement}</p>
                     </div>
-                    <div className="sk border border-dashed border-line-strong bg-paper-2/60 p-3 text-sm">
+                    <div className="pencil pencil-clear pencil-dashed p-3 text-sm">
                       <span className="font-display font-semibold italic">Field note. </span>
                       {s.note}
                     </div>
@@ -313,7 +305,7 @@ export default function LearnPage() {
                 ["Repetition draw", "A position occurring for the third time ends the game in a draw."],
                 ["Custom counts", "Set how many of each bug both players get."],
               ].map(([k, v]) => (
-                <div key={k} className="sk-lg border border-line bg-card p-4">
+                <div key={k} className="card">
                   <div className="font-semibold">{k}</div>
                   <p className="mt-1 text-sm text-ink-soft">{v}</p>
                 </div>
@@ -331,7 +323,7 @@ export default function LearnPage() {
             </p>
           </Chapter>
 
-          <div className="sketch flex flex-col items-center gap-3 p-8 text-center">
+          <div className="card flex flex-col items-center gap-3 p-8 text-center">
             <div className="font-display text-3xl font-semibold">Ready for the wild?</div>
             <p className="text-ink-soft">Test yourself on puzzles, or start with Pip the Pillbug, the gentlest opponent in the garden.</p>
             <div className="flex flex-wrap justify-center gap-2">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Icon } from "./Icon";
 import { MiniTile, PieceTile, sketchHexPath } from "./PieceTile";
+import { Tape } from "./Tape";
 
 export function fmtClock(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -15,8 +16,7 @@ export function ClockFace({ ms, running }: { ms: number; running: boolean }) {
   const low = ms < 20_000;
   return (
     <span
-      className={`border-[1.6px] px-2 py-0.5 font-mono text-sm tabular-nums transition ${running ? (low ? "border-danger bg-danger text-white" : "border-ink bg-ink text-paper") : "border-line-strong bg-paper text-ink-soft"}`}
-      style={{ borderRadius: "10px 4px 11px 5px / 5px 11px 4px 10px" }}
+      className={`pencil px-2 py-0.5 font-mono text-sm tabular-nums ${running ? (low ? "text-white [--bc:var(--danger)] [--fill:var(--danger)]" : "text-paper [--bc:var(--ink)] [--fill:var(--ink)]") : "text-ink-soft [--fill:transparent]"}`}
       aria-label={`Clock ${fmtClock(ms)}`}
     >
       {fmtClock(ms)}
@@ -44,7 +44,7 @@ function Emblem({ tone }: { tone: OverProps["tone"] }) {
           return <circle key={i} cx={Math.cos(a) * 26} cy={Math.sin(a) * 26} r={11} fill="var(--accent)" fillOpacity={0.7} stroke="var(--ink)" strokeWidth={1.6} />;
         })}
         <circle r={22} fill="var(--card)" stroke="var(--ink)" strokeWidth={2} />
-        <PieceTile bug="Q" color="w" x={0} y={0} size={17} style="field" seed={5} />
+        <PieceTile bug="Q" color="w" x={0} y={0} size={17} seed={5} />
       </svg>
     );
   }
@@ -66,7 +66,7 @@ function Emblem({ tone }: { tone: OverProps["tone"] }) {
       {ring.map(([x, y], i) => (
         <path key={i} d={sketchHexPath(x, y, 16, i * 5 + 2, 0.06)} fill="var(--card-2)" stroke="var(--ink-soft)" strokeWidth={1.6} strokeDasharray={i % 2 ? undefined : "3 3"} />
       ))}
-      <PieceTile bug="Q" color={tone === "loss" ? "w" : "b"} x={0} y={0} size={18} style="field" seed={2} />
+      <PieceTile bug="Q" color={tone === "loss" ? "w" : "b"} x={0} y={0} size={18} seed={2} />
     </svg>
   );
 }
@@ -74,8 +74,9 @@ function Emblem({ tone }: { tone: OverProps["tone"] }) {
 /** The end-of-game card shown over the board. */
 export function GameOverCard({ title, subtitle, detail, tone, actions, onClose }: OverProps) {
   return (
-    <div className="absolute inset-0 z-10 grid place-items-center overflow-y-auto bg-paper/55 p-3 backdrop-blur-[2px] sm:p-4">
-      <div className="rise card tape w-full max-w-sm !px-4 !pt-5 !pb-4 text-center sm:!p-6">
+    <div className="absolute inset-0 z-10 grid place-items-center overflow-y-auto bg-paper/70 p-3 sm:p-4">
+      <div className="rise card w-full max-w-sm !px-4 !pt-5 !pb-4 text-center sm:!p-6">
+        <Tape />
         <button className="icon-btn absolute top-2 right-2 !h-10 !w-10 border-transparent bg-transparent" onClick={onClose} aria-label="Look at the board">
           <Icon name="close" />
         </button>

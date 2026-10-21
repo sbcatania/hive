@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { hexPoints } from "./BugGlyph";
-import { PieceTile, sketchHexPath, TileDefs, type TileStyle } from "./PieceTile";
+import { PieceTile, sketchHexPath } from "./PieceTile";
 import type { BoardProps } from "./board-types";
 import type { MoveView, PieceView } from "@/lib/engine-types";
 
@@ -66,7 +66,6 @@ type Gesture =
   | { kind: "pinch"; d0: number; k0: number; mx0: number; my0: number; vx0: number; vy0: number };
 
 export default function Board2D({ state, selected, targets, previewTargets = [], hint, onPieceClick, onTargetClick, onBackgroundClick, theme, selectable, hideLastMove, onDragChange }: BoardProps) {
-  const style: TileStyle = theme === "field" ? "field" : theme === "clean" ? "clean" : "bakelite";
   const svgRef = useRef<SVGSVGElement>(null);
   const layerRef = useRef<SVGGElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
@@ -288,7 +287,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   useEffect(() => onDragChange?.(isDragging), [isDragging]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className={`relative h-full w-full select-none ${style === "field" ? "board-paper" : "board-surface"}`}>
+    <div className={`relative h-full w-full select-none board-paper`}>
       <svg
         ref={svgRef}
         className="h-full w-full touch-none"
@@ -304,7 +303,6 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
         role="application"
         aria-label="Hive board"
       >
-        <TileDefs />
         <defs>
           <marker id="hint-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
             <path d="M0 1 L9 5 L0 9" fill="none" stroke="var(--violet)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -327,7 +325,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
                 className={clickable ? "cursor-pointer" : undefined}
               >
                 <title>{names.length > 1 ? `Stack (bottom → top): ${names.join(", ")}` : p.name}</title>
-                <PieceTile bug={p.bug} color={p.color} x={0} y={0} size={S} style={style} seed={pieceSeed(p.name)} />
+                <PieceTile bug={p.bug} color={p.color} x={0} y={0} size={S} seed={pieceSeed(p.name)} />
                 {p.onTop && selectable.has(p.name) && !isSel && (
                   <path d={sketchHexPath(0, 0, S * 0.98, pieceSeed(p.name) + 11, 0.03)} fill="none" stroke="var(--move)" strokeOpacity={0.5} strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" />
                 )}
@@ -372,7 +370,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
 
           {ghost && (
             <g style={{ transform: `translate(${ghost.x}px, ${ghost.y - S * 0.25}px) scale(1.12)` }} pointerEvents="none" opacity={0.95}>
-              <PieceTile bug={ghost.piece.bug} color={ghost.piece.color} x={0} y={0} size={S} style={style} seed={pieceSeed(ghost.piece.name)} />
+              <PieceTile bug={ghost.piece.bug} color={ghost.piece.color} x={0} y={0} size={S} seed={pieceSeed(ghost.piece.name)} />
             </g>
           )}
         </g>

@@ -36,9 +36,8 @@ export function Avatar({ bug, color, initial, size = 40 }: { bug?: BugLetter; co
   const white = color === "w";
   return (
     <svg viewBox="-50 -50 100 100" width={size} height={size} className="shrink-0 overflow-visible" aria-hidden>
-      <path d={sketchHexPath(4, 5, 43, 9, 0.05)} fill="#3a2a17" opacity={0.13} />
-      <path d={sketchHexPath(0, 0, 44, 4)} fill={white ? "#fbf5e6" : "#2d2b29"} stroke={white ? "#2b2218" : "#efe6d2"} strokeWidth={3} strokeLinejoin="round" />
-      <text textAnchor="middle" dy="0.34em" fontSize="46" fill={white ? "#2b2218" : "#efe6d2"} fontFamily="var(--font-hand)">
+      <path d={sketchHexPath(0, 0, 44, 4)} fill={white ? "var(--tile-white)" : "var(--tile-black)"} stroke={white ? "#1f2023" : "var(--tile-black-rim)"} strokeWidth={3} strokeLinejoin="round" />
+      <text textAnchor="middle" dy="0.34em" fontSize="46" fill={white ? "#1f2023" : "#eceae6"} fontFamily="var(--font-hand)">
         {initial}
       </text>
     </svg>
@@ -60,14 +59,13 @@ interface Props {
 export function Nameplate({ color, name, sub, bug, active, thinking, queenCount, need, clock }: Props) {
   return (
     <div
-      className={`relative flex min-w-0 items-center gap-2.5 border-[1.6px] px-2.5 py-1.5 transition sm:gap-3 sm:px-3 sm:py-2 ${active ? "border-ink-soft bg-[color-mix(in_oklab,var(--accent)_14%,var(--card))]" : "border-line bg-card/60"}`}
-      style={{ borderRadius: "14px 5px 16px 6px / 6px 16px 5px 14px" }}
+      className={`pencil flex min-w-0 items-center gap-2.5 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2 ${active ? "pencil-honey pencil-strong" : "pencil-clear"}`}
     >
       <Avatar bug={bug} color={color} initial={typeof name === "string" ? name.slice(0, 1).toUpperCase() : "?"} size={36} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="truncate font-display text-[1.05rem] font-semibold">{name}</span>
-          {active && <span className={`font-hand text-lg leading-none text-accent-strong ${thinking ? "pulse-ink" : ""}`}>{thinking ? "thinking…" : "to move"}</span>}
+          {active && <span className={`font-hand text-lg leading-none text-ink-soft ${thinking ? "pulse-ink" : ""}`}>{thinking ? "thinking…" : "to move"}</span>}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
           {sub && <span className="truncate">{sub}</span>}

@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
               <li key={p.id}>
                 <Link
                   href={`/player?u=${encodeURIComponent(p.username)}`}
-                  className={`flex items-center gap-3 sk-lg border px-3 py-2 transition hover:bg-card-2 ${me ? "border-accent bg-accent-soft/40" : "border-line bg-card"}`}
+                  className={`pencil flex items-center gap-3 px-3 py-2 transition ${me ? "pencil-honey" : "hover:[--fill:var(--card-2)]"}`}
                 >
                   <span className={`w-8 text-right font-display text-xl font-semibold ${i < 3 ? "text-accent" : "text-muted"}`}>{i + 1}</span>
                   <Avatar color={i % 2 ? "b" : "w"} initial={p.username.slice(0, 1).toUpperCase()} bug={i === 0 ? "Q" : undefined} size={36} />

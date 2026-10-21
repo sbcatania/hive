@@ -8,8 +8,8 @@ import { GameView, type PlayerInfo } from "@/components/GameView";
 import { AiClient } from "@/lib/ai-client";
 import { useAuth } from "@/lib/auth";
 import { errorMessage, loadEngine, withEngine } from "@/lib/engine";
-import { persona, resultText, type AiResult, type ColorCode, type Rules, type StateView } from "@/lib/engine-types";
-import { getLocal, listCloud, newId, REASON_TEXT, saveLocal, setCurrentGameId } from "@/lib/journal";
+import { levelInfo, resultText, type AiResult, type ColorCode, type Rules, type StateView } from "@/lib/engine-types";
+import { gameTitle, getLocal, listCloud, newId, REASON_TEXT, saveLocal, setCurrentGameId } from "@/lib/journal";
 import { fetchGame, fetchPlayers, rulesFromRow } from "@/lib/online";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
@@ -30,7 +30,7 @@ function Replay() {
   const { user, loading: authLoading } = useAuth();
   const [src, setSrc] = useState<Source | null>(null);
   const [ply, setPly] = useState(0);
-  const [theme, setTheme] = useState<ThemeId>("bakelite");
+  const [theme, setTheme] = useState<ThemeId>("field");
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [evalOn, setEvalOn] = useState(false);
@@ -50,13 +50,13 @@ function Replay() {
           let e = getLocal(localId);
           if (!e && user) e = (await listCloud()).find((x) => x.id === localId) ?? null;
           if (!e) throw new Error("That game isn't in this journal.");
-          const p = e.level ? persona(e.level) : null;
+          const p = e.level ? levelInfo(e.level) : null;
           const pl: Record<ColorCode, PlayerInfo> = { w: { name: "White" }, b: { name: "Black" } };
           if (e.mode === "cpu" && p) {
             pl[e.human] = { name: "You" };
-            pl[e.human === "w" ? "b" : "w"] = { name: p.name, sub: p.title, bug: p.bug };
+            pl[e.human === "w" ? "b" : "w"] = { name: "Computer", sub: p.name };
           }
-          setSrc({ title: e.label, rules: e.rules, moves: e.moves, result: e.result, reason: e.resultReason, players: pl });
+          setSrc({ title: gameTitle(e), rules: e.rules, moves: e.moves, result: e.result, reason: e.resultReason, players: pl });
           setPly(e.moves.length);
         } else if (onlineId) {
           const g = await fetchGame(onlineId);

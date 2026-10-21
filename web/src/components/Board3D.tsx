@@ -62,8 +62,8 @@ const decalGeometry = new THREE.PlaneGeometry(R * 2.1, R * 2.1);
 
 // One body colour per side, used for the whole tile so the top and the sides
 // read as a single moulded piece. The glyph is engraved into it.
-const BODY: Record<ColorCode, string> = { w: "#ece3cf", b: "#2a292e" };
-const GROOVE: Record<ColorCode, string> = { w: "#b9ab8c", b: "#141317" };
+const BODY: Record<ColorCode, string> = { w: "#efefec", b: "#2a2b2f" };
+const GROOVE: Record<ColorCode, string> = { w: "#a9acb0", b: "#131416" };
 
 const faceCache = new Map<string, { map: THREE.Texture; bump: THREE.Texture }>();
 
@@ -439,11 +439,11 @@ export default function Board3D({ state, selected, targets, previewTargets = [],
     <Canvas shadows={{ type: THREE.PCFSoftShadowMap }} camera={{ position: [0, 9.5, 8.5], fov: 40 }} onPointerMissed={() => onBackgroundClick?.()} dpr={[1, 2]}>
       <color attach="background" args={[pal.paper]} />
       <fog attach="fog" args={[pal.paper, 16, 38]} />
-      <hemisphereLight args={[dark ? "#dbe9ff" : "#fffaf0", dark ? "#0b1a2a" : "#b9a27c", dark ? 0.9 : 1.05]} />
+      <hemisphereLight args={[dark ? "#e8edf5" : "#ffffff", dark ? "#101114" : "#a9adb3", dark ? 0.9 : 1.05]} />
       <directionalLight
         position={[-4, 12, 6]}
         intensity={dark ? 1.5 : 1.9}
-        color={dark ? "#f4f8ff" : "#fff6e6"}
+        color="#ffffff"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-12}
@@ -460,7 +460,7 @@ export default function Board3D({ state, selected, targets, previewTargets = [],
       <group position={[center.x, 0, center.z]}>
         <Paper tex={pal.paperTex} />
       </group>
-      <ContactShadows position={[center.x, 0.001, center.z]} scale={30} blur={2.6} opacity={dark ? 0.55 : 0.38} far={2} resolution={1024} color={dark ? "#000814" : "#3a2a17"} />
+      <ContactShadows position={[center.x, 0.001, center.z]} scale={30} blur={2.6} opacity={dark ? 0.55 : 0.38} far={2} resolution={1024} color="#000000" />
 
       {last && <Mark q={last.to[0]} r={last.to[1]} y={0} tex={pal.halo} scale={1.12} />}
       {last?.from && stackTop(last.from[0], last.from[1]) === 0 && <Mark q={last.from[0]} r={last.from[1]} y={0} tex={pal.lastFrom} scale={0.95} />}

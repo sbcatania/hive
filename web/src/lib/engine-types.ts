@@ -118,25 +118,21 @@ export const BUG_NAMES: Record<BugLetter, string> = {
   P: "Pillbug",
 };
 
-export interface Persona {
+export interface LevelInfo {
   id: Level;
   name: string;
-  bug: BugLetter;
-  title: string;
-  temperament: string;
-  /** Rough playing strength, shown on the card. */
-  strength: number;
+  blurb: string;
 }
 
-/** CPU opponents. Each level is a named bug with a temperament. */
-export const LEVELS: Persona[] = [
-  { id: "easy", name: "Pip", bug: "P", title: "the Pillbug", temperament: "Rolls around cheerfully. Looks one move ahead and often misses danger.", strength: 1 },
-  { id: "medium", name: "Greta", bug: "G", title: "the Grasshopper", temperament: "Jumps at any chance she sees. Looks two moves ahead, a little impulsive.", strength: 2 },
-  { id: "hard", name: "Sable", bug: "S", title: "the Spider", temperament: "Patient and precise. Searches deeply for about a second and a half.", strength: 3 },
-  { id: "expert", name: "Regina", bug: "Q", title: "the Queen", temperament: "Ruthless. Her deepest search, or a trained neural network when one is installed.", strength: 4 },
+/** CPU difficulty levels. */
+export const LEVELS: LevelInfo[] = [
+  { id: "easy", name: "Easy", blurb: "Still learning the rules. Makes mistakes." },
+  { id: "medium", name: "Medium", blurb: "A friendly game that punishes blunders." },
+  { id: "hard", name: "Hard", blurb: "Thinks a couple of seconds a move. A real fight." },
+  { id: "expert", name: "Expert", blurb: "Its strongest, slowest search. Good luck." },
 ];
 
-export function persona(level: Level) {
+export function levelInfo(level: Level) {
   return LEVELS.find((l) => l.id === level) ?? LEVELS[1];
 }
 

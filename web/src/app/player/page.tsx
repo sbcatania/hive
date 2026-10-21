@@ -33,7 +33,7 @@ function PlayerInner() {
   const total = profile.wins + profile.losses + profile.draws;
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="sketch flex items-center gap-4 p-6">
+      <div className="card flex items-center gap-4 p-6">
         <Avatar color="w" initial={profile.username.slice(0, 1).toUpperCase()} size={72} />
         <div>
           <div className="specimen-label">Player</div>

@@ -55,6 +55,8 @@ interface Props {
   analysis?: React.ReactNode;
   overlay?: React.ReactNode;
   actions?: GameAction[];
+  /** Small print under the move list (rules, clock, export). */
+  footer?: React.ReactNode;
 }
 
 function describePiece(name: string) {
@@ -63,7 +65,7 @@ function describePiece(name: string) {
   return { color, bug, label: `${colorName(color)} ${BUG_NAMES[bug]}` };
 }
 
-export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [] }: Props) {
+export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [], footer }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   useEffect(() => setSelected(null), [state.ply, canMove]);
@@ -124,7 +126,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
         need={need}
         clock={players[c].clock}
       />
-      <HandPanel color={c} hand={state.hands[c === "w" ? 0 : 1]} selected={selected} placeable={state.toMove === c ? placeable : new Set()} onSelect={over ? undefined : select} style={theme === "3d" ? "field" : theme} />
+      <HandPanel color={c} hand={state.hands[c === "w" ? 0 : 1]} selected={selected} placeable={state.toMove === c ? placeable : new Set()} onSelect={over ? undefined : select} />
     </div>
   );
 
@@ -155,12 +157,12 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
           <div className="absolute inset-[3px] overflow-hidden" style={{ borderRadius: "11px 3px 13px 4px / 4px 13px 3px 11px" }}>
             {theme === "3d" ? <Board3D {...boardProps} /> : <Board2D {...boardProps} />}
           </div>
-          <div className="pointer-events-none absolute top-2 left-2 max-w-[75%] -rotate-1 border border-line-strong bg-card/90 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink shadow-sm" style={{ borderRadius: "8px 3px 9px 3px / 3px 9px 3px 8px" }}>
+          <div className="pencil pointer-events-none absolute top-2 left-2 max-w-[75%] -rotate-1 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink">
             {status}
           </div>
           {sel && (
             <div className={`rise pointer-events-none absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm`}>
-              <div className={`pointer-events-auto flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} border-[1.6px] border-ink-soft bg-card/95 py-1.5 pr-1 pl-3 text-sm shadow-lg backdrop-blur sm:py-2`} style={{ borderRadius: "14px 5px 16px 6px / 6px 16px 5px 14px" }}>
+              <div className={`pointer-events-auto flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} pencil pencil-strong py-1.5 pr-1 pl-3 text-sm sm:py-2`}>
                 <div className="min-w-0 flex-1 py-0.5">
                   <div className="font-semibold">
                     {sel.label} <span className="font-mono text-xs text-muted">{selected}</span>
@@ -204,8 +206,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
                 className={`flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[0.72rem] leading-none font-semibold transition select-none active:scale-95 disabled:opacity-35 ${a.active ? "text-ink" : "text-ink-soft"}`}
               >
                 <span
-                  className={`grid h-8 w-11 place-items-center border-[1.5px] ${a.active ? "border-ink-soft bg-accent-soft" : "border-line-strong bg-card"}`}
-                  style={{ borderRadius: "12px 6px 13px 7px / 7px 13px 6px 12px" }}
+                  className={`pencil grid h-8 w-11 place-items-center ${a.active ? "pencil-honey" : ""}`}
                 >
                   <Icon name={a.icon} size={19} className={a.busy ? "pulse-ink" : undefined} />
                 </span>
@@ -230,11 +231,12 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
         {analysis}
         {sidebar}
         <div>
-          <span className="label">Field notes</span>
+          <span className="label">Moves</span>
           <MoveList history={state.history} />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="label mb-0">Board style</span>
+        {footer}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="label mb-0">Board</span>
           <ThemePicker value={theme} onChange={onThemeChange} />
         </div>
       </aside>

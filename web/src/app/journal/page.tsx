@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Icon } from "@/components/Icon";
+import { Engine, errorMessage, loadEngine } from "@/lib/engine";
+import { normalizeRules } from "@/lib/engine-types";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { persona } from "@/lib/engine-types";
-import { deleteCloud, deleteLocal, listCloud, listLocal, REASON_TEXT, resultLabel, type JournalEntry } from "@/lib/journal";
+import { deleteCloud, deleteLocal, gameTitle, newId, saveLocal, setCurrentGameId, listCloud, listLocal, REASON_TEXT, resultLabel, type JournalEntry } from "@/lib/journal";
 import { fetchPlayers, gamesForPlayer, type OnlineGame, type PlayerSummary } from "@/lib/online";
 import { describeVariants, expansionLabel } from "@/lib/variants";
 
@@ -14,8 +17,8 @@ function when(t: number | string) {
 }
 
 function Badge({ text, tone }: { text: string; tone: "win" | "loss" | "draw" | "open" }) {
-  const cls = { win: "bg-move/15 text-move ring-move/40", loss: "bg-danger/10 text-danger ring-danger/30", draw: "bg-paper-2 text-ink-soft ring-line", open: "bg-accent-soft text-ink ring-accent/40" }[tone];
-  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${cls}`}>{text}</span>;
+  const cls = { win: "text-move", loss: "text-danger", draw: "text-ink-soft", open: "text-accent-strong" }[tone];
+  return <span className={`font-hand text-lg leading-none ${cls}`}>{text}</span>;
 }
 
 export default function JournalPage() {
@@ -26,6 +29,8 @@ export default function JournalPage() {
   const [players, setPlayers] = useState<Record<string, PlayerSummary>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [importText, setImportText] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     let alive = true;
@@ -63,12 +68,28 @@ export default function JournalPage() {
     setEntries((list) => list.filter((x) => x.id !== e.id));
   }
 
+  async function importGame() {
+    setError(null);
+    try {
+      await loadEngine();
+      const g = Engine.fromGameString(importText.trim(), true);
+      const st = g.state();
+      g.free();
+      const now = Date.now();
+      const entry: JournalEntry = { id: newId(), mode: "local", rules: normalizeRules(st.rules), moves: st.history, label: "Imported game", human: "w", createdAt: now, updatedAt: now };
+      saveLocal(entry);
+      setCurrentGameId(entry.id);
+      router.push(`/play?id=${entry.id}`);
+    } catch (e) {
+      setError("Couldn't load that game: " + errorMessage(e));
+    }
+  }
+
   const tone = (label: string) => (label === "You won" ? "win" : label === "You lost" ? "loss" : label === "In progress" ? "open" : "draw");
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="specimen-label">Observations</div>
-      <h1 className="font-display text-4xl font-semibold">Your journal</h1>
+      <h1 className="font-display text-4xl font-semibold">Your games</h1>
       <p className="mt-1 text-sm text-ink-soft">
         {user ? "Every game you've played, in this browser and on your account." : "Games are saved in this browser."}{" "}
         {!user && (
@@ -80,7 +101,7 @@ export default function JournalPage() {
 
       <div className="seg mt-5">
         <button aria-pressed={tab === "saved"} onClick={() => setTab("saved")}>
-          CPU &amp; pass-and-play ({entries.length})
+          On this device ({entries.length})
         </button>
         <button aria-pressed={tab === "online"} onClick={() => setTab("online")}>
           Online{user ? ` (${online.length})` : ""}
@@ -104,7 +125,7 @@ export default function JournalPage() {
                 <li key={e.id} className="card flex flex-wrap items-center gap-3 !p-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">{e.label || (e.level ? `vs ${persona(e.level).name}` : "Game")}</span>
+                      <span className="font-semibold">{gameTitle(e)}</span>
                       <Badge text={label} tone={tone(label)} />
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
@@ -122,8 +143,8 @@ export default function JournalPage() {
                     <Link className="btn-secondary !px-3 !py-1.5" href={`/replay?local=${e.id}`}>
                       Replay
                     </Link>
-                    <button className="btn-ghost" onClick={() => remove(e)} aria-label="Delete">
-                      ✕
+                    <button className="icon-btn !h-10 !w-10 [--fill:transparent]" onClick={() => remove(e)} aria-label="Delete">
+                      <Icon name="trash" size={18} />
                     </button>
                   </div>
                 </li>
@@ -176,6 +197,17 @@ export default function JournalPage() {
           })}
         </ul>
       )}
+
+      <details className="mt-10">
+        <summary className="cursor-pointer font-hand text-xl text-ink-soft">Load a game from notation…</summary>
+        <p className="mt-2 text-xs text-muted">
+          Paste a Universal Hive Protocol game string, e.g. <code className="font-mono">Base+MLP;InProgress;White[2];wA1;bG1 -wA1</code>. It opens as a pass-and-play game.
+        </p>
+        <textarea className="input mt-2 h-24 font-mono text-xs" value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Base+MLP;InProgress;White[3];wS1;bS1 wS1-;..." />
+        <button className="btn-secondary mt-2" onClick={importGame} disabled={!importText.trim()}>
+          Load game
+        </button>
+      </details>
     </div>
   );
 }

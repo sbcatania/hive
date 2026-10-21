@@ -1,5 +1,5 @@
 import { hexPoints } from "./BugGlyph";
-import { PieceTile, TileDefs } from "./PieceTile";
+import { PieceTile } from "./PieceTile";
 import type { BugLetter, ColorCode } from "@/lib/engine-types";
 
 const S = 40;
@@ -27,8 +27,7 @@ export function Diagram({ pieces, marks = [], arrows = [], height = 220 }: { pie
   const pad = S * 1.4;
   const vb = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + 2 * pad, Math.max(...ys) - Math.min(...ys) + 2 * pad];
   return (
-    <svg viewBox={vb.join(" ")} style={{ height }} className="board-paper w-full sk-lg border border-line" role="img">
-      <TileDefs />
+    <svg viewBox={vb.join(" ")} style={{ height }} className="board-paper w-full sk-lg" role="img">
       <defs>
         <marker id="diag-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 z" fill="var(--select)" />
@@ -36,7 +35,7 @@ export function Diagram({ pieces, marks = [], arrows = [], height = 220 }: { pie
       </defs>
       {pieces.map((p, i) => {
         const [x, y] = px(p.q, p.r);
-        return <PieceTile key={i} bug={p.bug} color={p.color} x={x} y={y} size={S} style="field" />;
+        return <PieceTile key={i} bug={p.bug} color={p.color} x={x} y={y} size={S} />;
       })}
       {marks.map((m, i) => {
         const [x, y] = px(m.q, m.r);

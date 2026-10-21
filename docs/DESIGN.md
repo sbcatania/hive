@@ -111,3 +111,32 @@ What still read as "generic AI web app" once it was live:
 - **3D:** one material per tile, with the top face the same colour as the body. The bug is *engraved* through a height map and painted inside the groove. The table becomes a sheet of sketch paper on a desk. The selected piece lifts with a soft ink shadow, and targets are watercolour dots painted on the paper.
 - **Icons:** a single drawn icon set (same stroke weight and round caps) used for every control.
 - **Touch-first board:** pointer-event gestures with tap / drag-to-move / pan / pinch disambiguation, 48px minimum hit areas, haptic ticks on Android, and a compact action bar directly under the board on phones.
+
+## Round 5 — one drawn language, less colour, simpler screens
+
+Feedback: styles were mixed (sketchy lines next to geometric outlines, drop shadows,
+blur); the cream and the warm night colours felt overwhelming; some bugs were lazy;
+the interface was cluttered; CPU levels were too weak and the named personas were
+confusing ("Regina plays Black").
+
+Decisions:
+- **Palette.** Day is white sketchbook paper with graphite ink (neutral greys, no
+  cream). Night is neutral charcoal paper with chalk lines (no warm browns or blues).
+  Colour is reserved for meaning (blue: your moves, red: threats, honey: last move)
+  and for the bugs themselves. "Chosen" states are a graphite tint plus a heavier
+  line, not a colour fill. Primary buttons are ink.
+- **One technique.** Every outlined surface is drawn by a `::before` pseudo-element
+  run through a single SVG displacement filter (`#pencil`), so all edges wobble the
+  same way and text stays crisp. No box-shadows, backdrop blur or pill shapes. The
+  move list is ruled notebook paper; the eval bar is hatched.
+- **Board styles.** Bakelite and Clean are gone (glossy and geometric, they broke
+  the language). Sketch is the default; 3D stays as the modelled alternative.
+- **Bugs.** Each drawing was critiqued at board size and redrawn: tapered jointed
+  legs everywhere; Grasshopper gets the folded hind femurs and a pronotum; Spider a
+  cephalothorax, folium chevrons and arched legs; Queen a dark fuzzy thorax and
+  veined wings; Beetle a pronotum and mandibles; Ant a pinched waist and elbowed
+  antennae; Mosquito feathery antennae and banded legs. The Ladybug is unchanged.
+- **Simpler.** Difficulty is Easy / Medium / Hard / Expert, with no characters.
+  Players are "You" and "Computer"; colour is chosen explicitly ("You play White").
+  The home page is one "New game" sheet; import moved to the games page; the game
+  sidebar keeps only controls, notes and the move list.

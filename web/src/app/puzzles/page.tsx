@@ -42,11 +42,11 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
   const [phase, setPhase] = useState<Phase>("solve");
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [theme, setTheme] = useState<ThemeId>("bakelite");
+  const [theme, setTheme] = useState<ThemeId>("field");
   const ai = useRef<AiClient | null>(null);
 
   useEffect(() => {
-    setTheme(loadTheme() === "3d" ? "bakelite" : loadTheme());
+    setTheme("field");
     ai.current = new AiClient();
     return () => ai.current?.terminate();
   }, []);
@@ -130,7 +130,7 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
 
   return (
     <div className="space-y-3">
-      <div className={`card flex items-center justify-between gap-3 !px-4 !py-3 ${phase === "solved" ? "!border-move !bg-[color-mix(in_oklab,var(--move)_10%,var(--card))]" : phase === "wrong" ? "!border-danger !bg-[color-mix(in_oklab,var(--danger)_9%,var(--card))]" : ""}`}>
+      <div className={`card flex items-center justify-between gap-3 !px-4 !py-3 ${phase === "solved" ? "[--bc:var(--move)] [--fill:color-mix(in_oklab,var(--move)_12%,var(--card))]" : phase === "wrong" ? "[--bc:var(--danger)] [--fill:color-mix(in_oklab,var(--danger)_10%,var(--card))]" : ""}`}>
         <div>
           <div className="font-display text-xl font-semibold">
             {colorName(solver)} to play and win in {puzzle.kind === "win1" ? "one" : "two"}
@@ -144,8 +144,10 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
           </button>
         )}
       </div>
-      <div className="card relative h-[52vh] min-h-80 overflow-hidden !p-0">
+      <div className="card relative h-[52vh] min-h-80 !p-0 [--fill:transparent]">
+        <div className="sk-lg absolute inset-[3px] overflow-hidden">
         <Board2D state={state} selected={selected} targets={targets} theme={theme} selectable={selectable} onPieceClick={onPieceClick} onTargetClick={play} onBackgroundClick={() => setSelected(null)} hideLastMove={moves.length === puzzle.moves.length} />
+        </div>
       </div>
       <HandPanel color={solver} hand={state.hands[solver === "w" ? 0 : 1]} selected={selected} placeable={placeable} onSelect={(n) => setSelected(n === selected ? null : n)} />
       <div className="flex gap-2">
@@ -202,7 +204,7 @@ export default function PuzzlesPage() {
             <li key={q.id}>
               <button
                 onClick={() => setCurrent(i)}
-                className={`flex aspect-square w-full flex-col items-center justify-center sk border text-sm transition ${i === current ? "border-accent bg-accent-soft/60 ring-2 ring-accent/30" : "border-line bg-card hover:border-line-strong"}`}
+                className={`pencil flex aspect-square w-full flex-col items-center justify-center text-sm transition ${i === current ? "pencil-honey pencil-strong" : "pencil-clear hover:[--fill:var(--card)]"}`}
                 title={`${q.kind === "win1" ? "Win in 1" : "Win in 2"} · ${q.rules}`}
               >
                 <span className="font-display text-lg font-semibold">{i + 1}</span>

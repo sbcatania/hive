@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-/** Move history as a two-column journal. Optionally clickable (replays). */
+/** Move history written on ruled notebook paper. Optionally clickable (replays). */
 export function MoveList({ history, current, onSelect }: { history: string[]; current?: number; onSelect?: (ply: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -11,36 +11,28 @@ export function MoveList({ history, current, onSelect }: { history: string[]; cu
   const rows: [string, string | undefined][] = [];
   for (let i = 0; i < history.length; i += 2) rows.push([history[i], history[i + 1]]);
   const cell = (m: string | undefined, ply: number) => {
-    if (!m) return <td className="px-2 py-0.5" />;
+    if (!m) return <span />;
     const active = current === ply;
-    return (
-      <td className="px-1 py-0.5">
-        {onSelect ? (
-          <button onClick={() => onSelect(ply)} className={`w-full rounded px-1 text-left ${active ? "bg-accent text-accent-ink" : "hover:bg-card-2"}`}>
-            {m}
-          </button>
-        ) : (
-          <span className="px-1">{m}</span>
-        )}
-      </td>
+    return onSelect ? (
+      <button onClick={() => onSelect(ply)} className={`sk px-1.5 text-left ${active ? "bg-accent/60 font-semibold text-ink" : "hover:bg-card-2"}`}>
+        {m}
+      </button>
+    ) : (
+      <span className="px-1.5">{m}</span>
     );
   };
   return (
-    <div ref={ref} className="max-h-64 overflow-y-auto sk border border-line bg-card font-mono text-xs">
+    <div ref={ref} className="ruled max-h-64 overflow-y-auto text-[0.92rem] tabular-nums">
       {rows.length === 0 ? (
-        <div className="p-3 font-sans text-muted italic">No moves yet. The first piece is waiting to be played.</div>
+        <p className="hand-note !text-lg">No moves yet.</p>
       ) : (
-        <table className="w-full">
-          <tbody>
-            {rows.map(([w, b], i) => (
-              <tr key={i} className="odd:bg-paper-2/60">
-                <td className="w-8 px-2 py-0.5 text-right text-muted">{i + 1}.</td>
-                {cell(w, i * 2 + 1)}
-                {cell(b, i * 2 + 2)}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        rows.map(([w, b], i) => (
+          <div key={i} className="grid grid-cols-[2rem_1fr_1fr] items-center">
+            <span className="font-hand text-lg text-muted">{i + 1}.</span>
+            {cell(w, i * 2 + 1)}
+            {cell(b, i * 2 + 2)}
+          </div>
+        ))
       )}
     </div>
   );

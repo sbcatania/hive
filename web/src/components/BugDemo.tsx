@@ -47,7 +47,7 @@ export function BugDemo({ gameString, focus, theme = "field", height = "h-64 sm:
 
   return (
     <figure className="space-y-1.5">
-      <div className={`relative ${height} overflow-hidden sk-lg border border-line`}>
+      <div className={`pencil relative ${height} [--fill:transparent]`}>
         <Board2D state={state} selected={moved ? null : focus} targets={targets} previewTargets={coral} theme={theme} selectable={new Set()} onTargetClick={(m) => tryMove(m.notation)} hideLastMove={!moved} />
         <div className="pointer-events-none absolute top-2 left-2 sk bg-ink/80 px-2 py-1 text-xs font-medium text-paper">
           {moved ? `Played ${moved}` : legal.length ? `${legal.length} possible move${legal.length === 1 ? "" : "s"}: click one` : preview.moves.length ? `${preview.moves.length} cells next turn` : "No moves"}
@@ -64,7 +64,7 @@ export function BugDemo({ gameString, focus, theme = "field", height = "h-64 sm:
             Reset
           </button>
         )}
-        {!moved && !legal.length && preview.reason && <div className="absolute right-2 bottom-2 left-2 note bg-card/95 !p-2 text-xs shadow">{preview.reason}</div>}
+        {!moved && !legal.length && preview.reason && <div className="absolute right-2 bottom-2 left-2 note !p-2 text-xs [--fill:var(--card)]">{preview.reason}</div>}
       </div>
       {caption && <figcaption className="text-xs text-muted italic">{caption}</figcaption>}
     </figure>

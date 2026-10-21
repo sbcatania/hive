@@ -55,7 +55,7 @@ function AccountChip() {
     );
   }
   return (
-    <Link href="/account" className="sk flex h-10 items-center gap-2 border-[1.6px] border-line-strong bg-card px-2 text-sm hover:bg-card-2" title="Your account">
+    <Link href="/account" className="pencil flex h-10 items-center gap-2 px-2 text-sm" title="Your account">
       <Avatar color="w" initial={(profile?.username ?? "?").slice(0, 1).toUpperCase()} size={26} />
       <span className="hidden max-w-28 truncate font-medium sm:inline">{profile?.username ?? "Account"}</span>
       {profile && profile.rated_games > 0 && <span className="font-mono text-xs text-muted">{profile.rating}</span>}
@@ -69,7 +69,7 @@ export function SiteHeader() {
   useEffect(() => setOpen(false), [path]);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   return (
-    <header className="sticky top-0 z-30 border-b-[1.5px] border-dashed border-line-strong bg-paper/90 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b-[1.5px] border-dashed border-line-strong bg-paper">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-4">
         <Link href="/" className="flex items-center gap-2" aria-label="Hive home">
           <HiveMark className="h-8 w-8" />
@@ -95,7 +95,7 @@ export function SiteHeader() {
         </div>
       </div>
       {open && (
-        <nav className="grid gap-1 border-t border-line bg-paper px-3 py-2 md:hidden">
+        <nav className="grid gap-1 border-t border-dashed border-line-strong bg-paper px-3 py-2 md:hidden">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className={`flex min-h-11 items-center px-3 text-lg ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}>
               {n.label}

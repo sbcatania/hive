@@ -10,8 +10,8 @@ import { GameView, type GameAction, type PlayerInfo } from "@/components/GameVie
 import { AiClient } from "@/lib/ai-client";
 import { useAuth } from "@/lib/auth";
 import { Engine, engineFromMoves, errorMessage, loadEngine } from "@/lib/engine";
-import { colorName, persona, resultText, type AiResult, type ColorCode, type StateView } from "@/lib/engine-types";
-import { currentGameId, getLocal, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
+import { colorName, levelInfo, resultText, type AiResult, type ColorCode, type StateView } from "@/lib/engine-types";
+import { currentGameId, gameTitle, getLocal, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
 
@@ -21,7 +21,7 @@ function LocalGame() {
   const { user } = useAuth();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [state, setState] = useState<StateView | null>(null);
-  const [theme, setTheme] = useState<ThemeId>("bakelite");
+  const [theme, setTheme] = useState<ThemeId>("field");
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<AiResult | null>(null);
@@ -286,19 +286,17 @@ function LocalGame() {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  const cpuPersona = entry.level ? persona(entry.level) : null;
+  const cpuLevel = entry.level ? levelInfo(entry.level) : null;
   const players: Record<ColorCode, PlayerInfo> = {
     w: { name: "White" },
     b: { name: "Black" },
   };
   for (const c of ["w", "b"] as ColorCode[]) {
-    if (entry.mode === "cpu" && cpuPersona) {
+    if (entry.mode === "cpu" && cpuLevel) {
       players[c] =
-        c === entry.human
-          ? { name: "You", sub: `${colorName(c)}${user ? "" : " · playing as guest"}` }
-          : { name: cpuPersona.name, sub: `${cpuPersona.title} · ${colorName(c)}`, bug: cpuPersona.bug, thinking: thinking && state.toMove === c };
+        c === entry.human ? { name: "You", sub: colorName(c) } : { name: "Computer", sub: `${cpuLevel.name} · ${colorName(c)}`, thinking: thinking && state.toMove === c };
     } else {
-      players[c] = { name: colorName(c), sub: "Pass & play" };
+      players[c] = { name: colorName(c) };
     }
     if (timed) players[c].clock = <ClockFace ms={shown(c)} running={running && state.toMove === c} />;
   }
@@ -307,7 +305,7 @@ function LocalGame() {
   const status = result
     ? `${resultText(result)} · ${REASON_TEXT[entry.resultReason ?? ""] ?? ""}`
     : thinking
-      ? `${cpuPersona?.name ?? "CPU"} is thinking…`
+      ? "Computer is thinking…"
       : state.mustPass
         ? `${colorName(state.toMove)} has no legal move and must pass`
         : `${entry.mode === "local" ? colorName(state.toMove) : state.toMove === entry.human ? "Your" : colorName(state.toMove)}${entry.mode === "local" || state.toMove !== entry.human ? " to move" : " move"} · turn ${state.turn}`;
@@ -317,9 +315,9 @@ function LocalGame() {
     result && !overlayClosed ? (
       <GameOverCard
         tone={entry.mode === "cpu" ? (result === "Draw" ? "draw" : youWon ? "win" : "loss") : "neutral"}
-        title={entry.mode === "cpu" ? (result === "Draw" ? "A draw" : youWon ? "You win!" : `${cpuPersona?.name} wins`) : resultText(result)}
+        title={entry.mode === "cpu" ? (result === "Draw" ? "A draw" : youWon ? "You win!" : "Computer wins") : resultText(result)}
         subtitle={REASON_TEXT[entry.resultReason ?? ""]}
-        detail={`${state.history.length} moves · ${entry.label}`}
+        detail={`${state.history.length} moves · ${gameTitle(entry)}`}
         onClose={() => setOverlayClosed(true)}
         actions={
           <>
@@ -338,14 +336,6 @@ function LocalGame() {
   const sidebar = (
     <div className="space-y-3">
       {error && <div className="note-error">{error}</div>}
-      <div className="card !p-3 text-sm">
-        <div className="font-display text-lg font-semibold">{entry.label}</div>
-        <div className="text-xs text-muted">
-          {expansionLabel(entry.rules)}
-          {variants.length ? ` · ${variants.join(" · ")}` : ""}
-          {entry.clock?.baseMs ? ` · ${entry.clock.baseMs / 60000} + ${entry.clock.incMs / 1000}s` : ""}
-        </div>
-      </div>
       {state.mustPass && humanCanMove && (
         <div className="note-warn">
           <p className="mb-2">{colorName(state.toMove)} has no legal moves and must pass.</p>
@@ -356,34 +346,31 @@ function LocalGame() {
       )}
       {hint && (
         <div className="note-hint">
-          Suggested move: <span className="font-mono font-semibold">{hint.best}</span>
-          <span className="block text-xs text-muted">
-            {hint.engine} · {hint.depth ? `depth ${hint.depth}` : `${hint.nodes} simulations`}
-            {hint.pv.length > 1 ? ` · line: ${hint.pv.slice(0, 4).join(", ")}` : ""}
-          </span>
+          Try <span className="font-mono font-semibold">{hint.best}</span>. It&apos;s marked on the board with a purple arrow.
         </div>
       )}
       {state.repetitions >= 3 && !result && !entry.rules.repetitionDraw && (
-        <p className="note-info text-xs">This position has occurred {state.repetitions} times. Hive has no automatic repetition rule; agree a draw if you&apos;re going in circles.</p>
+        <p className="note-info text-xs">This position has come up {state.repetitions} times. Agree a draw if you&apos;re going in circles.</p>
       )}
-      <p className="hand-note !text-lg">Tap any piece, even your opponent&apos;s, to see where it can go. Dashed red rings are where it could move on its next turn.</p>
-      <div className="flex flex-wrap gap-2">
-        <button className="btn-ghost" onClick={copyGame}>
-          <Icon name={copied ? "check" : "copy"} size={16} />
-          {copied ? "Copied" : "Copy notation"}
-        </button>
-        {result && (
-          <button className="btn-ghost" onClick={() => setOverlayClosed(false)}>
-            <Icon name="eye" size={16} />
-            Show result
-          </button>
-        )}
-      </div>
+    </div>
+  );
+  const footer = (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+      <span>
+        {expansionLabel(entry.rules)}
+        {variants.length ? ` · ${variants.join(" · ")}` : ""}
+        {entry.clock?.baseMs ? ` · ${entry.clock.baseMs / 60000} + ${entry.clock.incMs / 1000}s` : ""}
+      </span>
+      <button className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-ink" onClick={copyGame}>
+        <Icon name={copied ? "check" : "copy"} size={14} />
+        {copied ? "Copied" : "Copy notation"}
+      </button>
     </div>
   );
 
   const toggleEval = () => setShowEval((v) => (localStorage.setItem("hive.eval", v ? "0" : "1"), !v));
   const actions: GameAction[] = [
+    ...(state.mustPass && humanCanMove ? [{ id: "pass", icon: "skip" as const, label: "Pass", onClick: () => play("pass"), active: true }] : []),
     { id: "undo", icon: "undo", label: "Take back", short: "Undo", onClick: undo, disabled: state.ply === 0 && !result },
     { id: "hint", icon: "hint", label: hintLoading ? "Thinking…" : "Hint", onClick: askHint, disabled: !humanCanMove || hintLoading, busy: hintLoading, active: !!hint },
     { id: "eval", icon: "eval", label: showEval ? "Hide eval" : "Show eval", short: "Eval", onClick: toggleEval, active: showEval, disabled: !!result },
@@ -398,6 +385,7 @@ function LocalGame() {
   return (
     <GameView
       actions={actions}
+      footer={footer}
       state={state}
       theme={theme}
       onThemeChange={(t) => {

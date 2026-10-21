@@ -43,7 +43,7 @@ function OnlineGameView() {
   const [engineReady, setEngineReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [theme, setTheme] = useState<ThemeId>("bakelite");
+  const [theme, setTheme] = useState<ThemeId>("field");
   const [connected, setConnected] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState<string | null>(null);

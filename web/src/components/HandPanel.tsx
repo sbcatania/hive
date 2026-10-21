@@ -1,4 +1,4 @@
-import { PieceTile, TileDefs, type TileStyle } from "./PieceTile";
+import { PieceTile, sketchHexPath } from "./PieceTile";
 import { BUG_NAMES, type ColorCode, type HandView } from "@/lib/engine-types";
 
 interface Props {
@@ -8,11 +8,10 @@ interface Props {
   /** Names of hand pieces that can be placed right now (by the local player). */
   placeable: Set<string>;
   onSelect?: (name: string) => void;
-  style?: TileStyle;
 }
 
 /** The tray of unplayed pieces for one player. Any piece can be tapped to inspect it. */
-export function HandPanel({ color, hand, selected, placeable, onSelect, style = "field" }: Props) {
+export function HandPanel({ color, hand, selected, placeable, onSelect }: Props) {
   const left = hand.reduce((n, h) => n + h.count, 0);
   return (
     <div className="-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 pt-1.5 pb-0.5 [scrollbar-width:none]" aria-label={`${color === "w" ? "White" : "Black"} pieces in hand`}>
@@ -31,12 +30,11 @@ export function HandPanel({ color, hand, selected, placeable, onSelect, style = 
             className={`relative grid h-12 w-12 shrink-0 place-items-center transition-transform ${h.count === 0 ? "opacity-20" : ""} ${name && onSelect ? "cursor-pointer active:scale-95" : "cursor-default"} ${sel ? "-translate-y-1.5" : ""}`}
           >
             <svg viewBox="-50 -50 100 100" className="h-11 w-11 overflow-visible">
-              {style === "bakelite" && <TileDefs />}
               {sel && <ellipse cx={3} cy={40} rx={34} ry={9} fill="var(--ink)" opacity={0.16} />}
-              <PieceTile bug={h.bug} color={color} x={0} y={0} size={42} style={style} seed={i * 7 + (color === "w" ? 1 : 2)} />
+              <PieceTile bug={h.bug} color={color} x={0} y={0} size={42} seed={i * 7 + (color === "w" ? 1 : 2)} />
               {(sel || can) && (
                 <path
-                  d="M0 -50 L43.3 -25 L43.3 25 L0 50 L-43.3 25 L-43.3 -25 Z"
+                  d={sketchHexPath(0, 0, 49, i * 7 + 5, 0.05)}
                   fill="none"
                   stroke={sel ? "var(--select)" : "var(--move)"}
                   strokeWidth={sel ? 4.5 : 2.6}

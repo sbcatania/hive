@@ -46,7 +46,7 @@ export function SketchHero({ className }: { className?: string }) {
               style={{ ["--len" as string]: 1, animationDelay: `${delay}ms` }}
             />
             <g className="wash-in" style={{ animationDelay: `${delay + 380}ms` }}>
-              <PieceTile bug={t.bug} color={t.color} x={x} y={y} size={S} style="field" seed={i * 13 + 4} />
+              <PieceTile bug={t.bug} color={t.color} x={x} y={y} size={S} seed={i * 13 + 4} />
             </g>
           </g>
         );
@@ -74,7 +74,7 @@ export function SketchHero({ className }: { className?: string }) {
             <path
               d={`M${sx} ${sy} Q${cx} ${cy} ${bx} ${by} M${head(0.45)} L${bx} ${by} L${head(-0.45)}`}
               fill="none"
-              stroke="var(--accent-strong)"
+              stroke="var(--muted)"
               strokeWidth={1.7}
               strokeLinecap="round"
               strokeLinejoin="round"

@@ -1,6 +1,6 @@
 // The journal: every CPU and pass-and-play game, saved in this browser and,
 // when signed in, mirrored to the account (table saved_games).
-import { normalizeRules, type ColorCode, type Level, type Rules } from "./engine-types";
+import { levelInfo, normalizeRules, type ColorCode, type Level, type Rules } from "./engine-types";
 import { sb, supabaseAvailable } from "./supabase";
 
 export type JournalMode = "cpu" | "local";
@@ -210,3 +210,10 @@ export const REASON_TEXT: Record<string, string> = {
   repetition: "threefold repetition",
   "turn-limit": "turn limit reached",
 };
+
+/** A human-readable title for a saved game. CPU games are named by level, which also
+ * tidies labels from older versions that used character names. */
+export function gameTitle(e: Pick<JournalEntry, "mode" | "level" | "label">) {
+  if (e.mode === "cpu") return e.level ? `vs Computer (${levelInfo(e.level).name})` : "vs Computer";
+  return e.label || (e.mode === "local" ? "Pass & play" : "Game");
+}

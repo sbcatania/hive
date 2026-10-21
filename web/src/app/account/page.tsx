@@ -53,7 +53,7 @@ function AuthForms() {
         <h1 className="font-display text-4xl font-semibold">Join the hive</h1>
         <p className="mt-2 text-sm text-ink-soft">You can play everything without an account. Signing in keeps your journal across devices and lets you play rated games for an Elo rating.</p>
       </div>
-      <div className="sketch mt-6 p-6">
+      <div className="card mt-6 p-6">
         <div className="seg mb-5 w-full justify-center">
           {(
             [
@@ -117,7 +117,7 @@ function Recovery() {
   const [msg, setMsg] = useState<string | null>(null);
   return (
     <div className="mx-auto max-w-md px-4 py-10">
-      <div className="sketch p-6">
+      <div className="card p-6">
         <h1 className="font-display text-2xl font-semibold">Choose a new password</h1>
         <form
           className="mt-4 space-y-3"
@@ -150,7 +150,7 @@ function ProfilePanel() {
   const total = profile ? profile.wins + profile.losses + profile.draws : 0;
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <div className="sketch p-6">
+      <div className="card p-6">
         <div className="flex items-center gap-4">
           <Avatar color="w" initial={(profile?.username ?? "?").slice(0, 1).toUpperCase()} size={64} />
           <div className="min-w-0 flex-1">
@@ -197,7 +197,7 @@ function ProfilePanel() {
             ["Rated games", profile?.rated_games ?? 0],
             ["W / L / D", total ? `${profile!.wins} / ${profile!.losses} / ${profile!.draws}` : "—"],
           ].map(([k, v]) => (
-            <div key={k as string} className="sk border border-line bg-paper-2/60 p-3">
+            <div key={k as string} className="pencil pencil-clear p-3">
               <div className="label mb-0.5">{k}</div>
               <div className="font-display text-2xl font-semibold">{v}</div>
             </div>
