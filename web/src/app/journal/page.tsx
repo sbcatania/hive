@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { deleteCloud, deleteLocal, gameTitle, newId, saveLocal, setCurrentGameId, listCloud, listLocal, REASON_TEXT, resultLabel, type JournalEntry } from "@/lib/journal";
 import { fetchPlayers, gamesForPlayer, type OnlineGame, type PlayerSummary } from "@/lib/online";
 import { describeVariants, expansionLabel } from "@/lib/variants";
+import { useDialogs } from "@/components/Dialogs";
 
 function when(t: number | string) {
   const d = new Date(t);
@@ -23,6 +24,7 @@ function Badge({ text, tone }: { text: string; tone: "win" | "loss" | "draw" | "
 
 export default function JournalPage() {
   const { user } = useAuth();
+  const dialogs = useDialogs();
   const [tab, setTab] = useState<"saved" | "online">("saved");
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [online, setOnline] = useState<OnlineGame[]>([]);
@@ -62,7 +64,7 @@ export default function JournalPage() {
   }, [user]);
 
   async function remove(e: JournalEntry) {
-    if (!confirm("Delete this game from your journal?")) return;
+    if (!(await dialogs.confirm({ title: "Delete this game?", message: "It will be removed from this device and your account.", confirm: "Delete", danger: true }))) return;
     deleteLocal(e.id);
     if (user) await deleteCloud(e.id).catch(() => {});
     setEntries((list) => list.filter((x) => x.id !== e.id));

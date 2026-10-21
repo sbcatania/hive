@@ -6,17 +6,21 @@ import "@fontsource/alegreya-sans/700.css";
 import "@fontsource/caveat/600.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "./globals.css";
+import splash from "@/lib/splash.json";
 import { SiteHeader } from "@/components/SiteHeader";
 import { NativeFeel } from "@/components/NativeFeel";
 import { AuthProvider } from "@/lib/auth";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme-mode";
+import { DialogProvider } from "@/components/Dialogs";
 
 export const metadata: Metadata = {
   title: { default: "Hive — the board game, in your browser", template: "%s · Hive" },
   description:
     "Play Hive with the Mosquito, Ladybug and Pillbug: against four CPU opponents, pass-and-play, or online with a friend. Rated games, puzzles and an illustrated field guide to the rules.",
   icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Hive", statusBarStyle: "default" },
+  // Launch screens per iPhone size and theme (made by the splash script), so a
+  // home-screen launch never flashes white.
+  appleWebApp: { capable: true, title: "Hive", startupImage: splash },
 };
 
 export const viewport: Viewport = {
@@ -45,8 +49,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </svg>
         <NativeFeel />
         <AuthProvider>
-          <SiteHeader />
-          <main>{children}</main>
+          <DialogProvider>
+            <SiteHeader />
+            <main>{children}</main>
+          </DialogProvider>
         </AuthProvider>
       </body>
     </html>

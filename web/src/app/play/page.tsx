@@ -14,11 +14,13 @@ import { BUG_NAMES, colorName, levelInfo, resultText, type AiResult, type ColorC
 import { currentGameId, gameTitle, getLocal, resultSentence, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
+import { useDialogs } from "@/components/Dialogs";
 
 function LocalGame() {
   const params = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const dialogs = useDialogs();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [state, setState] = useState<StateView | null>(null);
   const [theme, setTheme] = useState<ThemeId>("field");
@@ -378,7 +380,7 @@ function LocalGame() {
       ? [{ id: "result", icon: "eye" as const, label: "Show result", short: "Result", onClick: () => setOverlayClosed(false) }]
       : [
           ...(entry.mode === "local" ? [{ id: "draw", icon: "draw" as const, label: "Agree draw", short: "Draw", onClick: agreeDraw, disabled: state.ply === 0, menu: true }] : []),
-          { id: "resign", icon: "flag" as const, label: "Resign", onClick: () => confirm("Resign this game?") && resign(), disabled: state.ply === 0, menu: true },
+          { id: "resign", icon: "flag" as const, label: "Resign", onClick: async () => (await dialogs.confirm({ title: "Resign this game?", message: "It counts as a loss.", confirm: "Resign", danger: true })) && resign(), disabled: state.ply === 0, menu: true },
         ]),
   ];
 

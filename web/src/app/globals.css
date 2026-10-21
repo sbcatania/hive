@@ -140,6 +140,17 @@ html.sheet-open body {
 }
 html.app-screen body {
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* App screens don't pinch-zoom as a whole (the board has its own pinch-zoom). */
+html.app-screen {
+  touch-action: pan-x pan-y;
+}
+html.app-screen input,
+html.app-screen textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 body {

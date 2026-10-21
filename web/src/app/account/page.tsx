@@ -8,6 +8,7 @@ import { sendPasswordReset, setUsername, signIn, signOut, signUp, updatePassword
 import { errorMessage } from "@/lib/engine";
 import { uploadAllLocal } from "@/lib/journal";
 import { supabaseAvailable } from "@/lib/supabase";
+import { useDialogs } from "@/components/Dialogs";
 
 type Tab = "signin" | "signup" | "reset";
 
@@ -141,6 +142,7 @@ function Recovery() {
 
 function ProfilePanel() {
   const { user, profile, refreshProfile } = useAuth();
+  const dialogs = useDialogs();
   const [name, setName] = useState("");
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -220,7 +222,7 @@ function ProfilePanel() {
               const n = await uploadAllLocal(user.id).catch(() => 0);
               setUploading(false);
               setMsg(null);
-              alert(`Copied ${n} game${n === 1 ? "" : "s"} from this browser to your account.`);
+              dialogs.toast(`Copied ${n} game${n === 1 ? "" : "s"} from this device to your account.`);
             }}
           >
             {uploading ? "Uploading…" : "Upload this browser's games"}

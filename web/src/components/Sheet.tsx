@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { haptic } from "@/lib/haptics";
-import { syncChrome } from "@/lib/theme-mode";
 
 /** A bottom sheet for phones: slides up over the screen, closes on the backdrop,
  * the close button, Escape, or by dragging the handle down. */
@@ -16,7 +15,6 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   useEffect(() => {
     if (!open) return;
     setDrag(0);
-    syncChrome(true);
     haptic();
     // Content pages: stop the page behind from scrolling while the sheet is up.
     document.documentElement.classList.add("sheet-open");
@@ -24,7 +22,6 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
-      syncChrome(false);
       document.documentElement.classList.remove("sheet-open");
     };
   }, [open, onClose]);
@@ -45,12 +42,14 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 
   return createPortal(
     <div className={`fixed inset-0 z-50 overflow-hidden transition-[visibility] duration-300 ${open ? "visible" : "pointer-events-none invisible"}`} aria-hidden={!open}>
-      <div className={`absolute inset-0 touch-none bg-black/40 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
+      {/* The dim stops at the header: in a home-screen app the status bar can't dim with the
+          page, so the header (which sits under it) stays bright too and the two always match. */}
+      <div className={`absolute inset-x-0 top-[var(--header-h)] bottom-0 touch-none bg-black/35 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="pencil absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col [--br:22px_22px_0_0/22px_22px_0_0] [--bc:var(--ink-soft)] [--fill:var(--paper)]"
+        className="pencil absolute inset-x-0 bottom-0 flex max-h-[calc(100dvh-var(--header-h)-12px)] flex-col [--br:22px_22px_0_0/22px_22px_0_0] [--bc:var(--ink-soft)] [--fill:var(--paper)]"
         style={{
           transform: open ? `translateY(${drag}px)` : "translateY(105%)",
           transition: start.current !== null ? "none" : "transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1)",

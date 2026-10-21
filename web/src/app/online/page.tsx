@@ -31,11 +31,13 @@ import {
 } from "@/lib/online";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
+import { useDialogs } from "@/components/Dialogs";
 
 function OnlineGameView() {
   const params = useSearchParams();
   const router = useRouter();
   const { user, loading: authLoading, refreshProfile } = useAuth();
+  const dialogs = useDialogs();
   const id = params.get("g") ?? "";
   const [row, setRow] = useState<OnlineGame | null>(null);
   const [seat, setSeat] = useState<Seat | null>(null);
@@ -406,7 +408,7 @@ function OnlineGameView() {
         },
         { id: "draw", icon: "draw", label: row.draw_offer === seat ? "Draw offered…" : "Offer draw", short: "Draw", onClick: () => act(() => offerDraw(row.id)), disabled: busy || row.draw_offer === seat, active: row.draw_offer === seat, menu: true },
         { id: "share", icon: "share", label: copied === "spectate" ? "Copied" : "Spectator link", short: "Share", onClick: () => copy(link, "spectate") },
-        { id: "resign", icon: "flag", label: "Resign", onClick: () => confirm("Resign this game?") && act(() => resign(row.id)), disabled: busy, menu: true },
+        { id: "resign", icon: "flag", label: "Resign", onClick: async () => (await dialogs.confirm({ title: "Resign this game?", message: row.rated ? "It counts as a loss and changes your rating." : "It counts as a loss.", confirm: "Resign", danger: true })) && act(() => resign(row.id)), disabled: busy, menu: true },
       ]
     : [];
 
