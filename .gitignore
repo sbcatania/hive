@@ -11,3 +11,4 @@ __pycache__/
 training/runs/
 training/data/
 .DS_Store
+training/*.log
