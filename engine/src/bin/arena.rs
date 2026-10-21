@@ -1,7 +1,8 @@
 //! Plays CPU levels (or a network) against each other to measure strength.
 //!
 //! cargo run --release --features native --bin arena -- <white> <black> [games] [time_ms] [--net path] [--rules Base+MLP]
-//! Levels: easy, medium, hard, expert. "expert" uses the network if --net is given.
+//! Levels: easy, medium, hard, expert. "expert" uses the network from --net;
+//! "expertb" plays as Expert with the network from --net-b (to compare two networks).
 
 use hive_engine::ai::{Ai, Level};
 use hive_engine::notation::move_to_string;
@@ -10,8 +11,10 @@ use rayon::prelude::*;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let a = Level::parse(args.get(1).map(String::as_str).unwrap_or("hard")).expect("level");
-    let b = Level::parse(args.get(2).map(String::as_str).unwrap_or("medium")).expect("level");
+    let spec_a = args.get(1).cloned().unwrap_or_else(|| "hard".into());
+    let spec_b = args.get(2).cloned().unwrap_or_else(|| "medium".into());
+    let level = |s: &str| if s == "expertb" { Level::Expert } else { Level::parse(s).expect("level") };
+    let (a, b) = (level(&spec_a), level(&spec_b));
     let games: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(10);
     let time_ms: f64 = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(500.0);
     let net_path = args.iter().position(|s| s == "--net").map(|i| args[i + 1].clone());
@@ -22,15 +25,20 @@ fn main() {
         .unwrap_or_default();
     let verbose = args.iter().any(|s| s == "-v");
     let net_bytes = net_path.map(|p| std::fs::read(p).expect("read net"));
+    let net_b_bytes = args.iter().position(|s| s == "--net-b").map(|i| std::fs::read(&args[i + 1]).expect("read net-b"));
 
     let results: Vec<(i32, u32)> = (0..games)
         .into_par_iter()
         .map(|i| {
             let (white, black) = if i % 2 == 0 { (a, b) } else { (b, a) };
-            let mut ais: Vec<Ai> = (0..2)
-                .map(|k| {
-                    let mut ai = Ai::new(1000 + i as u64 * 7 + k, 18);
-                    if let Some(bytes) = &net_bytes {
+            let (white_spec, black_spec) = if i % 2 == 0 { (&spec_a, &spec_b) } else { (&spec_b, &spec_a) };
+            let mut ais: Vec<Ai> = [white_spec, black_spec]
+                .iter()
+                .enumerate()
+                .map(|(k, spec)| {
+                    let mut ai = Ai::new(1000 + i as u64 * 7 + k as u64, 18);
+                    let bytes = if spec.as_str() == "expertb" { &net_b_bytes } else { &net_bytes };
+                    if let Some(bytes) = bytes {
                         ai.network = Some(hive_engine::nn::Network::from_bytes(bytes).unwrap());
                     }
                     ai
@@ -62,5 +70,5 @@ fn main() {
     let losses = results.iter().filter(|r| r.0 == -1).count();
     let draws = results.len() - wins - losses;
     let avg_len = results.iter().map(|r| r.1 as f64).sum::<f64>() / results.len() as f64;
-    println!("{:?} vs {:?}: +{} -{} ={}  (avg {:.0} plies)", a, b, wins, losses, draws, avg_len);
+    println!("{} vs {}: +{} -{} ={}  (avg {:.0} plies)", spec_a, spec_b, wins, losses, draws, avg_len);
 }

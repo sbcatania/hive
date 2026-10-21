@@ -30,3 +30,8 @@ required-features = ["native"]
 name = "arena"
 path = "src/bin/arena.rs"
 required-features = ["native"]
+
+[[bin]]
+name = "nncheck"
+path = "src/bin/nncheck.rs"
+required-features = ["native"]
