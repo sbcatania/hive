@@ -5,6 +5,24 @@ import { Diagram } from "@/components/Diagram";
 import type { BugLetter } from "@/lib/engine-types";
 import { MiniTile } from "@/components/PieceTile";
 import { SketchHero } from "@/components/SketchHero";
+import {
+  CountsVignette,
+  DrawSketch,
+  EarlyQueenVignette,
+  GateSketch,
+  HintSketch,
+  LiteVignette,
+  NotationCompass,
+  OneHiveSketch,
+  PassSketch,
+  QueenDeadlineSketch,
+  ReachSketch,
+  RepetitionVignette,
+  StackSketch,
+  StunSketch,
+  SundownVignette,
+  SwarmVignette,
+} from "@/components/RuleSketches";
 
 export const metadata = { title: "How to play" };
 
@@ -199,19 +217,22 @@ export default function LearnPage() {
 
           <Chapter id="placing" n={1} title="Placing">
             <div className="grid gap-6 md:grid-cols-2">
-              <ul className="list-disc space-y-2 pl-5">
-                <li>White places first. The second piece of the game just has to touch the first.</li>
-                <li>
-                  After that, <b>a new piece may only touch your own colour</b>, never an opponent&apos;s.
-                </li>
-                <li>
-                  Your <b>Queen must be in the hive by your fourth turn</b>.
-                </li>
-                <li>
-                  <b>Tournament opening</b> (on by default): neither player may place their Queen on their very first turn.
-                </li>
-                <li>Placed pieces never leave the game.</li>
-              </ul>
+              <div className="space-y-5">
+                <ul className="list-disc space-y-2 pl-5">
+                  <li>White places first. The second piece of the game just has to touch the first.</li>
+                  <li>
+                    After that, <b>a new piece may only touch your own colour</b>, never an opponent&apos;s.
+                  </li>
+                  <li>
+                    Your <b>Queen must be in the hive by your fourth turn</b>.
+                  </li>
+                  <li>
+                    <b>Tournament opening</b> (on by default): neither player may place their Queen on their very first turn.
+                  </li>
+                  <li>Placed pieces never leave the game.</li>
+                </ul>
+                <QueenDeadlineSketch className="mx-auto md:mx-0 md:ml-5" />
+              </div>
               <BugDemo gameString={OPENING} focus="wG1" caption="White wants to place a Grasshopper: only cells touching white pieces alone are allowed." />
             </div>
           </Chapter>
@@ -223,12 +244,18 @@ export default function LearnPage() {
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
                 <h3 className="font-display text-xl font-semibold">One Hive</h3>
-                <p className="text-sm text-ink-soft">The hive must stay in one connected piece, even <i>while</i> a piece is moving. A piece holding two halves together is pinned.</p>
+                <div className="flex items-start gap-3">
+                  <p className="min-w-0 flex-1 text-sm text-ink-soft">The hive must stay in one connected piece, even <i>while</i> a piece is moving. A piece holding two halves together is pinned.</p>
+                  <OneHiveSketch width={128} />
+                </div>
                 <BugDemo gameString={OPENING} focus="wS1" height="h-56" caption="White's Spider joins its Queen to the rest of the hive, so it can't move." />
               </div>
               <div className="space-y-2">
                 <h3 className="font-display text-xl font-semibold">Freedom to Move</h3>
-                <p className="text-sm text-ink-soft">Pieces slide; they can&apos;t squeeze through a gap between two pieces. Climbers and jumpers (Beetle, Grasshopper, Ladybug) get over it.</p>
+                <div className="flex items-start gap-3">
+                  <p className="min-w-0 flex-1 text-sm text-ink-soft">Pieces slide; they can&apos;t squeeze through a gap between two pieces. Climbers and jumpers (Beetle, Grasshopper, Ladybug) get over it.</p>
+                  <GateSketch width={128} />
+                </div>
                 <Diagram
                   height={224}
                   pieces={[
@@ -277,17 +304,24 @@ export default function LearnPage() {
 
           <Chapter id="finer" n={4} title="Finer points">
             <dl className="grid gap-4 sm:grid-cols-2">
-              {[
-                ["Stunned pieces", "A piece that was just moved (including one thrown by a Pillbug) can't be moved or thrown by the Pillbug on the very next turn."],
-                ["Stacks", "Only the top piece of a stack can move. A Beetle's stack counts as the Beetle's colour for placing. Stacks also block sliding at height: two tall stacks form a gate."],
-                ["Passing", "If you have no legal move or placement at all, you must pass. You can't pass otherwise."],
-                ["Draws", "Both Queens surrounded at once, or by agreement. Endless shuffling isn't an automatic draw in the official rules (there's a variant for that)."],
-                ["Click any piece", "On this site, clicking an opponent's piece shows where it could go on their next turn (dashed red ink). A piece that can't move tells you why."],
-                ["Hints", "Stuck? The Hint button asks the engine for a suggestion in CPU and pass-and-play games."],
-              ].map(([k, v]) => (
-                <div key={k} className="card">
-                  <dt className="font-display text-lg font-semibold">{k}</dt>
-                  <dd className="mt-1 text-sm text-ink-soft">{v}</dd>
+              {(
+                [
+                  ["Stunned pieces", "A piece that was just moved (including one thrown by a Pillbug) can't be moved or thrown by the Pillbug on the very next turn.", <StunSketch key="s" />],
+                  ["Stacks", "Only the top piece of a stack can move. A Beetle's stack counts as the Beetle's colour for placing. Stacks also block sliding at height: two tall stacks form a gate.", <StackSketch key="s" />],
+                  ["Passing", "If you have no legal move or placement at all, you must pass. You can't pass otherwise.", <PassSketch key="s" />],
+                  ["Draws", "Both Queens surrounded at once, or by agreement. Endless shuffling isn't an automatic draw in the official rules (there's a variant for that).", <DrawSketch key="s" />],
+                  ["Click any piece", "On this site, clicking an opponent's piece shows where it could go on their next turn (dashed red ink). A piece that can't move tells you why.", <ReachSketch key="s" />],
+                  ["Hints", "Stuck? The Hint button asks the engine for a suggestion in CPU and pass-and-play games.", <HintSketch key="s" />],
+                ] as const
+              ).map(([k, v, sketch]) => (
+                <div key={k} className="card @container">
+                  <div className="grid gap-x-4 gap-y-3 @min-[22rem]:grid-cols-[1fr_auto]">
+                    <div>
+                      <dt className="font-display text-lg font-semibold">{k}</dt>
+                      <dd className="mt-1 text-sm text-ink-soft">{v}</dd>
+                    </div>
+                    <dd className="flex justify-center self-center">{sketch}</dd>
+                  </div>
                 </div>
               ))}
             </dl>
@@ -298,15 +332,18 @@ export default function LearnPage() {
               The start screen&apos;s <b>Advanced rules</b> drawer lets you change the game. The CPU opponents adapt to all of these; rated games always use the official rules.
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                ["Hive Lite", "Fewer pieces (one of each bug, two Ants). Shorter and great for learning."],
-                ["Swarm", "A Queen falls when 5 of her 6 sides are covered. Fast and aggressive."],
-                ["Sundown", "A turn limit: when it's reached, the less-surrounded Queen wins."],
-                ["Early Queen", "Queens must be placed by turn 3 instead of 4."],
-                ["Repetition draw", "A position occurring for the third time ends the game in a draw."],
-                ["Custom counts", "Set how many of each bug both players get."],
-              ].map(([k, v]) => (
+              {(
+                [
+                  ["Hive Lite", "Fewer pieces (one of each bug, two Ants). Shorter and great for learning.", <LiteVignette key="v" />],
+                  ["Swarm", "A Queen falls when 5 of her 6 sides are covered. Fast and aggressive.", <SwarmVignette key="v" />],
+                  ["Sundown", "A turn limit: when it's reached, the less-surrounded Queen wins.", <SundownVignette key="v" />],
+                  ["Early Queen", "Queens must be placed by turn 3 instead of 4.", <EarlyQueenVignette key="v" />],
+                  ["Repetition draw", "A position occurring for the third time ends the game in a draw.", <RepetitionVignette key="v" />],
+                  ["Custom counts", "Set how many of each bug both players get.", <CountsVignette key="v" />],
+                ] as const
+              ).map(([k, v, vignette]) => (
                 <div key={k} className="card">
+                  <div className="mb-2 flex h-14 items-center">{vignette}</div>
                   <div className="font-semibold">{k}</div>
                   <p className="mt-1 text-sm text-ink-soft">{v}</p>
                 </div>
@@ -315,13 +352,16 @@ export default function LearnPage() {
           </Chapter>
 
           <Chapter id="notation" n={6} title="Notation">
-            <p className="text-sm text-ink-soft">
-              Moves use the Universal Hive Protocol notation shared by most Hive software. Pieces are named by colour, bug and number: <code className="font-mono">wQ</code>,{" "}
-              <code className="font-mono">bA2</code>. A move names the piece and its destination next to a piece already in the hive: <code className="font-mono">bS1 wQ-</code> is
-              &quot;Black Spider 1 to the right of the White Queen&quot;. The marks <code className="font-mono">-</code>, <code className="font-mono">/</code> and{" "}
-              <code className="font-mono">\</code> before or after the reference give the six directions; <code className="font-mono">wB1 bQ</code> means the Beetle climbs
-              onto the Black Queen. Copy any game&apos;s notation from the game screen, and paste one into the start screen to load it.
-            </p>
+            <div className="grid items-center gap-x-8 gap-y-4 md:grid-cols-[1fr_auto]">
+              <p className="text-sm text-ink-soft">
+                Moves use the Universal Hive Protocol notation shared by most Hive software. Pieces are named by colour, bug and number: <code className="font-mono">wQ</code>,{" "}
+                <code className="font-mono">bA2</code>. A move names the piece and its destination next to a piece already in the hive: <code className="font-mono">bS1 wQ-</code> is
+                &quot;Black Spider 1 to the right of the White Queen&quot;. The marks <code className="font-mono">-</code>, <code className="font-mono">/</code> and{" "}
+                <code className="font-mono">\</code> before or after the reference give the six directions; <code className="font-mono">wB1 bQ</code> means the Beetle climbs
+                onto the Black Queen. Copy any game&apos;s notation from the game screen, and paste one into the start screen to load it.
+              </p>
+              <NotationCompass className="mx-auto" />
+            </div>
           </Chapter>
 
           <div className="card flex flex-col items-center gap-3 p-8 text-center">
