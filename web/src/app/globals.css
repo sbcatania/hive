@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f6f2e8;
+  --panel: #fffdf8;
+  --line: #e2d9c6;
+  --text: #1f1b16;
+  --muted: #6b6457;
+  --selected: #2563eb;
+  --movable: #16a34a;
+  --target: #16a34a;
+  --last-move: #f97316;
+  --hint: #a855f7;
+  --badge: #b45309;
+  --board: #ece5d3;
+  --board-dot: #dcd2bb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg: #17161a;
+    --panel: #212026;
+    --line: #34323b;
+    --text: #ece8df;
+    --muted: #a19c90;
+    --board: #2a2830;
+    --board-dot: #35333c;
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.board-surface {
+  background-color: var(--board);
+  background-image: radial-gradient(var(--board-dot) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm font-medium transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/10;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-md border border-[var(--line)] bg-[var(--panel)]/90 px-2 py-1 font-medium shadow-sm hover:bg-[var(--panel)];
+  }
+  .card {
+    @apply rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)];
+  }
+  .seg {
+    @apply inline-flex flex-wrap rounded-lg border border-[var(--line)] bg-[var(--bg)] p-0.5 text-sm;
+  }
+  .seg > button {
+    @apply rounded-md px-3 py-1.5 transition;
+  }
+  .seg > button[aria-pressed="true"] {
+    @apply bg-amber-500 text-white shadow-sm;
+  }
+}

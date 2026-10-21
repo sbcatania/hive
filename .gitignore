@@ -4,6 +4,7 @@ node_modules/
 out/
 .vercel
 .env*.local
+!web/.env.production
 *.tsbuildinfo
 __pycache__/
 *.pyc
