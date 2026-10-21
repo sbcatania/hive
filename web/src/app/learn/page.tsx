@@ -4,8 +4,9 @@ import { BugGlyph } from "@/components/BugGlyph";
 import { Diagram } from "@/components/Diagram";
 import type { BugLetter } from "@/lib/engine-types";
 import { MiniTile } from "@/components/PieceTile";
+import { SketchHero } from "@/components/SketchHero";
 
-export const metadata = { title: "Field guide: how to play" };
+export const metadata = { title: "How to play" };
 
 const OPENING = "Base;InProgress;White[3];wS1;bS1 wS1-;wQ -wS1;bQ bS1-";
 
@@ -125,11 +126,10 @@ function Plate({ bug }: { bug: BugLetter }) {
   return <MiniTile bug={bug} size={80} seed={bug.charCodeAt(0)} />;
 }
 
-function Chapter({ id, n, title, children }: { id: string; n: number; title: string; children: React.ReactNode }) {
+function Chapter({ id, title, children }: { id: string; n?: number; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="scroll-mt-20 space-y-4">
       <div className="flex items-baseline gap-3 border-b border-dashed border-line-strong pb-2">
-        <span className="font-display text-3xl text-accent">{["I", "II", "III", "IV", "V", "VI", "VII"][n]}</span>
         <h2 className="font-display text-3xl font-semibold">{title}</h2>
       </div>
       {children}
@@ -140,22 +140,23 @@ function Chapter({ id, n, title, children }: { id: string; n: number; title: str
 export default function LearnPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <header className="max-w-2xl">
-        <div className="specimen-label">A field guide to</div>
-        <h1 className="font-display text-5xl leading-tight font-semibold">The bugs of the Hive</h1>
-        <p className="mt-3 text-lg text-ink-soft">
-          Hive, by John Yianni, has no board: the pieces themselves are the playing field. Two players, eleven bugs each (fourteen with the expansions), and one
-          goal. These pages follow the official rules and their tournament clarifications. Every board here is live, so click around.
-        </p>
+      <header className="grid items-center gap-6 md:grid-cols-[1fr_1fr]">
+        <div className="max-w-xl">
+          <h1 className="font-display text-4xl leading-tight font-semibold sm:text-5xl">How to play Hive</h1>
+          <p className="mt-3 text-lg text-ink-soft">
+            Hive, by John Yianni, has no board: the pieces themselves are the playing field. Two players, eleven bugs each (fourteen with the expansions), and
+            one goal. These pages follow the official rules and their tournament clarifications. Every board here is live, so tap around.
+          </p>
+        </div>
+        <SketchHero className="mx-auto w-full max-w-md" />
       </header>
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[12rem_1fr]">
         <nav className="hidden lg:block">
-          <ol className="sticky top-20 space-y-1 text-sm">
+          <ul className="sticky top-20 space-y-1 text-sm">
             {CHAPTERS.map(([id, t], i) => (
               <li key={id}>
                 <a href={`#${id}`} className="flex gap-2 sk px-2 py-1 text-ink-soft hover:bg-card hover:text-ink">
-                  <span className="w-6 text-right font-display text-accent">{i + 1}.</span>
                   {t}
                 </a>
               </li>
@@ -165,7 +166,7 @@ export default function LearnPage() {
                 Try the puzzles
               </Link>
             </li>
-          </ol>
+          </ul>
         </nav>
 
         <article className="min-w-0 space-y-14 leading-relaxed">
@@ -254,7 +255,7 @@ export default function LearnPage() {
                     <div className="flex items-start gap-4">
                       <Plate bug={s.bug} />
                       <div>
-                        <div className="specimen-label">{s.expansion ? "Expansion · " : ""}{s.count}</div>
+                        <div className="text-sm text-muted">{s.count}{s.expansion ? " (expansion)" : ""}</div>
                         <h3 className="font-display text-2xl font-semibold">{s.name}</h3>
                         <div className="font-display text-sm text-muted italic">{s.latin}</div>
                       </div>

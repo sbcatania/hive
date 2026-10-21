@@ -5,12 +5,12 @@ export function EvalBar({ result, loading }: { result: AiResult | null; loading?
   const p = result ? result.whiteWinProb : 0.5;
   const pct = Math.round(p * 100);
   const forced = result && Math.abs(result.scoreWhite) >= 999_000;
-  const label = !result ? "—" : forced ? (result.scoreWhite > 0 ? "White wins by force" : "Black wins by force") : `White ${pct}% · Black ${100 - pct}%`;
+  const label = !result ? "—" : forced ? (result.scoreWhite > 0 ? "White wins by force" : "Black wins by force") : `White ${pct}%, Black ${100 - pct}%`;
   const w = 4 + p * 192;
   return (
     <div className="card !p-3">
       <div className="mb-1 flex justify-between text-xs">
-        <span className="label mb-0">Evaluation{loading ? " · thinking" : ""}</span>
+        <span className="label mb-0">Evaluation{loading ? " (thinking)" : ""}</span>
         <span className="text-ink-soft">{label}</span>
       </div>
       <svg viewBox="0 0 200 16" className="h-4 w-full" preserveAspectRatio="none" aria-hidden>

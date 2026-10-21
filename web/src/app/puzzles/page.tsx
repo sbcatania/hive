@@ -219,10 +219,9 @@ export default function PuzzlesPage() {
   return (
     <div className="mx-auto max-w-6xl px-3 pt-2 max-lg:flex max-lg:h-[calc(100dvh-var(--header-h))] max-lg:flex-col lg:px-4 lg:py-8">
       <div className="hidden lg:block">
-        <div className="specimen-label">Field exercises</div>
         <h1 className="font-display text-4xl font-semibold">Puzzles</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Real positions from engine games, checked by the engine. {solved.size} of {LIST.length} solved. New to the rules? <Link href="/learn" className="underline">Read the field guide</Link>.
+          Real positions from engine games, checked by the engine. {solved.size} of {LIST.length} solved. New to the rules? <Link href="/learn" className="underline">Read how to play</Link>.
         </p>
       </div>
       <div className="mb-2 flex shrink-0 items-center gap-2 lg:hidden">
@@ -233,7 +232,7 @@ export default function PuzzlesPage() {
           <span className="font-display text-lg font-semibold">Puzzle {current + 1}</span>
           <span className="text-sm text-muted">
             {" "}
-            of {LIST.length} · {solved.size} solved
+            of {LIST.length}, {solved.size} solved
           </span>
         </button>
         <button className="icon-btn !h-10 !w-10 [--fill:transparent]" onClick={() => step(1)} aria-label="Next puzzle">

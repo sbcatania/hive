@@ -16,7 +16,7 @@ export function ClockFace({ ms, running }: { ms: number; running: boolean }) {
   const low = ms < 20_000;
   return (
     <span
-      className={`pencil px-2 py-0.5 font-mono text-sm tabular-nums ${running ? (low ? "text-white [--bc:var(--danger)] [--fill:var(--danger)]" : "text-paper [--bc:var(--ink)] [--fill:var(--ink)]") : "text-ink-soft [--fill:transparent]"}`}
+      className={`pencil px-2 py-0.5 font-display text-base font-semibold tabular-nums ${running ? (low ? "text-white [--bc:var(--danger)] [--fill:var(--danger)]" : "text-paper [--bc:var(--ink)] [--fill:var(--ink)]") : "text-ink-soft [--fill:transparent]"}`}
       aria-label={`Clock ${fmtClock(ms)}`}
     >
       {fmtClock(ms)}

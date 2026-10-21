@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { HiveMark } from "./HiveMark";
+import { MiniTile } from "./PieceTile";
 import { Icon } from "./Icon";
 import { Avatar } from "./Nameplate";
 import { Sheet } from "./Sheet";
@@ -12,9 +12,9 @@ import { applyThemeMode, loadThemeMode, type ThemeMode } from "@/lib/theme-mode"
 
 const NAV = [
   { href: "/", label: "Play" },
-  { href: "/learn", label: "Field guide" },
+  { href: "/learn", label: "How to play" },
   { href: "/puzzles", label: "Puzzles" },
-  { href: "/journal", label: "Journal" },
+  { href: "/journal", label: "Your games" },
   { href: "/leaderboard", label: "Rankings" },
 ];
 
@@ -59,7 +59,7 @@ function AccountChip() {
     <Link href="/account" className="pencil flex h-10 items-center gap-2 px-2 text-sm" title="Your account">
       <Avatar color="w" initial={(profile?.username ?? "?").slice(0, 1).toUpperCase()} size={26} />
       <span className="hidden max-w-28 truncate font-medium sm:inline">{profile?.username ?? "Account"}</span>
-      {profile && profile.rated_games > 0 && <span className="font-mono text-xs text-muted">{profile.rating}</span>}
+      {profile && profile.rated_games > 0 && <span className="text-xs text-muted tabular-nums">{profile.rating}</span>}
     </Link>
   );
 }
@@ -73,7 +73,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-30 h-[var(--header-h)] border-b-[1.5px] border-dashed border-line-strong bg-paper pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-full max-w-7xl items-center gap-3 px-3 sm:px-4">
         <Link href="/" className="flex items-center gap-2" aria-label="Hive home">
-          <HiveMark className="h-7 w-7 sm:h-8 sm:w-8" />
+          <MiniTile bug="Q" size={32} seed={6} />
           <span className="font-display text-xl font-semibold tracking-tight">Hive</span>
         </Link>
         <nav className="ml-4 hidden items-center gap-1 md:flex">
@@ -81,7 +81,8 @@ export function SiteHeader() {
             <Link
               key={n.href}
               href={n.href}
-              className={`px-2.5 py-1.5 text-[0.95rem] transition ${active(n.href) ? "scribble font-bold text-ink" : "text-ink-soft hover:text-ink"}`}
+              className={`nav-link px-2.5 py-1.5 text-[0.95rem] transition ${active(n.href) ? "font-bold text-ink" : "text-ink-soft hover:text-ink"}`}
+              aria-current={active(n.href) ? "page" : undefined}
             >
               {n.label}
             </Link>
@@ -100,7 +101,7 @@ export function SiteHeader() {
       <Sheet open={open} onClose={() => setOpen(false)}>
         <nav className="grid gap-1 pb-2">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className={`flex min-h-12 items-center px-1 text-xl ${active(n.href) ? "scribble w-fit font-bold text-ink" : "text-ink-soft"}`}>
+            <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className={`flex min-h-12 items-center px-1 text-xl ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}>
               {n.label}
             </Link>
           ))}

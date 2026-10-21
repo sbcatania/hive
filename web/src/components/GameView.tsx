@@ -220,7 +220,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
               <div className={`pointer-events-auto flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} pencil pencil-strong py-1.5 pr-1 pl-3 text-sm sm:py-2`}>
                 <div className="min-w-0 flex-1 py-0.5">
                   <div className="font-semibold">
-                    {sel.label} <span className="font-mono text-xs text-muted">{selected}</span>
+                    {sel.label}
                     {inHand && <span className="ml-1 text-xs text-muted">(in hand)</span>}
                   </div>
                   <ul className="mt-1 space-y-0.5 text-[0.82rem] text-ink-soft">
@@ -230,7 +230,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
                         {targets.length} legal {inHand ? "placement" : "move"}
                         {targets.length === 1 ? "" : "s"}
                         {sel.color !== state.toMove ? " for your Pillbug to throw it" : ""}
-                        <span className="text-muted">· tap one, or drag the piece</span>
+                        <span className="text-muted">Tap one or drag the piece.</span>
                       </li>
                     )}
                     {previewTargets.length > 0 && (

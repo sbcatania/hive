@@ -9,7 +9,7 @@ import { GameView, type GameAction, type PlayerInfo } from "@/components/GameVie
 import { useAuth } from "@/lib/auth";
 import { engineFromMoves, errorMessage, loadEngine, withEngine } from "@/lib/engine";
 import { colorName, resultText, type ColorCode, type StateView } from "@/lib/engine-types";
-import { REASON_TEXT } from "@/lib/journal";
+import { REASON_TEXT, resultSentence } from "@/lib/journal";
 import {
   answerTakeback,
   claimTimeout,
@@ -220,7 +220,7 @@ function OnlineGameView() {
     const parts = [you && prof ? "You" : null, colorName(c), prof && prof.rated_games > 0 ? `${prof.rating}` : prof ? "unrated" : "guest"].filter(Boolean);
     return {
       name,
-      sub: joined ? parts.join(" · ") : "waiting to join…",
+      sub: joined ? parts.join(", ") : "waiting to join…",
       clock: clocks ? <ClockFace ms={clocks[c]} running={row.status === "active" && toMove === c} /> : undefined,
     };
   };
@@ -229,7 +229,7 @@ function OnlineGameView() {
     row.status === "waiting"
       ? "Waiting for an opponent to join"
       : row.status === "finished"
-        ? `${resultText(row.result!)} · ${REASON_TEXT[row.result_reason ?? ""] ?? ""}`
+        ? resultSentence(row.result!, row.result_reason)
         : canMove
           ? state.mustPass
             ? "You have no legal move: pass"
@@ -358,7 +358,7 @@ function OnlineGameView() {
         </div>
         <div className="text-xs text-muted">
           {expansionLabel(rules)}
-          {variants.length ? ` · ${variants.join(" · ")}` : ""} · {row.base_ms ? `${row.base_ms / 60000} min + ${row.increment_ms / 1000}s` : "untimed"} · game <span className="font-mono">{row.id}</span>
+          {variants.length ? `, ${variants.join(", ")}` : ""}. {row.base_ms ? `${row.base_ms / 60000} min + ${row.increment_ms / 1000}s` : "untimed"} · game <span className="font-mono">{row.id}</span>
         </div>
       </div>
 

@@ -49,7 +49,6 @@ function AuthForms() {
   return (
     <div className="mx-auto max-w-md px-4 py-10">
       <div className="text-center">
-        <div className="specimen-label">Optional</div>
         <h1 className="font-display text-4xl font-semibold">Join the hive</h1>
         <p className="mt-2 text-sm text-ink-soft">You can play everything without an account. Signing in keeps your journal across devices and lets you play rated games for an Elo rating.</p>
       </div>

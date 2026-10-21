@@ -140,3 +140,24 @@ Decisions:
   Players are "You" and "Computer"; colour is chosen explicitly ("You play White").
   The home page is one "New game" sheet; import moved to the games page; the game
   sidebar keeps only controls, notes and the move list.
+
+## Round 6 — a real logo, and removing the generated-design tells
+
+Process: Anthropic's open-source `frontend-design` skill (now vendored in
+`.claude/skills/frontend-design`): plan tokens, review the plan against the brief for
+defaults, build, then critique from screenshots in separate passes (hierarchy, tells,
+naming), one change at a time.
+
+- **Wordmark.** HIVE is spelled on four game tiles in a straight hive line, white and
+  black alternating like the two sides, with the Queen Bee tile tucked against the E.
+  It is the page's one bold element and its one entrance animation (tiles set down in
+  turn). The header logo is the Queen Bee piece itself. The squiggle underline is gone.
+- **Tells removed.** Tracked all-caps labels became sentence-case labels; eyebrow
+  labels above headings are gone; "A · B · C" strings became plain phrases ("Turn 3:
+  your move", "Hard, playing Black", "White wins by resignation"); monospace is kept
+  only for real game notation; Roman-numeral section markers dropped (the guide's
+  sections aren't a sequence); fade-up on cards removed; hints are described in words
+  ("Try moving your Soldier Ant") instead of notation.
+- **One name per thing.** The nav says "How to play" and "Your games", matching the
+  pages and links. The labelled specimen drawing moved to the top of How to play,
+  where it explains the pieces, so the home page has a single hero.

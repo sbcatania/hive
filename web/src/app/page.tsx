@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
-import { SketchHero } from "@/components/SketchHero";
+import { Wordmark } from "@/components/Wordmark";
 import { Sheet } from "@/components/Sheet";
 import { describeVariants } from "@/lib/variants";
 import { Icon, type IconName } from "@/components/Icon";
@@ -105,7 +105,7 @@ export default function Home() {
   const expCount = [prefs.rules.mosquito, prefs.rules.ladybug, prefs.rules.pillbug].filter(Boolean).length;
   const optionsSummary = [clockName, expCount === 3 ? "all expansions" : expCount === 0 ? "base game" : `${expCount} expansion${expCount === 1 ? "" : "s"}`, variantCount ? `${variantCount} variant${variantCount === 1 ? "" : "s"}` : null, prefs.mode === "online" && prefs.rated && ratedAllowed ? "Rated" : null]
     .filter(Boolean)
-    .join(" · ");
+    .join(", ");
 
   const clockPicker = (
     <div>
@@ -150,33 +150,32 @@ export default function Home() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col px-4 max-sm:min-h-[calc(100dvh-var(--header-h))] sm:pb-16">
-      <section className="grid items-center gap-4 pt-3 pb-1 [@media(max-height:620px)]:pt-1.5 sm:pt-6 sm:pb-2 md:grid-cols-[1fr_1.1fr] md:pt-10">
-        <div className="rise flex items-end justify-between gap-3 sm:block">
+      <section className="pt-3 pb-1 [@media(max-height:620px)]:pt-1.5 sm:pt-8 sm:pb-2 md:pt-12">
+        <div className="flex items-end justify-between gap-3 sm:items-center sm:justify-start sm:gap-10">
+          <h1 className="shrink-0">
+            <Wordmark animate className="h-14 w-auto min-[380px]:h-16 sm:h-28 md:h-36 [@media(max-height:620px)]:h-10" />
+          </h1>
           <div>
-            <h1 className="font-display text-4xl leading-[0.95] font-semibold tracking-tight min-[380px]:text-5xl sm:text-7xl [@media(max-height:620px)]:text-3xl">
-              <span className="scribble">Hive</span>
-            </h1>
-            <p className="mt-2 hidden max-w-sm text-lg text-ink-soft sm:mt-4 sm:block">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 sm:mt-4 sm:justify-start">
-            {resume && (
-              <Link href={`/play?id=${resume.id}`} className="btn max-sm:!min-h-10 max-sm:!px-3">
-                <Icon name="play" size={18} />
-                Continue
+            <p className="hidden max-w-sm text-lg text-ink-soft sm:block">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
+            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 sm:mt-3 sm:justify-start">
+              {resume && (
+                <Link href={`/play?id=${resume.id}`} className="btn max-sm:!min-h-10 max-sm:!px-3">
+                  <Icon name="play" size={18} />
+                  Continue
+                </Link>
+              )}
+              <Link href="/learn" className="font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4">
+                How to play
               </Link>
-            )}
-            <Link href="/learn" className="font-hand text-xl text-ink underline decoration-accent decoration-2 underline-offset-4">
-              How to play
-            </Link>
-            <Link href="/puzzles" className="hidden font-hand text-xl text-ink underline decoration-accent decoration-2 underline-offset-4 sm:inline">
-              Puzzles
-            </Link>
+              <Link href="/puzzles" className="hidden font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4 sm:inline">
+                Puzzles
+              </Link>
+            </div>
           </div>
         </div>
-        <SketchHero className="mx-auto hidden w-full max-w-md sm:block" />
       </section>
 
-      <section className="card rise mt-2 flex-1 space-y-4 !p-4 [@media(max-height:620px)]:space-y-3 [@media(max-height:620px)]:!py-3 sm:mt-4 sm:flex-none sm:space-y-6 sm:!p-7">
+      <section className="card mt-2 flex-1 space-y-4 !p-4 [@media(max-height:620px)]:mt-1 [@media(max-height:620px)]:space-y-3 [@media(max-height:620px)]:!py-3 sm:mt-4 sm:flex-none sm:space-y-6 sm:!p-7">
         <h2 className="hidden font-display text-2xl font-semibold sm:block">New game</h2>
 
         <div>
@@ -282,7 +281,7 @@ export default function Home() {
             {recent.map((e) => (
               <li key={e.id} className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate">
-                  {gameTitle(e)} <span className="text-sm text-muted">· {resultLabel(e)} · {e.moves.length} moves</span>
+                  {gameTitle(e)} <span className="text-sm text-muted">{resultLabel(e).toLowerCase()}, {e.moves.length} moves</span>
                 </span>
                 <Link href={`/replay?local=${e.id}`} className="font-hand shrink-0 text-lg text-ink-soft underline underline-offset-4">
                   replay

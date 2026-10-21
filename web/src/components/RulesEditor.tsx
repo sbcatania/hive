@@ -47,7 +47,7 @@ function Stepper({ value, min, max, onChange }: { value: number; min: number; ma
       <button className="grid h-9 w-9 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label="Fewer">
         <Icon name="minus" size={16} />
       </button>
-      <span className="w-5 text-center font-mono text-sm tabular-nums">{value}</span>
+      <span className="w-5 text-center text-sm font-semibold tabular-nums">{value}</span>
       <button className="grid h-9 w-9 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="More">
         <Icon name="plus" size={16} />
       </button>
@@ -142,7 +142,7 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
                     <span className="truncate text-xs font-medium">{BUG_NAMES[b]}</span>
                   </div>
                   {b === "Q" ? (
-                    <span className="px-2 font-mono text-sm">1</span>
+                    <span className="px-2 text-sm font-semibold">1</span>
                   ) : (
                     <Stepper
                       value={on ? rules.counts[i] : 0}

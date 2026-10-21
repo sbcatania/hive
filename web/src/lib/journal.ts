@@ -203,13 +203,20 @@ export function resultLabel(e: Pick<JournalEntry, "mode" | "result" | "human">):
 }
 
 export const REASON_TEXT: Record<string, string> = {
-  surround: "Queen surrounded",
+  surround: "by surrounding the Queen",
   resignation: "by resignation",
   agreement: "by agreement",
   time: "on time",
-  repetition: "threefold repetition",
-  "turn-limit": "turn limit reached",
+  repetition: "by threefold repetition",
+  "turn-limit": "at the turn limit",
 };
+
+/** "White wins by resignation", "Draw by agreement". */
+export function resultSentence(result: string, reason?: string | null) {
+  const head = result === "WhiteWins" ? "White wins" : result === "BlackWins" ? "Black wins" : "Draw";
+  const why = REASON_TEXT[reason ?? ""];
+  return why ? `${head} ${why}` : head;
+}
 
 /** A human-readable title for a saved game. CPU games are named by level, which also
  * tidies labels from older versions that used character names. */

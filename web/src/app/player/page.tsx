@@ -36,7 +36,6 @@ function PlayerInner() {
       <div className="card flex items-center gap-4 p-6">
         <Avatar color="w" initial={profile.username.slice(0, 1).toUpperCase()} size={72} />
         <div>
-          <div className="specimen-label">Player</div>
           <h1 className="font-display text-4xl font-semibold">{profile.username}</h1>
           <div className="text-sm text-muted">Joined {new Date(profile.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" })}</div>
         </div>
@@ -73,9 +72,9 @@ function PlayerInner() {
               <li key={g.id} className="card flex items-center gap-3 !p-3 text-sm">
                 <span className={`w-12 font-semibold ${g.result === "Draw" ? "text-muted" : won ? "text-move" : "text-danger"}`}>{g.result === "Draw" ? "Draw" : won ? "Win" : "Loss"}</span>
                 <span className="min-w-0 flex-1 truncate">
-                  vs {oppId ? (players[oppId]?.username ?? "player") : "guest"} · {g.moves.length} moves
+                  vs {oppId ? (players[oppId]?.username ?? "player") : "guest"} , {g.moves.length} moves
                 </span>
-                {g.rated && delta !== null && <span className="font-mono text-xs text-muted">{delta >= 0 ? `+${delta}` : delta}</span>}
+                {g.rated && delta !== null && <span className="text-xs text-muted tabular-nums">{delta >= 0 ? `+${delta}` : delta}</span>}
                 <Link className="btn-ghost" href={`/replay?online=${g.id}`}>
                   Replay
                 </Link>

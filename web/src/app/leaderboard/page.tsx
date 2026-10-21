@@ -27,7 +27,6 @@ export default function LeaderboardPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="specimen-label">The pecking order</div>
       <h1 className="font-display text-4xl font-semibold">Rankings</h1>
       <p className="mt-1 text-sm text-ink-soft">
         Elo ratings from rated online games. Everyone starts at 1200. New players move faster (K = 40 for the first 20 games, then 20).
@@ -61,7 +60,7 @@ export default function LeaderboardPage() {
                   <span className="hidden text-xs text-muted sm:inline">
                     {p.wins}W {p.losses}L {p.draws}D
                   </span>
-                  <span className="w-14 text-right font-mono text-lg font-semibold">{p.rating}</span>
+                  <span className="w-14 text-right font-display text-lg font-semibold tabular-nums">{p.rating}</span>
                 </Link>
               </li>
             );

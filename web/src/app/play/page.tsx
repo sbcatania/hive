@@ -10,8 +10,8 @@ import { GameView, type GameAction, type PlayerInfo } from "@/components/GameVie
 import { AiClient } from "@/lib/ai-client";
 import { useAuth } from "@/lib/auth";
 import { Engine, engineFromMoves, errorMessage, loadEngine } from "@/lib/engine";
-import { colorName, levelInfo, resultText, type AiResult, type ColorCode, type StateView } from "@/lib/engine-types";
-import { currentGameId, gameTitle, getLocal, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
+import { BUG_NAMES, colorName, levelInfo, resultText, type AiResult, type ColorCode, type StateView } from "@/lib/engine-types";
+import { currentGameId, gameTitle, getLocal, resultSentence, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
 
@@ -294,7 +294,7 @@ function LocalGame() {
   for (const c of ["w", "b"] as ColorCode[]) {
     if (entry.mode === "cpu" && cpuLevel) {
       players[c] =
-        c === entry.human ? { name: "You", sub: colorName(c) } : { name: "Computer", sub: `${cpuLevel.name} · ${colorName(c)}`, thinking: thinking && state.toMove === c };
+        c === entry.human ? { name: "You", sub: colorName(c) } : { name: "Computer", sub: `${cpuLevel.name}, playing ${colorName(c)}`, thinking: thinking && state.toMove === c };
     } else {
       players[c] = { name: colorName(c) };
     }
@@ -303,12 +303,12 @@ function LocalGame() {
 
   const youWon = result && entry.mode === "cpu" && ((result === "WhiteWins" && entry.human === "w") || (result === "BlackWins" && entry.human === "b"));
   const status = result
-    ? `${resultText(result)} · ${REASON_TEXT[entry.resultReason ?? ""] ?? ""}`
+    ? resultSentence(result, entry.resultReason)
     : thinking
       ? "Computer is thinking…"
       : state.mustPass
         ? `${colorName(state.toMove)} has no legal move and must pass`
-        : `${entry.mode === "local" ? colorName(state.toMove) : state.toMove === entry.human ? "Your" : colorName(state.toMove)}${entry.mode === "local" || state.toMove !== entry.human ? " to move" : " move"} · turn ${state.turn}`;
+        : `Turn ${state.turn}: ${entry.mode === "local" || state.toMove !== entry.human ? `${colorName(state.toMove)} to move` : "your move"}`;
 
   const variants = describeVariants(entry.rules);
   const overlay =
@@ -317,7 +317,7 @@ function LocalGame() {
         tone={entry.mode === "cpu" ? (result === "Draw" ? "draw" : youWon ? "win" : "loss") : "neutral"}
         title={entry.mode === "cpu" ? (result === "Draw" ? "A draw" : youWon ? "You win!" : "Computer wins") : resultText(result)}
         subtitle={REASON_TEXT[entry.resultReason ?? ""]}
-        detail={`${state.history.length} moves · ${gameTitle(entry)}`}
+        detail={`After ${state.history.length} moves.`}
         onClose={() => setOverlayClosed(true)}
         actions={
           <>
@@ -346,7 +346,7 @@ function LocalGame() {
       )}
       {hint && (
         <div className="note-hint">
-          Try <span className="font-mono font-semibold">{hint.best}</span>. It&apos;s marked on the board with a purple arrow.
+          {hintText(state, hint.best)} It&apos;s the purple arrow on the board.
         </div>
       )}
       {state.repetitions >= 3 && !result && !entry.rules.repetitionDraw && (
@@ -358,8 +358,8 @@ function LocalGame() {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
       <span>
         {expansionLabel(entry.rules)}
-        {variants.length ? ` · ${variants.join(" · ")}` : ""}
-        {entry.clock?.baseMs ? ` · ${entry.clock.baseMs / 60000} + ${entry.clock.incMs / 1000}s` : ""}
+        {variants.length ? `, ${variants.join(", ")}` : ""}
+        {entry.clock?.baseMs ? `, ${entry.clock.baseMs / 60000} min + ${entry.clock.incMs / 1000}s clock` : ""}
       </span>
       <button className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-ink" onClick={copyGame}>
         <Icon name={copied ? "check" : "copy"} size={14} />
@@ -405,6 +405,14 @@ function LocalGame() {
       overlay={overlay}
     />
   );
+}
+
+/** "Try moving your Soldier Ant." rather than raw notation. */
+function hintText(state: StateView, notation: string) {
+  const m = state.legalMoves.find((x) => x.notation === notation);
+  if (!m) return `Try ${notation}.`;
+  const bug = BUG_NAMES[m.piece[1] as keyof typeof BUG_NAMES];
+  return m.from === null ? `Try placing your ${bug}.` : `Try moving your ${bug}.`;
 }
 
 export default function PlayPage() {

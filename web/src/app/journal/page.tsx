@@ -13,7 +13,7 @@ import { describeVariants, expansionLabel } from "@/lib/variants";
 
 function when(t: number | string) {
   const d = new Date(t);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" }) + " · " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 function Badge({ text, tone }: { text: string; tone: "win" | "loss" | "draw" | "open" }) {
@@ -129,9 +129,8 @@ export default function JournalPage() {
                       <Badge text={label} tone={tone(label)} />
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
-                      {when(e.updatedAt)} · {e.moves.length} moves · {expansionLabel(e.rules)}
-                      {v.length ? ` · ${v.join(", ")}` : ""}
-                      {e.resultReason ? ` · ${REASON_TEXT[e.resultReason] ?? e.resultReason}` : ""}
+                      {when(e.updatedAt)}. {e.moves.length} moves, {expansionLabel(e.rules)}
+                      {v.length ? `, ${v.join(", ")}` : ""}.
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -179,7 +178,7 @@ export default function JournalPage() {
                     {g.rated && <span className="text-xs font-semibold text-accent">Rated{delta !== null ? ` ${delta >= 0 ? "+" : ""}${delta}` : ""}</span>}
                   </div>
                   <div className="mt-0.5 text-xs text-muted">
-                    {when(g.updated_at)} · you were {me === "w" ? "White" : "Black"} · {g.moves.length} moves
+                    {when(g.updated_at)}. You were {me === "w" ? "White" : "Black"}, {g.moves.length} moves.
                   </div>
                 </div>
                 <div className="flex gap-2">

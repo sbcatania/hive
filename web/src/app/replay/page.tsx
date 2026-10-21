@@ -9,7 +9,7 @@ import { AiClient } from "@/lib/ai-client";
 import { useAuth } from "@/lib/auth";
 import { errorMessage, loadEngine, withEngine } from "@/lib/engine";
 import { levelInfo, resultText, type AiResult, type ColorCode, type Rules, type StateView } from "@/lib/engine-types";
-import { gameTitle, getLocal, listCloud, newId, REASON_TEXT, saveLocal, setCurrentGameId } from "@/lib/journal";
+import { gameTitle, getLocal, listCloud, newId, REASON_TEXT, saveLocal, setCurrentGameId, resultSentence } from "@/lib/journal";
 import { fetchGame, fetchPlayers, rulesFromRow } from "@/lib/online";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
@@ -160,19 +160,17 @@ function Replay() {
   const sidebar = (
     <div className="space-y-3">
       <div className="card !p-3 text-sm">
-        <div className="specimen-label">Replay</div>
         <div className="font-display text-lg font-semibold">{src.title}</div>
         <div className="text-xs text-muted">
           {expansionLabel(src.rules)}
-          {v.length ? ` · ${v.join(" · ")}` : ""}
-          {src.result ? ` · ${resultText(src.result as "WhiteWins")} ${REASON_TEXT[src.reason ?? ""] ?? ""}` : " · unfinished"}
+          {v.length ? `, ${v.join(", ")}` : ""}. {src.result ? `${resultSentence(src.result, src.reason)}.` : "Unfinished."}
         </div>
       </div>
       <div className="card space-y-3 !p-3">
         <input type="range" min={0} max={total} value={ply} onChange={(e) => setPly(Number(e.target.value))} className="w-full accent-[var(--accent)]" aria-label="Move" />
         <div className="text-center text-xs text-muted">
           Move {ply} of {total}
-          {ply > 0 ? ` · ${src.moves[ply - 1]}` : ""}
+          {ply > 0 ? `: ${src.moves[ply - 1]}` : ""}
         </div>
       </div>
     </div>
