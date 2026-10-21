@@ -287,24 +287,10 @@ function OnlineGameView() {
       />
     ) : null;
 
-  const sidebar = (
-    <div className="space-y-3">
+  const notice = (
+    <div className="space-y-2">
       {error && <div className="note-error">{error}</div>}
       {game?.error && <div className="note-error">{game.error}</div>}
-
-      <div className="card !p-3 text-sm">
-        <div className="flex items-center justify-between">
-          <div className="font-display text-lg font-semibold">{row.rated ? "Rated game" : "Friendly game"}</div>
-          <span className="flex items-center gap-1.5 text-xs text-muted">
-            <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-move" : "bg-accent"}`} />
-            {connected ? "Live" : "Reconnecting"}
-          </span>
-        </div>
-        <div className="text-xs text-muted">
-          {expansionLabel(rules)}
-          {variants.length ? ` · ${variants.join(" · ")}` : ""} · {row.base_ms ? `${row.base_ms / 60000} min + ${row.increment_ms / 1000}s` : "untimed"} · game <span className="font-mono">{row.id}</span>
-        </div>
-      </div>
 
       {seat === "login_required" && (
         <div className="note-warn">
@@ -316,7 +302,7 @@ function OnlineGameView() {
       {row.status === "waiting" && playing && (
         <div className="card space-y-2 !p-3 text-sm">
           <div className="font-semibold">Invite a friend</div>
-          <p className="text-muted">
+          <p className="hidden text-muted lg:block">
             The first person to open this link plays {colorName(opp!)}
             {row.rated ? " (they'll need an account)" : ""}. Anyone after that can watch.
           </p>
@@ -329,8 +315,6 @@ function OnlineGameView() {
           </div>
         </div>
       )}
-
-      {!playing && seat === "spectator" && <div className="note-info">You&apos;re watching this game.</div>}
 
       {row.status === "active" && playing && row.draw_offer === opp && (
         <div className="note-warn space-y-2">
@@ -358,6 +342,27 @@ function OnlineGameView() {
           </div>
         </div>
       )}
+
+    </div>
+  );
+
+  const sidebar = (
+    <div className="space-y-3">
+      <div className="card !p-3 text-sm">
+        <div className="flex items-center justify-between">
+          <div className="font-display text-lg font-semibold">{row.rated ? "Rated game" : "Friendly game"}</div>
+          <span className="flex items-center gap-1.5 text-xs text-muted">
+            <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-move" : "bg-accent"}`} />
+            {connected ? "Live" : "Reconnecting"}
+          </span>
+        </div>
+        <div className="text-xs text-muted">
+          {expansionLabel(rules)}
+          {variants.length ? ` · ${variants.join(" · ")}` : ""} · {row.base_ms ? `${row.base_ms / 60000} min + ${row.increment_ms / 1000}s` : "untimed"} · game <span className="font-mono">{row.id}</span>
+        </div>
+      </div>
+
+      {!playing && seat === "spectator" && <div className="note-info">You&apos;re watching this game.</div>}
 
       {canMove && state.mustPass && (
         <button className="btn w-full" onClick={() => play("pass")}>
@@ -399,15 +404,16 @@ function OnlineGameView() {
           disabled: busy || row.takeback_request === seat || row.moves.length < (seat === "w" ? 1 : 2),
           active: row.takeback_request === seat,
         },
-        { id: "draw", icon: "draw", label: row.draw_offer === seat ? "Draw offered…" : "Offer draw", short: "Draw", onClick: () => act(() => offerDraw(row.id)), disabled: busy || row.draw_offer === seat, active: row.draw_offer === seat },
+        { id: "draw", icon: "draw", label: row.draw_offer === seat ? "Draw offered…" : "Offer draw", short: "Draw", onClick: () => act(() => offerDraw(row.id)), disabled: busy || row.draw_offer === seat, active: row.draw_offer === seat, menu: true },
         { id: "share", icon: "share", label: copied === "spectate" ? "Copied" : "Spectator link", short: "Share", onClick: () => copy(link, "spectate") },
-        { id: "resign", icon: "flag", label: "Resign", onClick: () => confirm("Resign this game?") && act(() => resign(row.id)), disabled: busy },
+        { id: "resign", icon: "flag", label: "Resign", onClick: () => confirm("Resign this game?") && act(() => resign(row.id)), disabled: busy, menu: true },
       ]
     : [];
 
   return (
     <GameView
       actions={actions}
+      notice={notice}
       state={state}
       theme={theme}
       onThemeChange={(t) => {

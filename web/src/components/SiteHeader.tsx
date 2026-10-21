@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { HiveMark } from "./HiveMark";
 import { Icon } from "./Icon";
 import { Avatar } from "./Nameplate";
+import { Sheet } from "./Sheet";
 import { useAuth } from "@/lib/auth";
 import { applyThemeMode, loadThemeMode, type ThemeMode } from "@/lib/theme-mode";
 
@@ -69,10 +70,10 @@ export function SiteHeader() {
   useEffect(() => setOpen(false), [path]);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   return (
-    <header className="sticky top-0 z-30 border-b-[1.5px] border-dashed border-line-strong bg-paper">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-4">
+    <header className="sticky top-0 z-30 h-[var(--header-h)] border-b-[1.5px] border-dashed border-line-strong bg-paper pt-[env(safe-area-inset-top)]">
+      <div className="mx-auto flex h-full max-w-7xl items-center gap-3 px-3 sm:px-4">
         <Link href="/" className="flex items-center gap-2" aria-label="Hive home">
-          <HiveMark className="h-8 w-8" />
+          <HiveMark className="h-7 w-7 sm:h-8 sm:w-8" />
           <span className="font-display text-xl font-semibold tracking-tight">Hive</span>
         </Link>
         <nav className="ml-4 hidden items-center gap-1 md:flex">
@@ -87,22 +88,28 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle />
+          <span className="hidden sm:block">
+            <ThemeToggle />
+          </span>
           <AccountChip />
-          <button className="icon-btn !h-10 !w-10 md:hidden" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            <Icon name={open ? "close" : "menu"} />
+          <button className="icon-btn !h-10 !w-10 md:hidden" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(true)}>
+            <Icon name="menu" />
           </button>
         </div>
       </div>
-      {open && (
-        <nav className="grid gap-1 border-t border-dashed border-line-strong bg-paper px-3 py-2 md:hidden">
+      <Sheet open={open} onClose={() => setOpen(false)}>
+        <nav className="grid gap-1 pb-2">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className={`flex min-h-11 items-center px-3 text-lg ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}>
+            <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className={`flex min-h-12 items-center px-1 text-xl ${active(n.href) ? "scribble w-fit font-bold text-ink" : "text-ink-soft"}`}>
               {n.label}
             </Link>
           ))}
+          <div className="mt-2 flex items-center justify-between border-t border-dashed border-line-strong pt-3">
+            <span className="text-ink-soft">Day / night</span>
+            <ThemeToggle />
+          </div>
         </nav>
-      )}
+      </Sheet>
     </header>
   );
 }

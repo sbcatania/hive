@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
 import { SketchHero } from "@/components/SketchHero";
+import { Sheet } from "@/components/Sheet";
+import { describeVariants } from "@/lib/variants";
 import { Icon, type IconName } from "@/components/Icon";
 import { useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/engine";
@@ -41,6 +43,7 @@ export default function Home() {
   const [recent, setRecent] = useState<JournalEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [options, setOptions] = useState(false);
 
   useEffect(() => {
     migrateLegacySave();
@@ -95,34 +98,86 @@ export default function Home() {
   const lvl = levelInfo(prefs.level);
   const startLabel = busy ? "Creating game…" : prefs.mode === "online" ? "Create game & get link" : "Start game";
 
+  const clocks = prefs.mode === "online" ? TIME_CONTROLS : LOCAL_CLOCKS;
+  const clockKey = prefs.mode === "online" ? "onlineClock" : "localClock";
+  const clockName = clocks.find((c) => c.id === prefs[clockKey])?.name ?? "Untimed";
+  const variantCount = describeVariants(prefs.rules).length;
+  const expCount = [prefs.rules.mosquito, prefs.rules.ladybug, prefs.rules.pillbug].filter(Boolean).length;
+  const optionsSummary = [clockName, expCount === 3 ? "all expansions" : expCount === 0 ? "base game" : `${expCount} expansion${expCount === 1 ? "" : "s"}`, variantCount ? `${variantCount} variant${variantCount === 1 ? "" : "s"}` : null, prefs.mode === "online" && prefs.rated && ratedAllowed ? "Rated" : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  const clockPicker = (
+    <div>
+      <span className="label">Clock</span>
+      <div className="seg">
+        {clocks.map((tc) => (
+          <button key={tc.id} aria-pressed={prefs[clockKey] === tc.id} onClick={() => update({ [clockKey]: tc.id } as Partial<Prefs>)}>
+            {tc.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  const ratedToggle = prefs.mode === "online" && (
+    <label className={`flex items-start gap-3 text-sm ${ratedAllowed ? "cursor-pointer" : "opacity-60"}`}>
+      <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--ink)]" disabled={!ratedAllowed} checked={prefs.rated && ratedAllowed} onChange={(e) => update({ rated: e.target.checked })} />
+      <span>
+        <span className="font-semibold">Rated</span>
+        <span className="block text-xs text-muted">
+          {!user ? (
+            <>
+              <Link href="/account" className="underline">
+                Sign in
+              </Link>{" "}
+              to play rated games.
+            </>
+          ) : variant ? (
+            "Rated games use the official rules."
+          ) : (
+            "Both players need an account. Ratings start at 1200."
+          )}
+        </span>
+      </span>
+    </label>
+  );
+  const expansions = (
+    <div>
+      <span className="label">Expansion bugs</span>
+      <ExpansionToggles rules={prefs.rules} onChange={(rules) => update({ rules })} />
+    </div>
+  );
+
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16">
-      <section className="grid items-center gap-4 pt-6 pb-2 md:grid-cols-[1fr_1.1fr] md:pt-10">
-        <div className="rise">
-          <h1 className="font-display text-6xl leading-[0.95] font-semibold tracking-tight sm:text-7xl">
-            <span className="scribble">Hive</span>
-          </h1>
-          <p className="mt-4 max-w-sm text-lg text-ink-soft">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div className="mx-auto flex max-w-5xl flex-col px-4 max-sm:min-h-[calc(100dvh-var(--header-h))] sm:pb-16">
+      <section className="grid items-center gap-4 pt-3 pb-1 [@media(max-height:620px)]:pt-1.5 sm:pt-6 sm:pb-2 md:grid-cols-[1fr_1.1fr] md:pt-10">
+        <div className="rise flex items-end justify-between gap-3 sm:block">
+          <div>
+            <h1 className="font-display text-4xl leading-[0.95] font-semibold tracking-tight min-[380px]:text-5xl sm:text-7xl [@media(max-height:620px)]:text-3xl">
+              <span className="scribble">Hive</span>
+            </h1>
+            <p className="mt-2 hidden max-w-sm text-lg text-ink-soft sm:mt-4 sm:block">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 sm:mt-4 sm:justify-start">
             {resume && (
-              <Link href={`/play?id=${resume.id}`} className="btn">
+              <Link href={`/play?id=${resume.id}`} className="btn max-sm:!min-h-10 max-sm:!px-3">
                 <Icon name="play" size={18} />
-                Continue game
+                Continue
               </Link>
             )}
             <Link href="/learn" className="font-hand text-xl text-ink underline decoration-accent decoration-2 underline-offset-4">
               How to play
             </Link>
-            <Link href="/puzzles" className="font-hand text-xl text-ink underline decoration-accent decoration-2 underline-offset-4">
+            <Link href="/puzzles" className="hidden font-hand text-xl text-ink underline decoration-accent decoration-2 underline-offset-4 sm:inline">
               Puzzles
             </Link>
           </div>
         </div>
-        <SketchHero className="mx-auto w-full max-w-md" />
+        <SketchHero className="mx-auto hidden w-full max-w-md sm:block" />
       </section>
 
-      <section className="card rise mt-4 space-y-6 !p-5 sm:!p-7">
-        <h2 className="font-display text-2xl font-semibold">New game</h2>
+      <section className="card rise mt-2 flex-1 space-y-4 !p-4 [@media(max-height:620px)]:space-y-3 [@media(max-height:620px)]:!py-3 sm:mt-4 sm:flex-none sm:space-y-6 sm:!p-7">
+        <h2 className="hidden font-display text-2xl font-semibold sm:block">New game</h2>
 
         <div>
           <span className="label">Opponent</span>
@@ -130,10 +185,10 @@ export default function Home() {
             {MODES.map((m) => {
               const on = prefs.mode === m.id;
               return (
-                <button key={m.id} onClick={() => update({ mode: m.id })} aria-pressed={on} className={`pencil flex flex-col items-center gap-1 px-2 py-3 text-center sm:flex-row sm:gap-3 sm:px-4 sm:text-left ${on ? "pencil-honey pencil-strong" : "pencil-clear"}`}>
-                  <Icon name={m.icon} size={24} className={on ? "text-ink" : "text-ink-soft"} />
+                <button key={m.id} onClick={() => update({ mode: m.id })} aria-pressed={on} className={`pencil flex flex-col items-center gap-1 px-1 py-2.5 text-center sm:flex-row sm:gap-3 sm:px-4 sm:py-3 sm:text-left ${on ? "pencil-honey pencil-strong" : "pencil-clear"}`}>
+                  <Icon name={m.icon} size={22} className={on ? "text-ink" : "text-ink-soft"} />
                   <span>
-                    <span className="block font-bold">{m.title}</span>
+                    <span className="block text-[0.85rem] leading-tight font-bold whitespace-nowrap sm:text-base">{m.title}</span>
                     <span className="hidden text-xs text-muted sm:block">{m.text}</span>
                   </span>
                 </button>
@@ -145,22 +200,22 @@ export default function Home() {
         {prefs.mode === "cpu" && (
           <div>
             <span className="label">Difficulty</span>
-            <div className="seg">
+            <div className="seg seg-fill">
               {LEVELS.map((l) => (
                 <button key={l.id} aria-pressed={prefs.level === l.id} onClick={() => update({ level: l.id })}>
                   {l.name}
                 </button>
               ))}
             </div>
-            <p className="hand-note mt-1 !text-lg">{lvl.blurb}</p>
+            <p className="hand-note mt-1 !text-lg max-sm:truncate">{lvl.blurb}</p>
           </div>
         )}
 
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-6">
           {prefs.mode !== "local" && (
             <div>
               <span className="label">You play</span>
-              <div className="seg">
+              <div className="seg seg-fill">
                 {(
                   [
                     ["w", "White"],
@@ -173,63 +228,50 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-              <p className="mt-1 text-xs text-muted">White moves first.</p>
+              <p className="mt-1 text-xs text-muted [@media(max-height:620px)]:hidden">White moves first.</p>
             </div>
           )}
-          <div>
-            <span className="label">Clock</span>
-            <div className="seg">
-              {(prefs.mode === "online" ? TIME_CONTROLS : LOCAL_CLOCKS).map((tc) => {
-                const key = prefs.mode === "online" ? "onlineClock" : "localClock";
-                return (
-                  <button key={tc.id} aria-pressed={prefs[key] === tc.id} onClick={() => update({ [key]: tc.id } as Partial<Prefs>)}>
-                    {tc.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <div className="hidden sm:block">{clockPicker}</div>
         </div>
 
-        {prefs.mode === "online" && (
-          <label className={`flex items-start gap-3 text-sm ${ratedAllowed ? "cursor-pointer" : "opacity-60"}`}>
-            <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--ink)]" disabled={!ratedAllowed} checked={prefs.rated && ratedAllowed} onChange={(e) => update({ rated: e.target.checked })} />
-            <span>
-              <span className="font-semibold">Rated</span>
-              <span className="block text-xs text-muted">
-                {!user ? (
-                  <>
-                    <Link href="/account" className="underline">
-                      Sign in
-                    </Link>{" "}
-                    to play rated games.
-                  </>
-                ) : variant ? (
-                  "Rated games use the official rules."
-                ) : (
-                  "Both players need an account. Ratings start at 1200."
-                )}
-              </span>
-            </span>
-          </label>
-        )}
-
-        <div>
-          <span className="label">Expansion bugs</span>
-          <ExpansionToggles rules={prefs.rules} onChange={(rules) => update({ rules })} />
+        <div className="hidden space-y-5 sm:block">
+          {ratedToggle}
+          {expansions}
+          <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
         </div>
 
-        <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
+        <button className="pencil pencil-clear pencil-dashed flex w-full items-center gap-3 px-3 py-2.5 text-left sm:hidden" onClick={() => setOptions(true)}>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold">Options</span>
+            <span className="block truncate text-xs text-muted">{optionsSummary}</span>
+          </span>
+          <Icon name="chevron" className="-rotate-90 text-muted" />
+        </button>
 
         {prefs.mode === "online" && !onlineAvailable() && <p className="note-error">Online play isn&apos;t configured on this deployment.</p>}
         {error && <p className="note-error">{error}</p>}
-        <button className="btn-accent w-full !min-h-14 !text-lg sm:w-auto sm:!px-10" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
+        <button className="btn-accent hidden !min-h-14 !px-10 !text-lg sm:inline-flex" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
           {startLabel}
         </button>
       </section>
 
+      <div className="sticky bottom-0 z-10 -mx-4 mt-2 bg-paper px-4 pt-2 sm:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}>
+        <button className="btn-accent w-full !min-h-14 !text-lg" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
+          {startLabel}
+        </button>
+      </div>
+
+      <Sheet open={options} onClose={() => setOptions(false)} title="Options">
+        <div className="space-y-6 pb-2">
+          {clockPicker}
+          {ratedToggle}
+          {expansions}
+          <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
+        </div>
+      </Sheet>
+
       {recent.length > 0 && (
-        <section className="mt-8">
+        <section className="mt-8 hidden sm:block">
           <div className="flex items-baseline justify-between">
             <span className="label mb-0">Recent games</span>
             <Link href="/journal" className="font-hand text-lg text-ink-soft underline decoration-accent underline-offset-4">

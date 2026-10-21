@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Sheet } from "@/components/Sheet";
+import { useAppScreen } from "@/lib/app-screen";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Board2D from "@/components/Board2D";
 import { HandPanel } from "@/components/HandPanel";
@@ -129,13 +131,13 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
   }
 
   return (
-    <div className="space-y-3">
-      <div className={`card flex items-center justify-between gap-3 !px-4 !py-3 ${phase === "solved" ? "[--bc:var(--move)] [--fill:color-mix(in_oklab,var(--move)_12%,var(--card))]" : phase === "wrong" ? "[--bc:var(--danger)] [--fill:color-mix(in_oklab,var(--danger)_10%,var(--card))]" : ""}`}>
+    <div className="flex min-h-0 flex-1 flex-col gap-2 lg:block lg:space-y-3">
+      <div className={`card flex shrink-0 items-center justify-between gap-3 !px-3 !py-2 lg:!px-4 lg:!py-3 ${phase === "solved" ? "[--bc:var(--move)] [--fill:color-mix(in_oklab,var(--move)_12%,var(--card))]" : phase === "wrong" ? "[--bc:var(--danger)] [--fill:color-mix(in_oklab,var(--danger)_10%,var(--card))]" : ""}`}>
         <div>
-          <div className="font-display text-xl font-semibold">
+          <div className="font-display text-lg font-semibold lg:text-xl">
             {colorName(solver)} to play and win in {puzzle.kind === "win1" ? "one" : "two"}
           </div>
-          <div className="text-sm text-ink-soft">{message ?? (puzzle.kind === "win1" ? "Find the move that completes the surround." : "Find a move after which every defence loses.")}</div>
+          <div className="text-[0.85rem] text-ink-soft lg:text-sm">{message ?? (puzzle.kind === "win1" ? "Find the move that completes the surround." : "Find a move after which every defence loses.")}</div>
         </div>
         {phase === "solved" && (
           <button className="btn shrink-0" onClick={onNext}>
@@ -144,13 +146,13 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
           </button>
         )}
       </div>
-      <div className="card relative h-[52vh] min-h-80 !p-0 [--fill:transparent]">
+      <div className="card relative min-h-0 flex-1 !p-0 [--fill:transparent] lg:h-[52vh] lg:min-h-80 lg:flex-none">
         <div className="sk-lg absolute inset-[3px] overflow-hidden">
         <Board2D state={state} selected={selected} targets={targets} theme={theme} selectable={selectable} onPieceClick={onPieceClick} onTargetClick={play} onBackgroundClick={() => setSelected(null)} hideLastMove={moves.length === puzzle.moves.length} />
         </div>
       </div>
-      <HandPanel color={solver} hand={state.hands[solver === "w" ? 0 : 1]} selected={selected} placeable={placeable} onSelect={(n) => setSelected(n === selected ? null : n)} />
-      <div className="flex gap-2">
+      <HandPanel className="shrink-0" color={solver} hand={state.hands[solver === "w" ? 0 : 1]} selected={selected} placeable={placeable} onSelect={(n) => setSelected(n === selected ? null : n)} />
+      <div className="flex shrink-0 gap-2" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }}>
         <button className="btn-ghost" onClick={() => (setMoves(puzzle.moves), setPhase("solve"), setMessage(null))}>
           <Icon name="refresh" size={16} />
           Restart
@@ -172,6 +174,8 @@ export default function PuzzlesPage() {
   const [ready, setReady] = useState(false);
   const [solved, setSolved] = useState<Set<string>>(new Set());
   const [current, setCurrent] = useState(0);
+  const [list, setList] = useState(false);
+  useAppScreen(1023);
 
   useEffect(() => {
     loadEngine().then(() => setReady(true));
@@ -191,35 +195,65 @@ export default function PuzzlesPage() {
     });
 
   const p = LIST[current];
+  const grid = (
+    <ol className="grid grid-cols-5 gap-2 self-start sm:grid-cols-8 lg:grid-cols-3">
+      {LIST.map((q, i) => (
+        <li key={q.id}>
+          <button
+            onClick={() => {
+              setCurrent(i);
+              setList(false);
+            }}
+            className={`pencil flex aspect-square w-full flex-col items-center justify-center text-sm transition ${i === current ? "pencil-honey pencil-strong" : "pencil-clear hover:[--fill:var(--card)]"}`}
+            title={`${q.kind === "win1" ? "Win in 1" : "Win in 2"} · ${q.rules}`}
+          >
+            <span className="font-display text-lg font-semibold">{i + 1}</span>
+            <span className="text-[10px] text-muted">{q.kind === "win1" ? "in 1" : "in 2"}</span>
+            {solved.has(q.id) && <Icon name="check" size={16} className="text-move" title="Solved" />}
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+  const step = (d: number) => setCurrent((c) => (c + d + LIST.length) % LIST.length);
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="specimen-label">Field exercises</div>
-      <h1 className="font-display text-4xl font-semibold">Puzzles</h1>
-      <p className="mt-1 text-sm text-ink-soft">
-        Real positions from engine games, checked by the engine. {solved.size} of {LIST.length} solved. New to the rules? <Link href="/learn" className="underline">Read the field guide</Link>.
-      </p>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[16rem_1fr]">
-        <ol className="grid grid-cols-4 gap-2 self-start sm:grid-cols-8 lg:grid-cols-3">
-          {LIST.map((q, i) => (
-            <li key={q.id}>
-              <button
-                onClick={() => setCurrent(i)}
-                className={`pencil flex aspect-square w-full flex-col items-center justify-center text-sm transition ${i === current ? "pencil-honey pencil-strong" : "pencil-clear hover:[--fill:var(--card)]"}`}
-                title={`${q.kind === "win1" ? "Win in 1" : "Win in 2"} · ${q.rules}`}
-              >
-                <span className="font-display text-lg font-semibold">{i + 1}</span>
-                <span className="text-[10px] text-muted">{q.kind === "win1" ? "in 1" : "in 2"}</span>
-                {solved.has(q.id) && <Icon name="check" size={16} className="text-move" title="Solved" />}
-              </button>
-            </li>
-          ))}
-        </ol>
+    <div className="mx-auto max-w-6xl px-3 pt-2 max-lg:flex max-lg:h-[calc(100dvh-var(--header-h))] max-lg:flex-col lg:px-4 lg:py-8">
+      <div className="hidden lg:block">
+        <div className="specimen-label">Field exercises</div>
+        <h1 className="font-display text-4xl font-semibold">Puzzles</h1>
+        <p className="mt-1 text-sm text-ink-soft">
+          Real positions from engine games, checked by the engine. {solved.size} of {LIST.length} solved. New to the rules? <Link href="/learn" className="underline">Read the field guide</Link>.
+        </p>
+      </div>
+      <div className="mb-2 flex shrink-0 items-center gap-2 lg:hidden">
+        <button className="icon-btn !h-10 !w-10 [--fill:transparent]" onClick={() => step(-1)} aria-label="Previous puzzle">
+          <Icon name="prev" />
+        </button>
+        <button className="min-w-0 flex-1 text-center" onClick={() => setList(true)}>
+          <span className="font-display text-lg font-semibold">Puzzle {current + 1}</span>
+          <span className="text-sm text-muted">
+            {" "}
+            of {LIST.length} · {solved.size} solved
+          </span>
+        </button>
+        <button className="icon-btn !h-10 !w-10 [--fill:transparent]" onClick={() => step(1)} aria-label="Next puzzle">
+          <Icon name="next" />
+        </button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col lg:mt-6 lg:grid lg:grid-cols-[16rem_1fr] lg:gap-6">
+        <div className="hidden lg:block">{grid}</div>
         {ready && p ? (
-          <PuzzlePlayer puzzle={p} onSolved={() => markSolved(p.id)} onNext={() => setCurrent((c) => (c + 1) % LIST.length)} />
+          <PuzzlePlayer puzzle={p} onSolved={() => markSolved(p.id)} onNext={() => step(1)} />
         ) : (
-          <div className="h-[52vh] animate-pulse sk-lg bg-card-2" />
+          <div className="min-h-0 flex-1 animate-pulse sk-lg bg-card-2 lg:h-[52vh]" />
         )}
       </div>
+      <Sheet open={list} onClose={() => setList(false)} title="Puzzles">
+        <p className="mb-3 text-sm text-ink-soft">
+          Real positions from engine games. {solved.size} of {LIST.length} solved.
+        </p>
+        {grid}
+      </Sheet>
     </div>
   );
 }

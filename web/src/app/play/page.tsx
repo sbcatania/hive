@@ -333,9 +333,9 @@ function LocalGame() {
       />
     ) : null;
 
+  const notice = error ? <div className="note-error">{error}</div> : null;
   const sidebar = (
     <div className="space-y-3">
-      {error && <div className="note-error">{error}</div>}
       {state.mustPass && humanCanMove && (
         <div className="note-warn">
           <p className="mb-2">{colorName(state.toMove)} has no legal moves and must pass.</p>
@@ -373,12 +373,12 @@ function LocalGame() {
     ...(state.mustPass && humanCanMove ? [{ id: "pass", icon: "skip" as const, label: "Pass", onClick: () => play("pass"), active: true }] : []),
     { id: "undo", icon: "undo", label: "Take back", short: "Undo", onClick: undo, disabled: state.ply === 0 && !result },
     { id: "hint", icon: "hint", label: hintLoading ? "Thinking…" : "Hint", onClick: askHint, disabled: !humanCanMove || hintLoading, busy: hintLoading, active: !!hint },
-    { id: "eval", icon: "eval", label: showEval ? "Hide eval" : "Show eval", short: "Eval", onClick: toggleEval, active: showEval, disabled: !!result },
+    { id: "eval", icon: "eval", label: showEval ? "Hide eval" : "Show eval", short: "Eval", onClick: toggleEval, active: showEval, disabled: !!result, menu: true },
     ...(result
       ? [{ id: "result", icon: "eye" as const, label: "Show result", short: "Result", onClick: () => setOverlayClosed(false) }]
       : [
-          ...(entry.mode === "local" ? [{ id: "draw", icon: "draw" as const, label: "Agree draw", short: "Draw", onClick: agreeDraw, disabled: state.ply === 0 }] : []),
-          { id: "resign", icon: "flag" as const, label: "Resign", onClick: () => confirm("Resign this game?") && resign(), disabled: state.ply === 0 },
+          ...(entry.mode === "local" ? [{ id: "draw", icon: "draw" as const, label: "Agree draw", short: "Draw", onClick: agreeDraw, disabled: state.ply === 0, menu: true }] : []),
+          { id: "resign", icon: "flag" as const, label: "Resign", onClick: () => confirm("Resign this game?") && resign(), disabled: state.ply === 0, menu: true },
         ]),
   ];
 
@@ -386,6 +386,7 @@ function LocalGame() {
     <GameView
       actions={actions}
       footer={footer}
+      notice={notice}
       state={state}
       theme={theme}
       onThemeChange={(t) => {

@@ -109,6 +109,28 @@ body {
   color: var(--ink);
 }
 
+:root {
+  --header-h: calc(3rem + env(safe-area-inset-top));
+  -webkit-tap-highlight-color: transparent;
+}
+@media (min-width: 640px) {
+  :root {
+    --header-h: calc(3.5rem + env(safe-area-inset-top));
+  }
+}
+
+/* Game, puzzle and replay screens fill the viewport like a native app: the page
+   never scrolls, bounces or pull-to-refreshes, and long presses don't select. */
+html.app-screen,
+html.app-screen body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.app-screen body {
+  -webkit-touch-callout: none;
+}
+
 body {
   font-family: var(--font-sans);
   font-size: 16.5px;
@@ -120,14 +142,15 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   opacity: var(--grain-opacity);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.15 0 0 0 0 0.16 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-body > * {
-  position: relative;
-  z-index: 1;
+body {
+  /* A stacking context, so the grain layer (z-index -1) sits behind every child
+     but above the page colour, without repositioning portals and sheets. */
+  isolation: isolate;
 }
 
 button,
@@ -406,6 +429,13 @@ summary {
   }
   .seg {
     @apply inline-flex flex-wrap gap-1 text-[0.98rem];
+  }
+  /* On phones a choice row is one line of equal-width buttons, never wrapping. */
+  .seg-fill {
+    @apply max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col max-sm:gap-0.5;
+  }
+  .seg-fill > button {
+    @apply max-sm:px-1;
   }
   .seg > button {
     @apply relative isolate min-h-10 px-3 py-1.5 text-ink-soft transition hover:text-ink;

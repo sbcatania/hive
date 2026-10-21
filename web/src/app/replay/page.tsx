@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EvalBar } from "@/components/EvalBar";
-import { GameView, type PlayerInfo } from "@/components/GameView";
+import { GameView, type GameAction, type PlayerInfo } from "@/components/GameView";
 import { AiClient } from "@/lib/ai-client";
 import { useAuth } from "@/lib/auth";
 import { errorMessage, loadEngine, withEngine } from "@/lib/engine";
@@ -170,45 +170,28 @@ function Replay() {
       </div>
       <div className="card space-y-3 !p-3">
         <input type="range" min={0} max={total} value={ply} onChange={(e) => setPly(Number(e.target.value))} className="w-full accent-[var(--accent)]" aria-label="Move" />
-        <div className="flex items-center justify-between gap-1">
-          <button className="btn-secondary !px-3" onClick={() => setPly(0)} aria-label="Start">
-            <Icon name="first" />
-          </button>
-          <button className="btn-secondary !px-3" onClick={() => setPly((p) => Math.max(0, p - 1))} aria-label="Back">
-            <Icon name="prev" />
-          </button>
-          <button className="btn !px-4" onClick={() => (ply >= total ? (setPly(0), setPlaying(true)) : setPlaying((p) => !p))}>
-            <Icon name={playing ? "pause" : "play"} size={18} />
-            {playing ? "Pause" : "Play"}
-          </button>
-          <button className="btn-secondary !px-3" onClick={() => setPly((p) => Math.min(total, p + 1))} aria-label="Forward">
-            <Icon name="next" />
-          </button>
-          <button className="btn-secondary !px-3" onClick={() => setPly(total)} aria-label="End">
-            <Icon name="last" />
-          </button>
-        </div>
         <div className="text-center text-xs text-muted">
           Move {ply} of {total}
           {ply > 0 ? ` · ${src.moves[ply - 1]}` : ""}
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button className="btn-ghost" onClick={() => setEvalOn((x) => !x)}>
-          <Icon name="eval" size={16} />
-          {evalOn ? "Hide evaluation" : "Evaluate positions"}
-        </button>
-        <button className="btn-ghost" onClick={continueFromHere}>
-          <Icon name="play" size={16} />
-          Play on from here
-        </button>
-      </div>
     </div>
   );
+
+  const actions: GameAction[] = [
+    { id: "first", icon: "first", label: "Start", onClick: () => setPly(0), disabled: ply === 0 },
+    { id: "prev", icon: "prev", label: "Back", onClick: () => setPly((p) => Math.max(0, p - 1)), disabled: ply === 0 },
+    { id: "play", icon: playing ? "pause" : "play", label: playing ? "Pause" : "Play", onClick: () => (ply >= total ? (setPly(0), setPlaying(true)) : setPlaying((p) => !p)), active: playing },
+    { id: "next", icon: "next", label: "Forward", short: "Next", onClick: () => setPly((p) => Math.min(total, p + 1)), disabled: ply >= total },
+    { id: "last", icon: "last", label: "End", onClick: () => setPly(total), disabled: ply >= total },
+    { id: "eval", icon: "eval", label: evalOn ? "Hide evaluation" : "Evaluate positions", onClick: () => setEvalOn((x) => !x), active: evalOn, menu: true },
+    { id: "playon", icon: "play", label: "Play on from here", onClick: continueFromHere, menu: true },
+  ];
 
   return (
     <div>
       <GameView
+        actions={actions}
         state={state}
         theme={theme}
         onThemeChange={(t) => {
