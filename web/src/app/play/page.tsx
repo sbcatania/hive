@@ -385,6 +385,7 @@ function LocalGame() {
   return (
     <GameView
       actions={actions}
+      ownColors={entry.mode === "local" ? ["w", "b"] : undefined}
       footer={footer}
       notice={notice}
       state={state}

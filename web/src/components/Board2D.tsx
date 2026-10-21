@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { hexPoints } from "./BugGlyph";
 import { PieceTile, sketchHexPath } from "./PieceTile";
+import { haptic } from "@/lib/haptics";
 import type { BoardProps } from "./board-types";
 import type { MoveView, PieceView } from "@/lib/engine-types";
 
@@ -29,9 +30,7 @@ function inkLoop(cx: number, cy: number, r: number, seed: number) {
 const pieceSeed = (name: string) => [...name].reduce((h, c) => h * 31 + c.charCodeAt(0), 7) % 997;
 
 function buzz(ms = 8) {
-  try {
-    navigator.vibrate?.(ms);
-  } catch {}
+  haptic(ms > 10);
 }
 
 function Target({ m, kind }: { m: MoveView; kind: "legal" | "preview" }) {
@@ -266,7 +265,6 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
           onTargetClick?.(m);
         }
       } else if (piece && onPieceClick) {
-        buzz();
         onPieceClick(piece);
       } else {
         const now = Date.now();

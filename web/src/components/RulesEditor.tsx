@@ -16,7 +16,7 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
     { key: "pillbug", bug: "P", text: "Lifts neighbours over itself" },
   ];
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-3 gap-2">
       {items.map((x) => {
         const on = rules[x.key];
         return (
@@ -24,15 +24,15 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
             key={x.key}
             onClick={() => onChange({ ...rules, [x.key]: !on })}
             aria-pressed={on}
-            className={`pencil flex items-center gap-3 p-2.5 text-left text-sm transition ${on ? "pencil-honey" : "pencil-clear pencil-dashed"}`}
+            className={`pencil flex flex-col items-center gap-1 px-1 py-2 text-center text-sm transition sm:flex-row sm:gap-3 sm:p-2.5 sm:text-left ${on ? "pencil-honey" : "pencil-clear pencil-dashed"}`}
           >
             <Tile bug={x.bug} off={!on} />
             <div className="min-w-0">
-              <div className="flex items-center gap-2 font-semibold">
+              <div className="flex items-center justify-center gap-1 font-semibold sm:justify-start sm:gap-2">
                 {BUG_NAMES[x.bug]}
                 {on ? <Icon name="check" size={16} className="text-move" /> : <span className="font-hand text-base font-normal text-muted">off</span>}
               </div>
-              <div className="text-xs text-muted">{x.text}</div>
+              <div className="hidden text-xs text-muted sm:block">{x.text}</div>
             </div>
           </button>
         );

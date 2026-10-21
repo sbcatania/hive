@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
 import { Wordmark } from "@/components/Wordmark";
-import { Sheet } from "@/components/Sheet";
-import { describeVariants } from "@/lib/variants";
+import { useAppScreen } from "@/lib/app-screen";
+import { haptic } from "@/lib/haptics";
 import { Icon, type IconName } from "@/components/Icon";
 import { useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/engine";
@@ -43,7 +43,7 @@ export default function Home() {
   const [recent, setRecent] = useState<JournalEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [options, setOptions] = useState(false);
+  useAppScreen(639);
 
   useEffect(() => {
     migrateLegacySave();
@@ -54,6 +54,7 @@ export default function Home() {
   }, []);
 
   function update(p: Partial<Prefs>) {
+    haptic();
     const next = { ...prefs, ...p };
     setPrefs(next);
     saveSetupPrefs(next);
@@ -100,17 +101,12 @@ export default function Home() {
 
   const clocks = prefs.mode === "online" ? TIME_CONTROLS : LOCAL_CLOCKS;
   const clockKey = prefs.mode === "online" ? "onlineClock" : "localClock";
-  const clockName = clocks.find((c) => c.id === prefs[clockKey])?.name ?? "Untimed";
-  const variantCount = describeVariants(prefs.rules).length;
-  const expCount = [prefs.rules.mosquito, prefs.rules.ladybug, prefs.rules.pillbug].filter(Boolean).length;
-  const optionsSummary = [clockName, expCount === 3 ? "all expansions" : expCount === 0 ? "base game" : `${expCount} expansion${expCount === 1 ? "" : "s"}`, variantCount ? `${variantCount} variant${variantCount === 1 ? "" : "s"}` : null, prefs.mode === "online" && prefs.rated && ratedAllowed ? "Rated" : null]
-    .filter(Boolean)
-    .join(", ");
+
 
   const clockPicker = (
     <div>
       <span className="label">Clock</span>
-      <div className="seg">
+      <div className="seg seg-fill">
         {clocks.map((tc) => (
           <button key={tc.id} aria-pressed={prefs[clockKey] === tc.id} onClick={() => update({ [clockKey]: tc.id } as Partial<Prefs>)}>
             {tc.name}
@@ -149,8 +145,8 @@ export default function Home() {
   );
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col px-4 max-sm:min-h-[calc(100dvh-var(--header-h))] sm:pb-16">
-      <section className="pt-3 pb-1 [@media(max-height:620px)]:pt-1.5 sm:pt-8 sm:pb-2 md:pt-12">
+    <div className="mx-auto flex max-w-5xl flex-col px-4 max-sm:h-[calc(100dvh-var(--header-h))] sm:pb-16">
+      <section className="shrink-0 pt-3 pb-1 [@media(max-height:620px)]:pt-1.5 sm:pt-8 sm:pb-2 md:pt-12">
         <div className="flex items-end justify-between gap-3 sm:items-center sm:justify-start sm:gap-10">
           <h1 className="shrink-0">
             <Wordmark animate className="h-14 w-auto min-[380px]:h-16 sm:h-28 md:h-36 [@media(max-height:620px)]:h-10" />
@@ -175,7 +171,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card mt-2 flex-1 space-y-4 !p-4 [@media(max-height:620px)]:mt-1 [@media(max-height:620px)]:space-y-3 [@media(max-height:620px)]:!py-3 sm:mt-4 sm:flex-none sm:space-y-6 sm:!p-7">
+      <section className="card relative mt-2 !p-0 max-sm:min-h-0 max-sm:flex-1 sm:mt-4">
+        <div className="scroll-fade space-y-5 p-4 max-sm:absolute max-sm:inset-[3px] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pb-8 sm:space-y-6 sm:p-7">
         <h2 className="hidden font-display text-2xl font-semibold sm:block">New game</h2>
 
         <div>
@@ -230,44 +227,27 @@ export default function Home() {
               <p className="mt-1 text-xs text-muted [@media(max-height:620px)]:hidden">White moves first.</p>
             </div>
           )}
-          <div className="hidden sm:block">{clockPicker}</div>
+          {clockPicker}
         </div>
 
-        <div className="hidden space-y-5 sm:block">
-          {ratedToggle}
-          {expansions}
-          <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
-        </div>
-
-        <button className="pencil pencil-clear pencil-dashed flex w-full items-center gap-3 px-3 py-2.5 text-left sm:hidden" onClick={() => setOptions(true)}>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold">Options</span>
-            <span className="block truncate text-xs text-muted">{optionsSummary}</span>
-          </span>
-          <Icon name="chevron" className="-rotate-90 text-muted" />
-        </button>
+        {ratedToggle}
+        {expansions}
+        <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
 
         {prefs.mode === "online" && !onlineAvailable() && <p className="note-error">Online play isn&apos;t configured on this deployment.</p>}
         {error && <p className="note-error">{error}</p>}
         <button className="btn-accent hidden !min-h-14 !px-10 !text-lg sm:inline-flex" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
           {startLabel}
         </button>
+        </div>
       </section>
 
-      <div className="sticky bottom-0 z-10 -mx-4 mt-2 bg-paper px-4 pt-2 sm:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}>
+      <div className="z-10 -mx-4 shrink-0 bg-paper px-4 pt-2 sm:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}>
         <button className="btn-accent w-full !min-h-14 !text-lg" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
           {startLabel}
         </button>
       </div>
 
-      <Sheet open={options} onClose={() => setOptions(false)} title="Options">
-        <div className="space-y-6 pb-2">
-          {clockPicker}
-          {ratedToggle}
-          {expansions}
-          <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
-        </div>
-      </Sheet>
 
       {recent.length > 0 && (
         <section className="mt-8 hidden sm:block">

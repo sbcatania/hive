@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
+import { haptic } from "@/lib/haptics";
+import { syncChrome } from "@/lib/theme-mode";
 
 /** A bottom sheet for phones: slides up over the screen, closes on the backdrop,
  * the close button, Escape, or by dragging the handle down. */
@@ -14,9 +16,17 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   useEffect(() => {
     if (!open) return;
     setDrag(0);
+    syncChrome(true);
+    haptic();
+    // Content pages: stop the page behind from scrolling while the sheet is up.
+    document.documentElement.classList.add("sheet-open");
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      syncChrome(false);
+      document.documentElement.classList.remove("sheet-open");
+    };
   }, [open, onClose]);
   if (!mounted) return null;
 
@@ -35,7 +45,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 
   return createPortal(
     <div className={`fixed inset-0 z-50 overflow-hidden transition-[visibility] duration-300 ${open ? "visible" : "pointer-events-none invisible"}`} aria-hidden={!open}>
-      <div className={`absolute inset-0 bg-ink/30 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
+      <div className={`absolute inset-0 touch-none bg-black/40 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"

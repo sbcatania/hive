@@ -7,6 +7,7 @@ import "@fontsource/caveat/600.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
+import { NativeFeel } from "@/components/NativeFeel";
 import { AuthProvider } from "@/lib/auth";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme-mode";
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <feDisplacementMap in="SourceGraphic" in2="n" scale="3.6" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </svg>
+        <NativeFeel />
         <AuthProvider>
           <SiteHeader />
           <main>{children}</main>

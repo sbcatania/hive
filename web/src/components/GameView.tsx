@@ -12,6 +12,8 @@ import { Icon, type IconName } from "./Icon";
 import { BUG_NAMES, colorName, type BugLetter, type ColorCode, type MoveView, type PreviewView, type StateView } from "@/lib/engine-types";
 import type { ThemeId } from "@/lib/themes";
 import { useAppScreen } from "@/lib/app-screen";
+import { haptic } from "@/lib/haptics";
+import { useViewSettings } from "@/lib/view-settings";
 
 const Board3D = dynamic(() => import("./Board3D"), {
   ssr: false,
@@ -63,6 +65,8 @@ interface Props {
   footer?: React.ReactNode;
   /** Things that need an answer now (offers, invites, errors): above the action bar on phones. */
   notice?: React.ReactNode;
+  /** Colours the local user plays (both in pass-and-play). Defaults to `bottom`. */
+  ownColors?: ColorCode[];
 }
 
 function describePiece(name: string) {
@@ -71,7 +75,7 @@ function describePiece(name: string) {
   return { color, bug, label: `${colorName(color)} ${BUG_NAMES[bug]}` };
 }
 
-export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [], footer, notice }: Props) {
+export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [], footer, notice, ownColors }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -106,7 +110,13 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
   }, [legalByPiece]);
   const hintMove = hint ? (state.legalMoves.find((m) => m.notation === hint) ?? null) : null;
 
+  const [view, setView] = useViewSettings();
+  const mine = ownColors ?? [bottom];
+
   function select(name: string) {
+    // With the view setting off, the opponent's pieces aren't inspectable.
+    if (!view.opponentMoves && !mine.includes(name[0] as ColorCode) && name !== selected) return;
+    haptic();
     if (selected && name !== selected) {
       // Clicking the top of a stack the selected piece can climb onto.
       const p = state.pieces.find((x) => x.name === name);
@@ -179,16 +189,37 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
         <MoveList history={state.history} />
       </div>
       {footer}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="label mb-0">Board</span>
-        <ThemePicker value={theme} onChange={onThemeChange} />
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="label mb-0">Board</span>
+          <ThemePicker value={theme} onChange={onThemeChange} />
+        </div>
+        <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+          <span>
+            <span className="block font-semibold">Show opponent moves</span>
+            <span className="block text-xs text-muted">Tap their pieces to see where they can go.</span>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            className="switch"
+            checked={view.opponentMoves}
+            onChange={(e) => {
+              setView({ opponentMoves: e.target.checked });
+              if (!e.target.checked && selected && !mine.includes(selected[0] as ColorCode)) setSelected(null);
+            }}
+          />
+        </label>
       </div>
     </>
   );
   const barButton = (key: string, icon: IconName, label: string, onClick: () => void, opts: { disabled?: boolean; active?: boolean; busy?: boolean } = {}) => (
     <button
       key={key}
-      onClick={onClick}
+      onClick={() => {
+        haptic();
+        onClick();
+      }}
       disabled={opts.disabled}
       aria-pressed={opts.active}
       className={`flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[0.72rem] leading-none font-semibold transition select-none active:scale-95 disabled:opacity-35 ${opts.active ? "text-ink" : "text-ink-soft"}`}
