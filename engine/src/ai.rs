@@ -98,6 +98,25 @@ fn soft_pick(scores: &[(Move, i32)], t: f64, rng: &mut Rng) -> (Move, i32) {
     best
 }
 
+/// A weaker level: an exact-scored shallow search, then a softmax pick.
+#[derive(Clone, Copy, Debug)]
+pub struct Soft {
+    pub depth: u32,
+    pub time_ms: f64,
+    /// Softmax temperature in evaluation units (a Queen liberty is ~144).
+    pub temp: f64,
+    /// Chance of a random move among those within `random_margin` of the best.
+    pub random_chance: f64,
+    pub random_margin: i32,
+}
+
+pub const EASY: Soft = Soft { depth: 1, time_ms: 1000.0, temp: 150.0, random_chance: 0.2, random_margin: 400 };
+pub const MEDIUM: Soft = Soft { depth: 3, time_ms: 1500.0, temp: 35.0, random_chance: 0.0, random_margin: 0 };
+/// Default think time of the alpha-beta levels (wall clock, so the same in
+/// the browser where the search runs a few times slower than native).
+pub const HARD_MS: f64 = 2000.0;
+pub const EXPERT_MS: f64 = 5000.0;
+
 pub struct Ai {
     pub searcher: Searcher,
     pub rng: Rng,
@@ -112,15 +131,15 @@ impl Ai {
     pub fn choose(&mut self, g: &mut Game, level: Level, time_ms: Option<f64>) -> AiMove {
         let rotation = self.rng.below(6);
         match level {
-            Level::Easy => self.pick_soft(g, 1, 150.0, 0.2, rotation, "Easy"),
-            Level::Medium => self.pick_soft(g, 2, 35.0, 0.0, rotation, "Medium"),
-            Level::Hard => self.alpha_beta(g, 12, time_ms.unwrap_or(1500.0), rotation, "Hard"),
+            Level::Easy => self.pick_soft(g, EASY, rotation, "Easy"),
+            Level::Medium => self.pick_soft(g, MEDIUM, rotation, "Medium"),
+            Level::Hard => self.alpha_beta(g, 32, time_ms.unwrap_or(HARD_MS), rotation, "Hard"),
             Level::Expert => {
                 // The network was trained on the official rules only.
                 if self.network.is_some() && g.rules.is_standard() {
-                    self.neural(g, time_ms.unwrap_or(3000.0), rotation)
+                    self.neural(g, time_ms.unwrap_or(EXPERT_MS), rotation)
                 } else {
-                    self.alpha_beta(g, 16, time_ms.unwrap_or(4000.0), rotation, "Expert")
+                    self.alpha_beta(g, 32, time_ms.unwrap_or(EXPERT_MS), rotation, "Expert")
                 }
             }
         }
@@ -135,12 +154,20 @@ impl Ai {
         }
     }
 
-    fn pick_soft(&mut self, g: &mut Game, depth: u32, temp: f64, random_chance: f64, rotation: usize, name: &str) -> AiMove {
-        let r = self.searcher.search(g, Limits { max_depth: depth, time_ms: 2000.0 }, true, rotation);
-        let (best, score) = if self.rng.next_f64() < random_chance && r.score < WIN - 1000 {
-            r.root_scores[self.rng.below(r.root_scores.len())]
+    pub fn pick_soft(&mut self, g: &mut Game, s: Soft, rotation: usize, name: &str) -> AiMove {
+        let r = self.searcher.search(g, Limits { max_depth: s.depth, time_ms: s.time_ms }, true, rotation);
+        let (best, score) = if self.rng.next_f64() < s.random_chance && r.score < WIN - 1000 {
+            // A "careless" move, but not one that walks into a forced loss
+            // or throws the game away outright.
+            let floor = r.score - s.random_margin;
+            let ok: Vec<(Move, i32)> = r.root_scores.iter().copied().filter(|&(_, v)| v >= floor && v > -WIN + 1000).collect();
+            if ok.is_empty() {
+                soft_pick(&r.root_scores, s.temp, &mut self.rng)
+            } else {
+                ok[self.rng.below(ok.len())]
+            }
         } else {
-            soft_pick(&r.root_scores, temp, &mut self.rng)
+            soft_pick(&r.root_scores, s.temp, &mut self.rng)
         };
         let sw = to_white(g, score);
         AiMove { best, score_white: sw, white_win_prob: score_to_prob(sw), depth: r.depth, nodes: r.nodes, pv: vec![best], engine: name.into() }
