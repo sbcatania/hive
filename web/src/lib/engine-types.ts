@@ -126,10 +126,10 @@ export interface LevelInfo {
 
 /** CPU difficulty levels. */
 export const LEVELS: LevelInfo[] = [
-  { id: "easy", name: "Easy", blurb: "Still learning the rules. Makes mistakes." },
-  { id: "medium", name: "Medium", blurb: "A friendly game that punishes blunders." },
-  { id: "hard", name: "Hard", blurb: "Thinks a couple of seconds a move. A real fight." },
-  { id: "expert", name: "Expert", blurb: "Its strongest, slowest search. Good luck." },
+  { id: "easy", name: "Easy", blurb: "Looks one move ahead and makes mistakes. Good for learning." },
+  { id: "medium", name: "Medium", blurb: "Sees a few moves ahead and punishes blunders." },
+  { id: "hard", name: "Hard", blurb: "Searches about two seconds a move. A real fight." },
+  { id: "expert", name: "Expert", blurb: "Its deepest search, about five seconds a move. Good luck." },
 ];
 
 export function levelInfo(level: Level) {
