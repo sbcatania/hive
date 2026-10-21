@@ -12,3 +12,4 @@ training/runs/
 training/data/
 .DS_Store
 training/*.log
+.claude/worktrees/
