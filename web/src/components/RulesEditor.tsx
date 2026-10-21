@@ -28,9 +28,11 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
           >
             <Tile bug={x.bug} off={!on} />
             <div className="min-w-0">
-              <div className="flex items-center justify-center gap-1 font-semibold sm:justify-start sm:gap-2">
+              <div className="flex h-6 items-center justify-center gap-1 leading-none font-semibold sm:justify-start sm:gap-2">
                 {BUG_NAMES[x.bug]}
-                {on ? <Icon name="check" size={16} className="text-move" /> : <span className="font-hand text-base font-normal text-muted">off</span>}
+                <span className="inline-flex h-5 w-7 items-center justify-center">
+                  {on ? <Icon name="check" size={16} className="text-move" /> : <span className="font-hand text-base leading-none font-normal text-muted">off</span>}
+                </span>
               </div>
               <div className="hidden text-xs text-muted sm:block">{x.text}</div>
             </div>
@@ -83,14 +85,14 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--accent)]" checked={rules.tournament} onChange={(e) => onChange({ ...rules, tournament: e.target.checked })} />
+            <input type="checkbox" className="mt-0.5" checked={rules.tournament} onChange={(e) => onChange({ ...rules, tournament: e.target.checked })} />
             <span>
               <span className="font-medium">Tournament opening</span>
               <span className="block text-xs text-muted">No Queen on either player&apos;s first turn (official).</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--accent)]" checked={rules.repetitionDraw} onChange={(e) => onChange({ ...rules, repetitionDraw: e.target.checked })} />
+            <input type="checkbox" className="mt-0.5" checked={rules.repetitionDraw} onChange={(e) => onChange({ ...rules, repetitionDraw: e.target.checked })} />
             <span>
               <span className="font-medium">Threefold repetition is a draw</span>
               <span className="block text-xs text-muted">Stops games where both sides shuffle forever.</span>

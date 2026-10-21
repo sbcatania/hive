@@ -167,7 +167,7 @@ function Replay() {
         </div>
       </div>
       <div className="card space-y-3 !p-3">
-        <input type="range" min={0} max={total} value={ply} onChange={(e) => setPly(Number(e.target.value))} className="w-full accent-[var(--accent)]" aria-label="Move" />
+        <input type="range" min={0} max={total} value={ply} onChange={(e) => setPly(Number(e.target.value))} className="w-full" aria-label="Move" />
         <div className="text-center text-xs text-muted">
           Move {ply} of {total}
           {ply > 0 ? `: ${src.moves[ply - 1]}` : ""}

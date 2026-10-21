@@ -25,9 +25,11 @@ interface Prefs {
   localClock: string;
   onlineClock: string;
   rated: boolean;
+  /** Hints and the evaluation bar allowed (CPU and same-device games). */
+  assists: boolean;
 }
 
-const DEFAULT_PREFS: Prefs = { mode: "cpu", rules: standardRules(), level: "medium", color: "w", localClock: "none", onlineClock: "none", rated: false };
+const DEFAULT_PREFS: Prefs = { mode: "cpu", rules: standardRules(), level: "medium", color: "w", localClock: "none", onlineClock: "none", rated: false, assists: true };
 
 const MODES: { id: Mode; icon: IconName; title: string; text: string }[] = [
   { id: "cpu", icon: "bolt", title: "Computer", text: "Four difficulty levels" },
@@ -87,6 +89,7 @@ export default function Home() {
       label: prefs.mode === "cpu" ? `vs Computer (${levelInfo(prefs.level).name})` : "Pass & play",
       human: prefs.mode === "cpu" ? color : "w",
       level: prefs.mode === "cpu" ? prefs.level : undefined,
+      assists: prefs.assists,
       clock: clock.baseMs ? { baseMs: clock.baseMs, incMs: clock.incMs } : undefined,
       createdAt: now,
       updatedAt: now,
@@ -117,7 +120,7 @@ export default function Home() {
   );
   const ratedToggle = prefs.mode === "online" && (
     <label className={`flex items-start gap-3 text-sm ${ratedAllowed ? "cursor-pointer" : "opacity-60"}`}>
-      <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--ink)]" disabled={!ratedAllowed} checked={prefs.rated && ratedAllowed} onChange={(e) => update({ rated: e.target.checked })} />
+      <input type="checkbox" className="mt-0.5" disabled={!ratedAllowed} checked={prefs.rated && ratedAllowed} onChange={(e) => update({ rated: e.target.checked })} />
       <span>
         <span className="font-semibold">Rated</span>
         <span className="block text-xs text-muted">
@@ -231,6 +234,15 @@ export default function Home() {
         </div>
 
         {ratedToggle}
+        {prefs.mode !== "online" && (
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span>
+              <span className="label mb-0">Hints and evaluation</span>
+              <span className="block text-xs text-muted">Help used is noted on the game; wins without it count as clean wins.</span>
+            </span>
+            <input type="checkbox" role="switch" className="switch" checked={prefs.assists} onChange={(e) => update({ assists: e.target.checked })} />
+          </label>
+        )}
         {expansions}
         <AdvancedRules rules={prefs.rules} onChange={(rules) => update({ rules })} />
 

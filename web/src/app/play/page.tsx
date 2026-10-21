@@ -11,7 +11,7 @@ import { AiClient } from "@/lib/ai-client";
 import { useAuth } from "@/lib/auth";
 import { Engine, engineFromMoves, errorMessage, loadEngine } from "@/lib/engine";
 import { BUG_NAMES, colorName, levelInfo, resultText, type AiResult, type ColorCode, type StateView } from "@/lib/engine-types";
-import { currentGameId, gameTitle, getLocal, resultSentence, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
+import { assistText, currentGameId, gameTitle, getLocal, resultSentence, newId, REASON_TEXT, saveCloud, saveLocal, setCurrentGameId, type GameResult, type JournalEntry } from "@/lib/journal";
 import { loadTheme, saveTheme, type ThemeId } from "@/lib/themes";
 import { describeVariants, expansionLabel } from "@/lib/variants";
 import { useDialogs } from "@/components/Dialogs";
@@ -45,6 +45,12 @@ function LocalGame() {
   entryRef.current = entry;
   const userRef = useRef(user);
   userRef.current = user;
+
+  // Showing the evaluation during a live game counts as help.
+  useEffect(() => {
+    const cur = entryRef.current;
+    if (showEval && cur && cur.assists !== false && !cur.result && cur.moves.length > 0 && !cur.evalUsed) recordAssist({ evalUsed: true });
+  }, [showEval, state?.ply]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Setup -----------------------------------------------------------
   useEffect(() => {
@@ -231,7 +237,7 @@ function LocalGame() {
     } while (target && engine.current!.state().toMove !== target && engine.current!.state().ply > 0);
     turnStart.current = Date.now();
     if (n > 0 || result) {
-      commit({ result: undefined, resultReason: undefined });
+      commit({ result: undefined, resultReason: undefined, takebacks: (entry.takebacks ?? 0) + (n > 0 ? 1 : 0) });
       setCurrentGameId(entry.id);
     }
   }
@@ -242,12 +248,24 @@ function LocalGame() {
     const gen = generation.current;
     try {
       const r = await analyst.current!.analyze(entry.rules, state.history, 1500);
-      if (gen === generation.current) setHint(r);
+      if (gen === generation.current) {
+        setHint(r);
+        recordAssist({ hintsUsed: (entryRef.current?.hintsUsed ?? 0) + 1 });
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setHintLoading(false);
     }
+  }
+
+  /** Saves help used (hints, the evaluation bar) without touching the position. */
+  function recordAssist(patch: Partial<JournalEntry>) {
+    const cur = entryRef.current;
+    if (!cur) return;
+    const next = { ...cur, ...patch, updatedAt: Date.now() };
+    setEntry(next);
+    saveLocal(next);
   }
 
   function resign() {
@@ -273,6 +291,9 @@ function LocalGame() {
       result: undefined,
       resultReason: undefined,
       clockLeft: undefined,
+      hintsUsed: undefined,
+      takebacks: undefined,
+      evalUsed: undefined,
       human: entry.mode === "cpu" ? (entry.human === "w" ? "b" : "w") : "w",
       createdAt: t,
       updatedAt: t,
@@ -319,7 +340,7 @@ function LocalGame() {
         tone={entry.mode === "cpu" ? (result === "Draw" ? "draw" : youWon ? "win" : "loss") : "neutral"}
         title={entry.mode === "cpu" ? (result === "Draw" ? "A draw" : youWon ? "You win!" : "Computer wins") : resultText(result)}
         subtitle={REASON_TEXT[entry.resultReason ?? ""]}
-        detail={`After ${state.history.length} moves.`}
+        detail={`After ${state.history.length} moves${entry.mode === "cpu" ? `, ${assistText(entry)}` : ""}.`}
         onClose={() => setOverlayClosed(true)}
         actions={
           <>
@@ -362,6 +383,7 @@ function LocalGame() {
         {expansionLabel(entry.rules)}
         {variants.length ? `, ${variants.join(", ")}` : ""}
         {entry.clock?.baseMs ? `, ${entry.clock.baseMs / 60000} min + ${entry.clock.incMs / 1000}s clock` : ""}
+        {entry.mode === "cpu" ? `. Help used: ${assistText(entry)}` : ""}
       </span>
       <button className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-ink" onClick={copyGame}>
         <Icon name={copied ? "check" : "copy"} size={14} />
@@ -370,12 +392,17 @@ function LocalGame() {
     </div>
   );
 
+  const helpAllowed = entry.assists !== false;
   const toggleEval = () => setShowEval((v) => (localStorage.setItem("hive.eval", v ? "0" : "1"), !v));
   const actions: GameAction[] = [
     ...(state.mustPass && humanCanMove ? [{ id: "pass", icon: "skip" as const, label: "Pass", onClick: () => play("pass"), active: true }] : []),
     { id: "undo", icon: "undo", label: "Take back", short: "Undo", onClick: undo, disabled: state.ply === 0 && !result },
-    { id: "hint", icon: "hint", label: hintLoading ? "Thinking…" : "Hint", onClick: askHint, disabled: !humanCanMove || hintLoading, busy: hintLoading, active: !!hint },
-    { id: "eval", icon: "eval", label: showEval ? "Hide eval" : "Show eval", short: "Eval", onClick: toggleEval, active: showEval, disabled: !!result, menu: true },
+    ...(helpAllowed
+      ? [
+          { id: "hint", icon: "hint" as const, label: hintLoading ? "Thinking…" : "Hint", onClick: askHint, disabled: !humanCanMove || hintLoading, busy: hintLoading, active: !!hint },
+          { id: "eval", icon: "eval" as const, label: showEval ? "Hide eval" : "Show eval", short: "Eval", onClick: toggleEval, active: showEval, disabled: !!result, menu: true },
+        ]
+      : []),
     ...(result
       ? [{ id: "result", icon: "eye" as const, label: "Show result", short: "Result", onClick: () => setOverlayClosed(false) }]
       : [
@@ -404,7 +431,7 @@ function LocalGame() {
       hint={hint?.best ?? null}
       status={status}
       sidebar={sidebar}
-      analysis={showEval && !result ? <EvalBar result={evalResult} loading={evalLoading} /> : null}
+      analysis={showEval && !result && helpAllowed ? <EvalBar result={evalResult} loading={evalLoading} /> : null}
       overlay={overlay}
     />
   );

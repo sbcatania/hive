@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Engine, errorMessage, loadEngine } from "@/lib/engine";
-import { normalizeRules } from "@/lib/engine-types";
+import { LEVELS, normalizeRules } from "@/lib/engine-types";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { deleteCloud, deleteLocal, gameTitle, newId, saveLocal, setCurrentGameId, listCloud, listLocal, REASON_TEXT, resultLabel, type JournalEntry } from "@/lib/journal";
+import { assisted, assistText, deleteCloud, deleteLocal, gameTitle, newId, saveLocal, setCurrentGameId, listCloud, listLocal, REASON_TEXT, resultLabel, type JournalEntry } from "@/lib/journal";
 import { fetchPlayers, gamesForPlayer, type OnlineGame, type PlayerSummary } from "@/lib/online";
 import { describeVariants, expansionLabel } from "@/lib/variants";
 import { useDialogs } from "@/components/Dialogs";
@@ -20,6 +20,35 @@ function when(t: number | string) {
 function Badge({ text, tone }: { text: string; tone: "win" | "loss" | "draw" | "open" }) {
   const cls = { win: "text-move", loss: "text-danger", draw: "text-ink-soft", open: "text-accent-strong" }[tone];
   return <span className={`font-hand text-lg leading-none ${cls}`}>{text}</span>;
+}
+
+/** Wins, losses and clean wins (no hints, takebacks or evaluation) per CPU level. */
+function ComputerRecord({ entries }: { entries: JournalEntry[] }) {
+  const rows = LEVELS.map((l) => {
+    const games = entries.filter((e) => e.mode === "cpu" && e.level === l.id && e.result);
+    const won = games.filter((e) => resultLabel(e) === "You won");
+    return { l, played: games.length, won: won.length, clean: won.filter((e) => !assisted(e)).length, lost: games.filter((e) => resultLabel(e) === "You lost").length };
+  }).filter((r) => r.played > 0);
+  if (rows.length === 0) return null;
+  return (
+    <div className="mt-5">
+      <span className="label">Against the computer</span>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {rows.map(({ l, won, clean, lost }) => (
+          <div key={l.id} className="pencil pencil-clear px-3 py-2">
+            <div className="text-sm font-semibold">{l.name}</div>
+            <div className="font-display text-2xl font-semibold tabular-nums">
+              {won}–{lost}
+            </div>
+            <div className="text-xs text-muted">
+              {clean} clean win{clean === 1 ? "" : "s"}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1.5 text-xs text-muted">A clean win used no hints, takebacks or evaluation.</p>
+    </div>
+  );
 }
 
 export default function JournalPage() {
@@ -101,6 +130,8 @@ export default function JournalPage() {
         )}
       </p>
 
+      <ComputerRecord entries={entries} />
+
       <div className="seg mt-5">
         <button aria-pressed={tab === "saved"} onClick={() => setTab("saved")}>
           On this device ({entries.length})
@@ -132,7 +163,7 @@ export default function JournalPage() {
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
                       {when(e.updatedAt)}. {e.moves.length} moves, {expansionLabel(e.rules)}
-                      {v.length ? `, ${v.join(", ")}` : ""}.
+                      {v.length ? `, ${v.join(", ")}` : ""}.{e.mode === "cpu" && e.moves.length > 0 ? ` Help: ${assistText(e)}.` : ""}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -199,8 +230,11 @@ export default function JournalPage() {
         </ul>
       )}
 
-      <details className="mt-10">
-        <summary className="cursor-pointer font-hand text-xl text-ink-soft">Load a game from notation…</summary>
+      <details className="group mt-10">
+        <summary className="flex cursor-pointer items-center gap-1 font-hand text-xl text-ink-soft">
+          <Icon name="chevron" size={18} className="-rotate-90 transition group-open:rotate-0" />
+          Load a game from notation
+        </summary>
         <p className="mt-2 text-xs text-muted">
           Paste a Universal Hive Protocol game string, e.g. <code className="font-mono">Base+MLP;InProgress;White[2];wA1;bG1 -wA1</code>. It opens as a pass-and-play game.
         </p>
