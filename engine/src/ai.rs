@@ -156,6 +156,9 @@ impl Ai {
         let cfg = MctsConfig { time_ms, max_simulations: 100_000, ..MctsConfig::default() };
         let mut mcts = Mcts::new(cfg);
         let r = mcts.search(g, net, &mut self.rng, rotation);
+        if r.best.is_pass() && !g.legal_moves()[0].is_pass() {
+            return self.alpha_beta(g, 16, time_ms, rotation, "Expert");
+        }
         // Value in [-1, 1] for side to move -> probability for white.
         let p_me = (r.value as f64 + 1.0) / 2.0;
         let p_white = if g.to_move() == crate::pieces::Color::White { p_me } else { 1.0 - p_me };

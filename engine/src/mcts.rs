@@ -61,14 +61,16 @@ pub struct Mcts {
     nodes: Vec<Node>,
 }
 
-fn terminal_value(g: &Game, max_ply: u32) -> Option<f32> {
+/// Value of a finished position. Repetitions and the ply cap are scored as
+/// draws inside the tree, but never at the root (the game isn't over there).
+fn terminal_value(g: &Game, max_ply: u32, root: bool) -> Option<f32> {
     match g.state {
         GameState::Draw => Some(0.0),
         GameState::WhiteWins | GameState::BlackWins => {
             let winner = if g.state == GameState::WhiteWins { Color::White } else { Color::Black };
             Some(if winner == g.to_move() { 1.0 } else { -1.0 })
         }
-        _ if g.ply >= max_ply || g.repetitions() >= 3 => Some(0.0),
+        _ if !root && (g.ply >= max_ply || g.repetitions() >= 3) => Some(0.0),
         _ => None,
     }
 }
@@ -101,7 +103,7 @@ impl Mcts {
 
     fn expand(&mut self, g: &mut Game, net: &Network, root_rotation: Option<usize>) -> u32 {
         let idx = self.nodes.len() as u32;
-        if let Some(v) = terminal_value(g, self.config.max_ply) {
+        if let Some(v) = terminal_value(g, self.config.max_ply, root_rotation.is_some()) {
             self.nodes.push(Node { moves: vec![], priors: vec![], children: vec![], n: vec![], w: vec![], value: v, terminal: true });
             return idx;
         }
