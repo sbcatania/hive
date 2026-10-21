@@ -22,3 +22,12 @@
 - Types crossing the WASM boundary are mirrored in `web/src/lib/engine-types.ts` — keep in sync with `engine/src/wasm.rs`.
 - NN input encoding lives only in `engine/src/features.rs`; Python reads encoded data, never encodes. Changing features requires retraining.
 - Commit and push to main after each logical unit of work; concise messages focused on why.
+
+## Ask before anything destructive
+SQL and Supabase tools run without a permission prompt in this repo, so this check is on you. Before doing anything that deletes or overwrites data or is hard to undo, say exactly what you'll run and what it affects, then wait for a clear yes in chat. That includes:
+- SQL that removes or rewrites existing data or schema: `DELETE`, `UPDATE`, `DROP`, `TRUNCATE`, `ALTER ... DROP`/`RENAME`, revoking grants or RLS policies
+- Supabase: applying migrations to the remote project, `supabase db reset`/`db push`, deleting or resetting branches, pausing or restoring the project, changing secrets
+- Git: force pushes, `reset --hard`, deleting branches, rewriting pushed history
+- Deleting files you didn't create in this task
+
+Read-only work (`SELECT`, listing tables, logs, advisors) and purely additive changes in local files don't need asking.

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase",
+      "mcp__6037b911-fe5c-45a7-99bc-554938631d1e",
+      "Bash(psql:*)",
+      "Bash(supabase:*)"
+    ]
+  }
+}
