@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
-import { Wordmark } from "@/components/Wordmark";
 import { useAppScreen } from "@/lib/app-screen";
-import { haptic } from "@/lib/haptics";
-import { Icon, type IconName } from "@/components/Icon";
+import { Icon } from "@/components/Icon";
+import { ClockIcon, ComputerIcon, LevelPips, OnlineIcon, PassIcon } from "@/components/SetupIcons";
 import { useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/engine";
 import { isStandardRules, levelInfo, LEVELS, normalizeRules, standardRules, type ColorCode, type Level, type Rules } from "@/lib/engine-types";
@@ -31,10 +30,10 @@ interface Prefs {
 
 const DEFAULT_PREFS: Prefs = { mode: "cpu", rules: standardRules(), level: "medium", color: "w", localClock: "none", onlineClock: "none", rated: false, assists: true };
 
-const MODES: { id: Mode; icon: IconName; title: string; text: string }[] = [
-  { id: "cpu", icon: "bolt", title: "Computer", text: "Four difficulty levels" },
-  { id: "local", icon: "hexes", title: "Same device", text: "Two players, one screen" },
-  { id: "online", icon: "link", title: "Online", text: "Send a friend a link" },
+const MODES: { id: Mode; Art: (p: { on?: boolean }) => React.JSX.Element; title: string }[] = [
+  { id: "cpu", Art: ComputerIcon, title: "Computer" },
+  { id: "local", Art: PassIcon, title: "Pass & play" },
+  { id: "online", Art: OnlineIcon, title: "Online" },
 ];
 
 export default function Home() {
@@ -56,7 +55,6 @@ export default function Home() {
   }, []);
 
   function update(p: Partial<Prefs>) {
-    haptic();
     const next = { ...prefs, ...p };
     setPrefs(next);
     saveSetupPrefs(next);
@@ -99,7 +97,6 @@ export default function Home() {
     router.push(`/play?id=${entry.id}`);
   }
 
-  const lvl = levelInfo(prefs.level);
   const startLabel = busy ? "Creating game…" : prefs.mode === "online" ? "Create game & get link" : "Start game";
 
   const clocks = prefs.mode === "online" ? TIME_CONTROLS : LOCAL_CLOCKS;
@@ -111,8 +108,9 @@ export default function Home() {
       <span className="label">Clock</span>
       <div className="seg seg-fill">
         {clocks.map((tc) => (
-          <button key={tc.id} aria-pressed={prefs[clockKey] === tc.id} onClick={() => update({ [clockKey]: tc.id } as Partial<Prefs>)}>
-            {tc.name}
+          <button key={tc.id} aria-pressed={prefs[clockKey] === tc.id} onClick={() => update({ [clockKey]: tc.id } as Partial<Prefs>)} className="flex flex-col items-center justify-center !gap-1 !py-2 whitespace-nowrap">
+            <ClockIcon minutes={tc.baseMs ? tc.baseMs / 60000 : null} on={prefs[clockKey] === tc.id} />
+            {tc.baseMs ? tc.name : "None"}
           </button>
         ))}
       </div>
@@ -149,28 +147,21 @@ export default function Home() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col px-4 max-sm:h-[calc(100dvh-var(--header-h))] sm:pb-16">
-      <section className="shrink-0 pt-3 pb-1 [@media(max-height:620px)]:pt-1.5 sm:pt-8 sm:pb-2 md:pt-12">
-        <div className="flex items-end justify-between gap-3 sm:items-center sm:justify-start sm:gap-10">
-          <h1 className="shrink-0">
-            <Wordmark animate className="h-14 w-auto min-[380px]:h-16 sm:h-28 md:h-36 [@media(max-height:620px)]:h-10" />
-          </h1>
-          <div>
-            <p className="hidden max-w-sm text-lg text-ink-soft sm:block">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
-            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 sm:mt-3 sm:justify-start">
-              {resume && (
-                <Link href={`/play?id=${resume.id}`} className="btn max-sm:!min-h-10 max-sm:!px-3">
-                  <Icon name="play" size={18} />
-                  Continue
-                </Link>
-              )}
-              <Link href="/learn" className="font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4">
-                How to play
-              </Link>
-              <Link href="/puzzles" className="hidden font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4 sm:inline">
-                Puzzles
-              </Link>
-            </div>
-          </div>
+      <section className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-3 pb-1 sm:pt-10 sm:pb-2">
+        <p className="hidden max-w-md text-lg text-ink-soft sm:block">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
+        <div className="flex w-full items-center justify-between gap-x-4 sm:w-auto sm:justify-end">
+          <Link href="/learn" className="font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4">
+            How to play
+          </Link>
+          <Link href="/puzzles" className="font-hand text-xl text-ink underline decoration-line-strong decoration-1 underline-offset-4">
+            Puzzles
+          </Link>
+          {resume && (
+            <Link href={`/play?id=${resume.id}`} className="btn ml-auto max-sm:!min-h-10 max-sm:!px-3 sm:ml-0">
+              <Icon name="play" size={18} />
+              Continue
+            </Link>
+          )}
         </div>
       </section>
 
@@ -185,11 +176,8 @@ export default function Home() {
               const on = prefs.mode === m.id;
               return (
                 <button key={m.id} onClick={() => update({ mode: m.id })} aria-pressed={on} className={`pencil flex flex-col items-center gap-1 px-1 py-2.5 text-center sm:flex-row sm:gap-3 sm:px-4 sm:py-3 sm:text-left ${on ? "pencil-honey pencil-strong" : "pencil-clear"}`}>
-                  <Icon name={m.icon} size={22} className={on ? "text-ink" : "text-ink-soft"} />
-                  <span>
-                    <span className="block text-[0.85rem] leading-tight font-bold whitespace-nowrap sm:text-base">{m.title}</span>
-                    <span className="hidden text-xs text-muted sm:block">{m.text}</span>
-                  </span>
+                  <m.Art on={on} />
+                  <span className="block text-[0.85rem] leading-tight font-bold whitespace-nowrap sm:text-base">{m.title}</span>
                 </button>
               );
             })}
@@ -201,12 +189,12 @@ export default function Home() {
             <span className="label">Difficulty</span>
             <div className="seg seg-fill">
               {LEVELS.map((l) => (
-                <button key={l.id} aria-pressed={prefs.level === l.id} onClick={() => update({ level: l.id })}>
+                <button key={l.id} aria-pressed={prefs.level === l.id} onClick={() => update({ level: l.id })} className="flex flex-col items-center !gap-1 !py-2">
                   {l.name}
+                  <LevelPips n={LEVELS.indexOf(l) + 1} on={prefs.level === l.id} />
                 </button>
               ))}
             </div>
-            <p className="hand-note mt-1 !text-lg max-sm:truncate">{lvl.blurb}</p>
           </div>
         )}
 
@@ -227,7 +215,6 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-              <p className="mt-1 text-xs text-muted [@media(max-height:620px)]:hidden">White moves first.</p>
             </div>
           )}
           {clockPicker}
@@ -238,7 +225,7 @@ export default function Home() {
           <label className="flex cursor-pointer items-center justify-between gap-3">
             <span>
               <span className="label mb-0">Hints and evaluation</span>
-              <span className="block text-xs text-muted">Help used is noted on the game; wins without it count as clean wins.</span>
+              <span className="block text-xs text-muted">Help used is noted on the game.</span>
             </span>
             <input type="checkbox" role="switch" className="switch" checked={prefs.assists} onChange={(e) => update({ assists: e.target.checked })} />
           </label>

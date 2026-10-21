@@ -14,6 +14,7 @@ function iosSwitch(): HTMLLabelElement | null {
   input.setAttribute("switch", "");
   input.id = "haptic-switch";
   label = document.createElement("label");
+  label.id = "haptic-label";
   label.htmlFor = input.id;
   for (const el of [input, label]) {
     el.setAttribute("aria-hidden", "true");
@@ -24,8 +25,14 @@ function iosSwitch(): HTMLLabelElement | null {
   return label;
 }
 
-/** A light tap: selections, toggles. `strong` for a move landing or a game ending. */
+let last = 0;
+
+/** A light tap: selections, toggles. `strong` for a move landing or a game ending.
+ * Calls within 60ms of each other collapse into one. */
 export function haptic(strong = false) {
+  const now = performance.now();
+  if (now - last < 60) return;
+  last = now;
   try {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(strong ? 18 : 8);
@@ -33,4 +40,17 @@ export function haptic(strong = false) {
     }
     iosSwitch()?.click();
   } catch {}
+}
+
+/** Every press of a control gives a tick, app-wide (installed once, see NativeFeel). */
+export function installTapHaptics() {
+  const onClick = (e: MouseEvent) => {
+    const t = e.target as Element | null;
+    if (!t || (t as HTMLElement).id === "haptic-label" || (t as HTMLElement).id === "haptic-switch") return;
+    const el = t.closest("button, a[href], [role=button], summary, label, input, select");
+    if (!el || (el as HTMLButtonElement).disabled || el.getAttribute("aria-disabled") === "true") return;
+    haptic();
+  };
+  document.addEventListener("click", onClick, true);
+  return () => document.removeEventListener("click", onClick, true);
 }

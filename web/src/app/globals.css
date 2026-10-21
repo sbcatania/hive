@@ -110,12 +110,12 @@ body {
 }
 
 :root {
-  --header-h: calc(3rem + env(safe-area-inset-top));
+  --header-h: calc(3.5rem + env(safe-area-inset-top));
   -webkit-tap-highlight-color: transparent;
 }
 @media (min-width: 640px) {
   :root {
-    --header-h: calc(3.5rem + env(safe-area-inset-top));
+    --header-h: calc(4rem + env(safe-area-inset-top));
   }
 }
 
@@ -134,10 +134,7 @@ html.app-screen body {
   inset: 0;
   width: 100%;
 }
-html.sheet-open,
-html.sheet-open body {
-  overflow: hidden;
-}
+
 html.app-screen body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -240,22 +237,21 @@ nav a {
 
 /* ---- Pencil surfaces ------------------------------------------------------ */
 
-/* Bottom sheets: a big rounded top that echoes the rounded screen corners, with only
-   the top edge pencilled. The fill runs past the sides and bottom of the screen, so no
-   frame line gets cut off by the screen's curved corners. */
+/* Bottom sheets float like iOS 26 sheets: inset from the screen edges, with corners
+   concentric to the phone's rounded screen (screen radius minus the inset). */
 .sheet-panel {
-  isolation: isolate;
-}
-.sheet-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0 -8px -60px -8px;
-  z-index: -1;
+  --inset: 8px;
+  left: var(--inset);
+  right: var(--inset);
+  bottom: var(--inset);
+  margin: 0 auto;
+  max-width: 34rem;
   background: var(--paper);
-  border-top: 1.8px solid var(--ink-soft);
-  border-radius: 30px 30px 0 0;
-  filter: url(#pencil);
-  pointer-events: none;
+  border: 1.8px solid var(--ink-soft);
+  border-radius: 42px;
+  padding-bottom: max(calc(env(safe-area-inset-bottom) - var(--inset)), 10px);
+  will-change: transform;
+  contain: layout paint;
 }
 
 /* Masking tape holding a card to the page (an element, see <Tape/>). */
@@ -322,10 +318,13 @@ summary::-webkit-details-marker {
   display: none;
 }
 
-/* Thin, quiet scrollbars where a panel scrolls on desktop. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+/* Thin, quiet scrollbars where a panel scrolls on desktop. In the base layer, so a
+   utility like [scrollbar-width:none] still wins. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
 }
 
 /* Pencil checkboxes: a hand-drawn box with an inked tick (no system checkbox). */
@@ -337,7 +336,161 @@ input[type="checkbox"]:not(.switch) {
   height: 22px;
   margin: 1px 0 0;
   border: 1.8px solid var(--ink-soft);
-  border-radius: 7px 4px 8px 5px / 5px 8px 4px 7px;
+  border-radius: 8px 6px 9px 7px / 7px 9px 6px 8px;
+  background: var(--card);
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+input[type="checkbox"]:not(.switch):checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+input[type="checkbox"]:not(.switch):checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+}
+input[type="checkbox"]:disabled,
+.switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Pencil slider: a drawn track and a round ink thumb. */
+input[type="range"] {
+  appearance: none;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border: 1.6px solid var(--ink-soft);
+  border-radius: 999px;
+  background: var(--card);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border: 1.6px solid var(--ink-soft);
+  border-radius: 999px;
+  background: var(--card);
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--paper);
+  box-shadow: 0 0 0 1.6px var(--ink);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--paper);
+}
+
+/* On/off switches in the sketch style: a hand-drawn track with a little hex tile for
+   a knob, which turns honey and slides across when on. */
+.switch {
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 50px;
+  height: 30px;
+  border: 1.8px solid var(--ink-soft);
+  border-radius: 16px 14px 17px 15px / 15px 17px 14px 16px;
+  background: var(--card);
+  cursor: pointer;
+  transition: background-color 200ms;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: var(--ink-soft);
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  transition:
+    transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    background-color 200ms;
+}
+.switch:checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.switch:checked::after {
+  background: var(--accent);
+  transform: translateX(19px) rotate(30deg);
+}
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The current page in the nav: a small honey tile under the word. */
+.nav-link {
+  position: relative;
+}
+.nav-link[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  width: 9px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+/* A scroll panel on phones: content fades out under its bottom edge, hinting that
+   there is more below, like a native list. */
+@media (max-width: 639px) {
+  .scroll-fade {
+    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent);
+  }
+}
+
+/* No system disclosure triangles: our summaries draw their own chevron. */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Thin, quiet scrollbars where a panel scrolls on desktop. In the base layer, so a
+   utility like [scrollbar-width:none] still wins. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+/* Pencil checkboxes: a hand-drawn box with an inked tick (no system checkbox). */
+input[type="checkbox"]:not(.switch) {
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+  border: 1.8px solid var(--ink-soft);
+  border-radius: 8px 6px 9px 7px / 7px 9px 6px 8px;
   background: var(--card);
   cursor: pointer;
   transition: background-color 120ms;
@@ -499,10 +652,10 @@ input[type="range"]::-moz-range-thumb {
 
 /* Hand-drawn corner radii for small inline boxes. */
 .sk {
-  border-radius: 12px 5px 13px 6px / 6px 13px 5px 12px;
+  border-radius: 14px 11px 15px 12px / 12px 15px 11px 14px;
 }
 .sk-lg {
-  border-radius: 18px 6px 20px 8px / 8px 20px 6px 18px;
+  border-radius: 20px 16px 22px 17px / 17px 22px 16px 20px;
 }
 
 /* ---- Motion -------------------------------------------------------------- */
@@ -620,6 +773,42 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* Little moments of joy on the new-game choices (played when an option is picked). */
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-3px) rotate(-4deg); }
+  60% { transform: translateY(0) rotate(3deg); }
+}
+.anim-bob { animation: bob 620ms cubic-bezier(0.34, 1.4, 0.64, 1); }
+@keyframes blink {
+  0%, 40%, 60%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.1); }
+}
+.anim-blink { animation: blink 900ms ease-in-out 200ms; }
+@keyframes pass {
+  0% { transform: rotate(0) translateX(0); }
+  35% { transform: rotate(-14deg) translateX(-3px); }
+  70% { transform: rotate(12deg) translateX(3px); }
+  100% { transform: none; }
+}
+.anim-pass { animation: pass 700ms cubic-bezier(0.34, 1.3, 0.64, 1); }
+@keyframes dash { to { stroke-dashoffset: -10; } }
+.anim-dash { animation: dash 700ms linear 2; }
+@keyframes ping {
+  0% { opacity: 0; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: none; }
+}
+.anim-ping { animation: ping 600ms ease-out; }
+@keyframes pop {
+  0% { transform: scale(0.4); }
+  60% { transform: scale(1.35); }
+  100% { transform: none; }
+}
+.anim-pop { animation: pop 380ms cubic-bezier(0.34, 1.5, 0.64, 1) both; }
+@keyframes tick { 0% { transform: rotate(-30deg); } 100% { transform: none; } }
+.anim-tick { animation: tick 420ms cubic-bezier(0.34, 1.6, 0.64, 1); }
+
 @media (prefers-reduced-motion: reduce) {
   html .launch {
     display: none !important;
@@ -645,7 +834,7 @@ input[type="range"]::-moz-range-thumb {
     --bc: var(--line-strong);
     --bw: 1.7px;
     --bs: solid;
-    --br: 14px 6px 16px 7px / 7px 16px 6px 14px;
+    --br: 18px 14px 19px 15px / 15px 19px 14px 18px;
   }
   .pencil::before {
     content: "";
@@ -655,7 +844,6 @@ input[type="range"]::-moz-range-thumb {
     background: var(--fill);
     border: var(--bw) var(--bs) var(--bc);
     border-radius: var(--br);
-    filter: url(#pencil);
     pointer-events: none;
   }
   .pencil-strong {
@@ -692,7 +880,7 @@ input[type="range"]::-moz-range-thumb {
     --bc: var(--line-strong);
     --bw: 1.7px;
     --bs: solid;
-    --br: 14px 6px 16px 7px / 7px 16px 6px 14px;
+    --br: 18px 14px 19px 15px / 15px 19px 14px 18px;
   }
   .btn::before,
   .btn-accent::before,
@@ -712,7 +900,6 @@ input[type="range"]::-moz-range-thumb {
     background: var(--fill);
     border: var(--bw) var(--bs) var(--bc);
     border-radius: var(--br);
-    filter: url(#pencil);
     pointer-events: none;
   }
   .btn,
@@ -721,7 +908,7 @@ input[type="range"]::-moz-range-thumb {
   .btn-ghost,
   .icon-btn {
     @apply inline-flex items-center justify-center gap-2 transition select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45;
-    --br: 18px 12px 20px 13px / 13px 20px 12px 18px;
+    --br: 18px 15px 19px 16px / 16px 19px 15px 18px;
   }
   .btn,
   .btn-accent {
@@ -757,11 +944,11 @@ input[type="range"]::-moz-range-thumb {
   }
   .icon-btn {
     @apply h-11 w-11 text-ink-soft hover:text-ink;
-    --br: 16px 9px 15px 10px / 10px 15px 9px 16px;
+    --br: 16px 13px 17px 14px / 14px 17px 13px 16px;
   }
   .card {
     @apply p-4 text-ink;
-    --br: 16px 6px 18px 8px / 8px 18px 6px 16px;
+    --br: 24px 20px 26px 21px / 21px 26px 20px 24px;
   }
   .label {
     @apply mb-1.5 block text-[0.92rem] font-bold text-ink-soft;
@@ -793,14 +980,13 @@ input[type="range"]::-moz-range-thumb {
     z-index: -1;
     background: var(--on);
     border: 1.8px solid var(--ink-soft);
-    border-radius: 15px 10px 16px 11px / 11px 16px 10px 15px;
-    filter: url(#pencil);
+    border-radius: 16px 13px 17px 14px / 14px 17px 13px 16px;
   }
   .input {
     @apply w-full px-3 py-2.5 text-ink placeholder:text-muted focus:outline-none;
     background: color-mix(in oklab, var(--card) 70%, transparent);
     border: 1.6px solid var(--line-strong);
-    border-radius: 10px 4px 11px 5px / 5px 11px 4px 10px;
+    border-radius: 14px 11px 15px 12px / 12px 15px 11px 14px;
   }
   .input:focus {
     border-color: var(--ink-soft);

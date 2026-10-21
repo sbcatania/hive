@@ -41,13 +41,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body className="min-h-dvh">
-        {/* The pencil: every outlined surface is drawn through this, so edges wobble like a hand-drawn line. */}
-        <svg width="0" height="0" className="absolute" aria-hidden>
-          <filter id="pencil" x="-5%" y="-5%" width="110%" height="110%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="1" seed="4" result="n" />
-            <feDisplacementMap in="SourceGraphic" in2="n" scale="3.6" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </svg>
         {/* Launching from the home screen: the first frame repeats the launch image (the
             wordmark centred on plain paper), then dissolves into the app. CSS-only, so it
             needs no JavaScript and always gets out of the way. */}

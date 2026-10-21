@@ -68,8 +68,11 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   const svgRef = useRef<SVGSVGElement>(null);
   const layerRef = useRef<SVGGElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
+  // During a pan or pinch the layer transform is written straight to the DOM (no React
+  // render per finger move); the state catches up when the gesture ends.
   const viewRef = useRef(view);
-  viewRef.current = view;
+  const live = useRef(false);
+  if (!live.current) viewRef.current = view;
   const gesture = useRef<Gesture>({ kind: "idle" });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const [ghost, setGhost] = useState<{ piece: PieceView; x: number; y: number } | null>(null);
@@ -159,6 +162,29 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
     return { x: (clientX - rect.left - rect.width / 2) * s, y: (clientY - rect.top - rect.height / 2) * s };
   }
 
+  function layerTransform(v: { x: number; y: number; k: number }) {
+    return `translate(${v.x} ${v.y}) translate(${cx} ${cy}) scale(${v.k}) translate(${-cx} ${-cy})`;
+  }
+  const frame = useRef(0);
+  function liveView(v: { x: number; y: number; k: number }) {
+    live.current = true;
+    viewRef.current = v;
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => layerRef.current?.setAttribute("transform", layerTransform(viewRef.current)));
+  }
+  function commitView() {
+    if (!live.current) return;
+    live.current = false;
+    setView({ ...viewRef.current });
+  }
+  const ghostRef = useRef<SVGGElement>(null);
+  const ghostPos = useRef({ x: 0, y: 0 });
+  function moveGhost(x: number, y: number) {
+    ghostPos.current = { x, y };
+    const el = ghostRef.current;
+    if (el) el.style.transform = `translate(${x}px, ${y - S * 0.25}px) scale(1.12)`;
+  }
+
   function zoomAt(px: number, py: number, k: number, base = viewRef.current) {
     const nk = Math.min(4, Math.max(0.35, k));
     const f = nk / base.k;
@@ -195,7 +221,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
       const m = rel((a.x + b.x) / 2, (a.y + b.y) / 2);
       // Zoom around the original midpoint, then follow the fingers.
       const z = zoomAt(g.mx0, g.my0, (g.k0 * d) / g.d0, { x: g.vx0, y: g.vy0, k: g.k0 });
-      setView({ k: z.k, x: z.x + (m.x - g.mx0), y: z.y + (m.y - g.my0) });
+      liveView({ k: z.k, x: z.x + (m.x - g.mx0), y: z.y + (m.y - g.my0) });
       return;
     }
     if (g.kind === "press" && g.id === e.pointerId) {
@@ -209,6 +235,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
         const lift = g.touch ? S * 1.1 : 0;
         gesture.current = { kind: "drag", id: e.pointerId, piece: name, lift };
         const p = toBoard(e.clientX, e.clientY);
+        ghostPos.current = { x: p.x, y: p.y - lift };
         setGhost({ piece, x: p.x, y: p.y - lift });
         buzz();
       } else {
@@ -218,10 +245,10 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
     const g2 = gesture.current;
     if (g2.kind === "pan" && g2.id === e.pointerId) {
       const s = svgScale();
-      setView((v) => ({ ...v, x: g2.vx + (e.clientX - g2.x) * s, y: g2.vy + (e.clientY - g2.y) * s }));
+      liveView({ ...viewRef.current, x: g2.vx + (e.clientX - g2.x) * s, y: g2.vy + (e.clientY - g2.y) * s });
     } else if (g2.kind === "drag" && g2.id === e.pointerId) {
       const p = toBoard(e.clientX, e.clientY);
-      setGhost((gh) => (gh ? { ...gh, x: p.x, y: p.y - g2.lift } : gh));
+      moveGhost(p.x, p.y - g2.lift);
     }
   }
 
@@ -243,6 +270,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   function onPointerUp(e: React.PointerEvent) {
     pointers.current.delete(e.pointerId);
     const g = gesture.current;
+    if (g.kind === "pan" || (g.kind === "pinch" && pointers.current.size === 0)) commitView();
     if (g.kind === "pinch") {
       if (pointers.current.size === 0) gesture.current = { kind: "idle" };
       return;
@@ -306,7 +334,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
             <path d="M0 1 L9 5 L0 9" fill="none" stroke="var(--violet)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </marker>
         </defs>
-        <g ref={layerRef} transform={`translate(${view.x} ${view.y}) translate(${cx} ${cy}) scale(${view.k}) translate(${-cx} ${-cy})`}>
+        <g ref={layerRef} transform={layerTransform(viewRef.current)}>
           {lastFrom && (
             <path d={sketchHexPath(...hexToPixel(lastFrom[0], lastFrom[1]), S * 0.86, 3, 0.04)} fill="var(--accent)" fillOpacity={0.12} stroke="var(--accent)" strokeOpacity={0.75} strokeDasharray="2 7" strokeLinecap="round" strokeWidth={3} />
           )}
@@ -367,7 +395,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
           )}
 
           {ghost && (
-            <g style={{ transform: `translate(${ghost.x}px, ${ghost.y - S * 0.25}px) scale(1.12)` }} pointerEvents="none" opacity={0.95}>
+            <g ref={ghostRef} style={{ transform: `translate(${ghostPos.current.x}px, ${ghostPos.current.y - S * 0.25}px) scale(1.12)` }} pointerEvents="none" opacity={0.95}>
               <PieceTile bug={ghost.piece.bug} color={ghost.piece.color} x={0} y={0} size={S} seed={pieceSeed(ghost.piece.name)} />
             </g>
           )}

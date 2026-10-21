@@ -100,7 +100,6 @@ function LocalGame() {
     const s = e.state();
     setState(s);
     setHint(null);
-    setEvalResult(null);
     const over = s.status === "WhiteWins" || s.status === "BlackWins" || s.status === "Draw";
     const result: GameResult | undefined = "result" in patch ? patch.result : over ? (s.status as GameResult) : undefined;
     const resultReason = "resultReason" in patch ? patch.resultReason : over ? (s.endReason ?? "surround") : undefined;

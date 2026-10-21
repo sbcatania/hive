@@ -216,10 +216,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
   const barButton = (key: string, icon: IconName, label: string, onClick: () => void, opts: { disabled?: boolean; active?: boolean; busy?: boolean } = {}) => (
     <button
       key={key}
-      onClick={() => {
-        haptic();
-        onClick();
-      }}
+      onClick={onClick}
       disabled={opts.disabled}
       aria-pressed={opts.active}
       className={`flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[0.72rem] leading-none font-semibold transition select-none active:scale-95 disabled:opacity-35 ${opts.active ? "text-ink" : "text-ink-soft"}`}
@@ -239,7 +236,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
       <div className="game-col flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">
         {seat(top, "gv-top")}
         <div className="gv-board card relative min-h-0 flex-1 !p-0">
-          <div className="absolute inset-[3px] overflow-hidden" style={{ borderRadius: "11px 3px 13px 4px / 4px 13px 3px 11px" }}>
+          <div className="absolute inset-[3px] overflow-hidden" style={{ borderRadius: "21px 17px 23px 18px / 18px 23px 17px 21px" }}>
             {theme === "3d" ? <Board3D {...boardProps} /> : <Board2D {...boardProps} />}
           </div>
           <div className={`pencil pointer-events-none absolute top-2 left-2 -rotate-1 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink ${analysis ? "max-w-[52%] lg:max-w-[75%]" : "max-w-[75%]"}`}>

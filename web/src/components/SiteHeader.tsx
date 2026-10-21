@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MiniTile } from "./PieceTile";
+import { Wordmark } from "./Wordmark";
 import { Icon } from "./Icon";
 import { Avatar } from "./Nameplate";
 import { Sheet } from "./Sheet";
@@ -83,9 +83,8 @@ export function SiteHeader() {
             <Icon name="prev" />
           </button>
         )}
-        <Link href="/" className="flex items-center gap-2" aria-label="Hive home">
-          <MiniTile bug="Q" size={32} seed={6} />
-          <span className="font-display text-xl font-semibold tracking-tight">Hive</span>
+        <Link href="/" className="flex items-center" aria-label="Hive home">
+          <Wordmark className="h-11 w-auto sm:h-12" />
         </Link>
         <nav className="ml-4 hidden items-center gap-1 md:flex">
           {NAV.map((n) => (

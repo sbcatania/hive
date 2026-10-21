@@ -18,7 +18,7 @@ export function HandPanel({ color, hand, selected, placeable, onSelect, small, c
   const left = hand.reduce((n, h) => n + h.count, 0);
   return (
     <div className={`-mx-1 flex items-center gap-0.5 overflow-x-auto overscroll-x-contain px-1 pt-1.5 pb-0.5 [scrollbar-width:none] ${className ?? ""}`} aria-label={`${color === "w" ? "White" : "Black"} pieces in hand`}>
-      {hand.map((h, i) => {
+      {left > 0 && hand.map((h, i) => {
         const name = h.next;
         const can = !!name && placeable.has(name);
         const sel = !!name && name === selected;
@@ -54,7 +54,7 @@ export function HandPanel({ color, hand, selected, placeable, onSelect, small, c
           </button>
         );
       })}
-      {left === 0 && <span className="hand-note px-1 !text-base">all pieces in play</span>}
+      {left === 0 && <span className="hand-note px-1 !text-base whitespace-nowrap">all pieces in play</span>}
     </div>
   );
 }
