@@ -155,7 +155,7 @@ export default function JournalPage() {
               const label = resultLabel(e);
               const v = describeVariants(e.rules);
               return (
-                <li key={e.id} className="card flex flex-wrap items-center gap-3 !p-3">
+                <li key={e.id} className="card flex flex-col gap-3 !p-3 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold">{gameTitle(e)}</span>
@@ -163,10 +163,10 @@ export default function JournalPage() {
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
                       {when(e.updatedAt)}. {e.moves.length} moves, {expansionLabel(e.rules)}
-                      {v.length ? `, ${v.join(", ")}` : ""}.{e.mode === "cpu" && e.moves.length > 0 ? ` Help: ${assistText(e)}.` : ""}
+                      {v.length ? `, ${v.join(", ")}` : ""}.{e.mode === "cpu" && assisted(e) ? ` Help: ${assistText(e)}.` : ""}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     {!e.result && (
                       <Link className="btn !px-3 !py-1.5" href={`/play?id=${e.id}`}>
                         Continue
@@ -175,7 +175,7 @@ export default function JournalPage() {
                     <Link className="btn-secondary !px-3 !py-1.5" href={`/replay?local=${e.id}`}>
                       Replay
                     </Link>
-                    <button className="icon-btn !h-10 !w-10 [--fill:transparent]" onClick={() => remove(e)} aria-label="Delete">
+                    <button className="icon-btn ml-auto !h-10 !w-10 [--fill:transparent] sm:ml-0" onClick={() => remove(e)} aria-label="Delete">
                       <Icon name="trash" size={18} />
                     </button>
                   </div>
@@ -203,7 +203,7 @@ export default function JournalPage() {
             const label = g.status !== "finished" ? (g.status === "waiting" ? "Waiting" : "In progress") : g.result === "Draw" ? "Draw" : won ? "You won" : "You lost";
             const delta = me === "w" ? g.white_delta : g.black_delta;
             return (
-              <li key={g.id} className="card flex flex-wrap items-center gap-3 !p-3">
+              <li key={g.id} className="card flex flex-col gap-3 !p-3 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">vs {opp}</span>
@@ -214,7 +214,7 @@ export default function JournalPage() {
                     {when(g.updated_at)}. You were {me === "w" ? "White" : "Black"}, {g.moves.length} moves.
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   {g.status !== "finished" && (
                     <Link className="btn !px-3 !py-1.5" href={`/online?g=${g.id}`}>
                       Open
