@@ -65,6 +65,7 @@ function describePiece(name: string) {
 
 export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [] }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   useEffect(() => setSelected(null), [state.ply, canMove]);
 
   const legalByPiece = useMemo(() => {
@@ -138,6 +139,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
     onPieceClick: over ? undefined : select,
     onTargetClick: (m: MoveView) => onPlay(m.notation),
     onBackgroundClick: () => setSelected(null),
+    onDragChange: setDragging,
   };
 
   const sel = selected ? describePiece(selected) : null;
@@ -157,8 +159,8 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
             {status}
           </div>
           {sel && (
-            <div className="rise absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm">
-              <div className="flex items-start gap-2 border-[1.6px] border-ink-soft bg-card/95 py-2 pr-1 pl-3 text-sm shadow-lg backdrop-blur" style={{ borderRadius: "14px 5px 16px 6px / 6px 16px 5px 14px" }}>
+            <div className={`rise pointer-events-none absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm`}>
+              <div className={`pointer-events-auto flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} border-[1.6px] border-ink-soft bg-card/95 py-1.5 pr-1 pl-3 text-sm shadow-lg backdrop-blur sm:py-2`} style={{ borderRadius: "14px 5px 16px 6px / 6px 16px 5px 14px" }}>
                 <div className="min-w-0 flex-1 py-0.5">
                   <div className="font-semibold">
                     {sel.label} <span className="font-mono text-xs text-muted">{selected}</span>

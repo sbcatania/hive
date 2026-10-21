@@ -16,6 +16,8 @@ export interface BoardProps {
   theme: ThemeId;
   /** Pieces on the board that currently have legal moves. */
   selectable: Set<string>;
+  /** Called when a drag-to-move starts or ends. */
+  onDragChange?: (dragging: boolean) => void;
   /** Hide the last-move highlight (e.g. for demos). */
   hideLastMove?: boolean;
 }

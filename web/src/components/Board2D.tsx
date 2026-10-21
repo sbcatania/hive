@@ -62,10 +62,10 @@ type Gesture =
   | { kind: "idle" }
   | { kind: "press"; id: number; x: number; y: number; item: Element | null; vx: number; vy: number; touch: boolean }
   | { kind: "pan"; id: number; x: number; y: number; vx: number; vy: number }
-  | { kind: "drag"; id: number; piece: string }
+  | { kind: "drag"; id: number; piece: string; lift: number }
   | { kind: "pinch"; d0: number; k0: number; mx0: number; my0: number; vx0: number; vy0: number };
 
-export default function Board2D({ state, selected, targets, previewTargets = [], hint, onPieceClick, onTargetClick, onBackgroundClick, theme, selectable, hideLastMove }: BoardProps) {
+export default function Board2D({ state, selected, targets, previewTargets = [], hint, onPieceClick, onTargetClick, onBackgroundClick, theme, selectable, hideLastMove, onDragChange }: BoardProps) {
   const style: TileStyle = theme === "field" ? "field" : theme === "clean" ? "clean" : "bakelite";
   const svgRef = useRef<SVGSVGElement>(null);
   const layerRef = useRef<SVGGElement>(null);
@@ -98,7 +98,6 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
     for (const list of cells.values()) list.sort((a, b) => a.level - b.level);
     const pts: [number, number][] = [];
     for (const p of state.pieces) pts.push([p.q, p.r]);
-    for (const m of state.legalMoves) pts.push(m.to);
     if (pts.length === 0) pts.push([0, 0]);
     let minX = Infinity,
       maxX = -Infinity,
@@ -116,8 +115,9 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
     const minH = S * 1.5 * (narrow ? 4.5 : 6);
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    const w = Math.max(maxX - minX + S * 2.8, minW);
-    const h = Math.max(maxY - minY + S * 2.8, minH);
+    // Frame the hive plus one ring of cells: every legal move lands next to it.
+    const w = Math.max(maxX - minX + S * (2 * SQ3 + 2), minW);
+    const h = Math.max(maxY - minY + S * 5, minH);
     return { cells, viewBox: [cx - w / 2, cy - h / 2, w, h] as const };
   }, [state, narrow]);
 
@@ -207,8 +207,11 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
       if (name && (selectable.has(name) || name === selected) && onPieceClick) {
         if (name !== selected) onPieceClick(name);
         const piece = state.pieces.find((p) => p.name === name)!;
-        gesture.current = { kind: "drag", id: e.pointerId, piece: name };
-        setGhost({ piece, ...toBoard(e.clientX, e.clientY) });
+        // On touch, carry the tile above the fingertip so it stays visible.
+        const lift = g.touch ? S * 1.1 : 0;
+        gesture.current = { kind: "drag", id: e.pointerId, piece: name, lift };
+        const p = toBoard(e.clientX, e.clientY);
+        setGhost({ piece, x: p.x, y: p.y - lift });
         buzz();
       } else {
         gesture.current = { kind: "pan", id: e.pointerId, x: g.x, y: g.y, vx: g.vx, vy: g.vy };
@@ -220,7 +223,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
       setView((v) => ({ ...v, x: g2.vx + (e.clientX - g2.x) * s, y: g2.vy + (e.clientY - g2.y) * s }));
     } else if (g2.kind === "drag" && g2.id === e.pointerId) {
       const p = toBoard(e.clientX, e.clientY);
-      setGhost((gh) => (gh ? { ...gh, ...p } : gh));
+      setGhost((gh) => (gh ? { ...gh, x: p.x, y: p.y - g2.lift } : gh));
     }
   }
 
@@ -248,7 +251,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
     }
     if (g.kind === "drag" && g.id === e.pointerId) {
       const p = toBoard(e.clientX, e.clientY);
-      const m = nearestTarget(p.x, p.y);
+      const m = nearestTarget(p.x, p.y - g.lift);
       setGhost(null);
       if (m) {
         buzz(14);
@@ -281,12 +284,15 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   const legalCells = new Set(targets.map((m) => `${m.to[0]},${m.to[1]}`));
   const preview = previewTargets.filter((m) => !legalCells.has(`${m.to[0]},${m.to[1]}`));
   const dragging = ghost?.piece.name;
+  const isDragging = !!ghost;
+  useEffect(() => onDragChange?.(isDragging), [isDragging]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={`relative h-full w-full select-none ${style === "field" ? "board-paper" : "board-surface"}`}>
       <svg
         ref={svgRef}
         className="h-full w-full touch-none"
+        data-dragging={dragging ? "" : undefined}
         viewBox={viewBox.join(" ")}
         preserveAspectRatio="xMidYMid meet"
         onWheel={onWheel}

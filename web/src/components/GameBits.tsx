@@ -74,16 +74,18 @@ function Emblem({ tone }: { tone: OverProps["tone"] }) {
 /** The end-of-game card shown over the board. */
 export function GameOverCard({ title, subtitle, detail, tone, actions, onClose }: OverProps) {
   return (
-    <div className="absolute inset-0 z-10 grid place-items-center bg-paper/55 p-4 backdrop-blur-[2px]">
-      <div className="rise card tape w-full max-w-sm !p-6 text-center">
+    <div className="absolute inset-0 z-10 grid place-items-center overflow-y-auto bg-paper/55 p-3 backdrop-blur-[2px] sm:p-4">
+      <div className="rise card tape w-full max-w-sm !px-4 !pt-5 !pb-4 text-center sm:!p-6">
         <button className="icon-btn absolute top-2 right-2 !h-10 !w-10 border-transparent bg-transparent" onClick={onClose} aria-label="Look at the board">
           <Icon name="close" />
         </button>
-        <Emblem tone={tone} />
-        <div className="font-display mt-2 text-3xl font-semibold">{title}</div>
+        <div className="mx-auto w-fit origin-top scale-75 -mb-5 sm:mb-0 sm:scale-100">
+          <Emblem tone={tone} />
+        </div>
+        <div className="font-display mt-1 text-2xl font-semibold sm:mt-2 sm:text-3xl">{title}</div>
         {subtitle && <div className="hand-note mt-1">{subtitle}</div>}
         {detail && <div className="mt-2 text-sm text-muted">{detail}</div>}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">{actions}</div>
+        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:mt-5">{actions}</div>
       </div>
     </div>
   );
