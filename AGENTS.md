@@ -1,4 +1,4 @@
-# Claude Code Instructions — Hive
+# Agent Instructions — Hive
 
 ## Layout
 - **engine/** — Rust crate: rules, notation (UHP), alpha-beta AI, neural net + MCTS, WASM bindings (`src/wasm.rs`, feature `wasm`), native self-play/arena binaries (feature `native`).
