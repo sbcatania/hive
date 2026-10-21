@@ -131,8 +131,8 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
 
   const need = state.rules.surround;
   const top: ColorCode = bottom === "w" ? "b" : "w";
-  const seat = (c: ColorCode) => (
-    <div className="flex min-w-0 shrink-0 items-center gap-1.5 lg:block lg:space-y-1.5">
+  const seat = (c: ColorCode, area: string) => (
+    <div className={`${area} flex min-w-0 shrink-0 items-center gap-1.5 lg:block lg:space-y-1.5`}>
       <div className="w-[6.1rem] shrink-0 lg:w-auto">
         <Nameplate
           color={c}
@@ -236,9 +236,9 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
       className="mx-auto flex h-[calc(100dvh-var(--header-h))] w-full max-w-[1400px] flex-col gap-1.5 overflow-hidden px-2 pt-1.5 select-none sm:gap-2 sm:px-3 lg:flex-row lg:gap-3 lg:p-3"
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 6px)" }}
     >
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">
-        {seat(top)}
-        <div className="card relative min-h-0 flex-1 !p-0">
+      <div className="game-col flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">
+        {seat(top, "gv-top")}
+        <div className="gv-board card relative min-h-0 flex-1 !p-0">
           <div className="absolute inset-[3px] overflow-hidden" style={{ borderRadius: "11px 3px 13px 4px / 4px 13px 3px 11px" }}>
             {theme === "3d" ? <Board3D {...boardProps} /> : <Board2D {...boardProps} />}
           </div>
@@ -281,12 +281,12 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
           )}
           {overlay}
         </div>
-        {notice && <div className="max-h-[35%] shrink-0 overflow-y-auto empty:hidden lg:hidden">{notice}</div>}
-        <div className="flex shrink-0 items-stretch justify-around gap-1 lg:hidden" role="toolbar" aria-label="Game controls">
+        {notice && <div className="gv-notice max-h-[35%] shrink-0 overflow-y-auto empty:hidden lg:hidden">{notice}</div>}
+        <div className="gv-bar flex shrink-0 items-stretch justify-around gap-1 lg:hidden" role="toolbar" aria-label="Game controls">
           {barActions.map((a) => barButton(a.id, a.icon, a.short ?? a.label, a.onClick, a))}
           {barButton("more", "more", "More", () => setSheet(true))}
         </div>
-        {seat(bottom)}
+        {seat(bottom, "gv-bottom")}
       </div>
       <aside className="hidden w-[22rem] shrink-0 flex-col gap-3 overflow-y-auto pr-1 select-text lg:flex">
         {actions.length > 0 && (

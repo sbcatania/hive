@@ -332,6 +332,44 @@ nav a {
   outline-offset: 2px;
 }
 
+/* Phones held sideways: the board fills the left, players and controls stack on
+   the right, instead of squeezing the board into a strip. */
+@media (orientation: landscape) and (max-height: 540px) and (max-width: 1023px) {
+  .game-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18.5rem;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    column-gap: 0.5rem;
+  }
+  .gv-board {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+  .gv-top {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .gv-notice {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .gv-bar {
+    grid-column: 2;
+    grid-row: 4;
+  }
+  .gv-bottom {
+    grid-column: 2;
+    grid-row: 5;
+  }
+  /* The trays wrap onto two rows rather than scrolling off the side. */
+  .gv-top [aria-label$="pieces in hand"],
+  .gv-bottom [aria-label$="pieces in hand"] {
+    flex-wrap: wrap;
+    overflow: visible;
+    row-gap: 2px;
+  }
+}
+
 /* Lined notebook paper, for move lists. */
 .ruled {
   background-image: linear-gradient(transparent calc(100% - 1px), color-mix(in oklab, var(--line) 70%, transparent) 1px);

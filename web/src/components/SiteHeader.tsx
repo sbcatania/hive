@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MiniTile } from "./PieceTile";
 import { Icon } from "./Icon";
@@ -9,6 +9,8 @@ import { Avatar } from "./Nameplate";
 import { Sheet } from "./Sheet";
 import { useAuth } from "@/lib/auth";
 import { applyThemeMode, loadThemeMode, type ThemeMode } from "@/lib/theme-mode";
+
+const DETAIL = ["/replay", "/player", "/account"];
 
 const NAV = [
   { href: "/", label: "Play" },
@@ -69,9 +71,18 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [path]);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  const router = useRouter();
+  // Detail screens get a back button: there's no browser back button or swipe in a
+  // home-screen app. With no history (opened from a link), go to the parent list.
+  const back = () => (window.history.length > 1 ? router.back() : router.push(path.startsWith("/player") ? "/leaderboard" : "/journal"));
   return (
     <header className="sticky top-0 z-30 h-[var(--header-h)] border-b-[1.5px] border-dashed border-line-strong bg-paper pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-full max-w-7xl items-center gap-3 px-3 sm:px-4">
+        {DETAIL.some((d) => path.startsWith(d)) && (
+          <button className="icon-btn -mr-1 !h-10 !w-10 [--bc:transparent] [--fill:transparent]" onClick={back} aria-label="Back">
+            <Icon name="prev" />
+          </button>
+        )}
         <Link href="/" className="flex items-center gap-2" aria-label="Hive home">
           <MiniTile bug="Q" size={32} seed={6} />
           <span className="font-display text-xl font-semibold tracking-tight">Hive</span>
