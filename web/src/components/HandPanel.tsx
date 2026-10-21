@@ -36,7 +36,7 @@ export function HandPanel({ color, hand, label, active, selected, placeable, onS
               disabled={!can}
               onClick={() => name && onSelect?.(name)}
               title={`${BUG_NAMES[h.bug]} × ${h.count}`}
-              className={`relative h-12 w-11 shrink-0 ${h.count === 0 ? "opacity-20" : ""} ${can ? "cursor-pointer hover:-translate-y-0.5" : "cursor-default"} transition-transform`}
+              className={`relative h-10 w-9 shrink-0 sm:h-12 sm:w-11 ${h.count === 0 ? "opacity-20" : ""} ${can ? "cursor-pointer hover:-translate-y-0.5" : "cursor-default"} transition-transform`}
             >
               <svg viewBox="-50 -50 100 100" className="h-full w-full overflow-visible">
                 <polygon points={hexPoints(0, 0, 46)} fill={t.fill} stroke={sel ? "var(--selected)" : can ? "var(--movable)" : t.edge} strokeWidth={sel ? 8 : can ? 5 : 3} />
