@@ -57,22 +57,25 @@ interface Props {
 }
 
 /** A player's name, turn marker and Queen danger. On phones it shrinks to a narrow
- * block that sits beside the player's pieces (see GameView). */
+ * block that sits beside the player's pieces (see GameView): the name, then the Queen
+ * danger on a fixed-height second line, with the turn shown by the honey fill and a
+ * small hex beside the name. */
 export function Nameplate({ color, name, sub, bug, active, thinking, queenCount, need, clock }: Props) {
   return (
-    <div className={`pencil flex min-w-0 items-center gap-2 px-1.5 py-1 lg:gap-3 lg:px-3 lg:py-2 ${active ? "pencil-honey pencil-strong" : "pencil-clear"}`}>
+    <div className={`pencil flex min-w-0 items-center gap-2 px-2.5 py-1.5 lg:gap-3 lg:px-3 lg:py-2 ${active ? "pencil-honey pencil-strong" : "pencil-clear"}`}>
       <span className="hidden lg:block">
         <Avatar bug={bug} color={color} initial={typeof name === "string" ? name.slice(0, 1).toUpperCase() : "?"} size={36} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-1.5 lg:gap-2">
-          <span className="truncate font-display text-[0.92rem] font-semibold lg:text-[1.05rem]">{name}</span>
+        <div className="flex items-center gap-1.5 lg:gap-2">
+          <span className="truncate font-display text-[0.92rem] leading-tight font-semibold lg:text-[1.05rem]">{name}</span>
+          {active && <TurnMark />}
           {active && <span className={`hidden font-hand text-lg leading-none text-ink-soft lg:inline ${thinking ? "pulse-ink" : ""}`}>{thinking ? "thinking…" : "to move"}</span>}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
+        <div className="mt-0.5 flex h-4 items-center gap-x-3 text-xs text-muted lg:h-auto lg:flex-wrap lg:gap-y-0.5">
           {sub && <span className="hidden truncate lg:inline">{sub}</span>}
-          {active ? (
-            <span className={`font-hand text-base leading-none text-ink-soft lg:hidden ${thinking ? "pulse-ink" : ""}`}>{thinking ? "thinking…" : "to move"}</span>
+          {thinking ? (
+            <span className="pulse-ink font-hand text-base leading-none text-ink-soft lg:hidden">thinking…</span>
           ) : (
             <span className="lg:hidden">
               <QueenDanger count={queenCount} need={need} compact />
@@ -86,4 +89,9 @@ export function Nameplate({ color, name, sub, bug, active, thinking, queenCount,
       {clock && <span className="hidden lg:block">{clock}</span>}
     </div>
   );
+}
+
+/** The small honey hex that marks whose turn it is (the same mark as elsewhere). */
+function TurnMark() {
+  return <span aria-label="to move" className="anim-boop inline-block h-[9px] w-[8px] shrink-0 bg-accent-strong [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)] lg:hidden" />;
 }

@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { Icon } from "./Icon";
 import { Avatar } from "./Nameplate";
 import { Sheet } from "./Sheet";
 import { useAuth } from "@/lib/auth";
-import { applyThemeMode, loadThemeMode, type ThemeMode } from "@/lib/theme-mode";
+import { applyThemeMode, loadThemeMode, takeReopen, type ThemeMode } from "@/lib/theme-mode";
 
 const DETAIL = ["/replay", "/player", "/account"];
 
@@ -50,22 +50,24 @@ function ThemeToggle() {
 function ThemeSeg() {
   const [mode, setMode] = useState<ThemeMode>("system");
   useEffect(() => setMode(loadThemeMode()), []);
-  const opts: [ThemeMode, string][] = [
-    ["light", "Day"],
-    ["dark", "Night"],
-    ["system", "Auto"],
+  const opts: [ThemeMode, string, "sun" | "moon" | "auto"][] = [
+    ["light", "Day", "sun"],
+    ["dark", "Night", "moon"],
+    ["system", "Auto", "auto"],
   ];
   return (
     <div className="seg">
-      {opts.map(([m, n]) => (
+      {opts.map(([m, n, icon]) => (
         <button
           key={m}
           aria-pressed={mode === m}
+          className="inline-flex items-center gap-1.5"
           onClick={() => {
             setMode(m);
-            applyThemeMode(m);
+            applyThemeMode(m, { reopen: "menu" });
           }}
         >
+          <Icon name={icon} size={17} />
           {n}
         </button>
       ))}
@@ -95,7 +97,21 @@ function AccountChip() {
 export function SiteHeader() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  useEffect(() => setOpen(false), [path]);
+  // A home-screen app relaunches to change its status bar with the theme; if that was
+  // done from the menu, it comes back already open.
+  const [reopened, setReopened] = useState(false);
+  useEffect(() => {
+    if (takeReopen() === "menu") {
+      setReopened(true);
+      setOpen(true);
+    }
+  }, []);
+  // Close the menu when the page changes (not on first mount, which may be reopening it).
+  const lastPath = useRef(path);
+  useEffect(() => {
+    if (lastPath.current !== path) setOpen(false);
+    lastPath.current = path;
+  }, [path]);
   const active = (href: string) => (href === "/" ? path === "/" || path.startsWith("/play") : path.startsWith(href));
   const router = useRouter();
   // Detail screens get a back button: there's no browser back button or swipe in a
@@ -134,7 +150,7 @@ export function SiteHeader() {
           </button>
         </div>
       </div>
-      <Sheet open={open} onClose={() => setOpen(false)}>
+      <Sheet open={open} instant={reopened} onClose={() => (setOpen(false), setReopened(false))}>
         <nav className="grid gap-1 pb-2">
           {NAV.map((n) => (
             <Link
@@ -143,9 +159,11 @@ export function SiteHeader() {
               prefetch={false}
               onClick={() => setOpen(false)}
               aria-current={active(n.href) ? "page" : undefined}
-              className={`flex min-h-12 items-center px-1 text-xl ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}
+              className={`flex min-h-12 items-center gap-3 px-1 text-xl ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}
             >
-              <span className="nav-link">{n.label}</span>
+              {/* The current page's honey hex, beside the word (a bullet in a list). */}
+              <span className={`h-[11px] w-[10px] shrink-0 [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)] ${active(n.href) ? "bg-accent" : "bg-transparent"}`} aria-hidden />
+              {n.label}
             </Link>
           ))}
           <div className="mt-2 flex items-center justify-between border-t border-dashed border-line-strong pt-3">

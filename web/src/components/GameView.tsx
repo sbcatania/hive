@@ -158,7 +158,6 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
         onSelect={over ? undefined : select}
         small={c === top}
       />
-      {players[c].clock && <div className="shrink-0 lg:hidden">{players[c].clock}</div>}
     </div>
   );
 
@@ -242,12 +241,20 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
           <div className="absolute inset-[3px] overflow-hidden" style={{ borderRadius: "21px 17px 23px 18px / 18px 23px 17px 21px" }}>
             {theme === "3d" ? <Board3D {...boardProps} /> : <Board2D {...boardProps} />}
           </div>
-          <div className={`pencil pointer-events-none absolute top-2 left-2 -rotate-1 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink ${analysis ? "max-w-[52%] lg:max-w-[75%]" : "max-w-[75%]"}`}>
+          <div className={`pencil pointer-events-none absolute top-2 left-2 -rotate-1 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink ${analysis || players[top].clock ? "max-w-[52%] lg:max-w-[75%]" : "max-w-[75%]"}`}>
             {status}
           </div>
-          {analysis && !wide && <div className="eval-compact pointer-events-none absolute top-2 right-2 w-[44%] lg:hidden">{analysis}</div>}
+          {/* On phones the clocks sit in the board's corners, beside each player's seat,
+              rather than taking room from the piece trays. */}
+          {!wide && (analysis || players[top].clock) && (
+            <div className="pointer-events-none absolute top-2 right-2 flex w-[44%] flex-col items-end gap-1.5">
+              {players[top].clock}
+              {analysis && <div className="eval-compact w-full">{analysis}</div>}
+            </div>
+          )}
+          {!wide && players[bottom].clock && <div className="pointer-events-none absolute right-2 bottom-2">{players[bottom].clock}</div>}
           {sel && (
-            <div className={`rise pointer-events-none absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm`}>
+            <div className={`rise pointer-events-none absolute bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm ${players[bottom].clock && !wide ? "right-[5.5rem]" : "right-2"}`}>
               {/* Taps pass through the card to any move target under it; only the close
                   button catches them. */}
               <div className={`flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} pencil pencil-strong py-1.5 pr-1 pl-3 text-sm sm:py-2`}>

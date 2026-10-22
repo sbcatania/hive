@@ -3,6 +3,8 @@
 // outer <svg> ever animates: a transform on it is composited, while animating paths
 // inside an SVG forces layout and repaint every frame.
 
+import { PieceTile } from "./PieceTile";
+
 const ink = "var(--ink)";
 const honey = "var(--accent)";
 const blue = "var(--move)";
@@ -90,6 +92,23 @@ export function ClockIcon({ minutes, on }: { minutes: number | null; on?: boolea
         <circle cx="7" cy="7" r="5.5" fill={on ? honey : "var(--line-strong)"} />
       ) : (
         <path d={`M7 7V1.5A5.5 5.5 0 ${f > 0.5 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)}Z`} fill={on ? honey : "var(--line-strong)"} />
+      )}
+    </svg>
+  );
+}
+
+/** Which side you play: a tiny Queen tile in that colour, or one of each for random. */
+export function SideIcon({ side, on }: { side: "w" | "b" | "random"; on?: boolean }) {
+  const tile = (c: "w" | "b", x: number, y: number, seed: number) => <PieceTile bug="Q" color={c} x={x} y={y} size={21} seed={seed} />;
+  return (
+    <svg viewBox={side === "random" ? "-24 -24 68 48" : "-24 -24 48 48"} className={`h-6 ${side === "random" ? "w-[34px]" : "w-6"} overflow-visible ${on ? "anim-boop" : ""}`} aria-hidden>
+      {side === "random" ? (
+        <>
+          <g transform="rotate(-8 0 0)">{tile("w", 0, 0, 3)}</g>
+          <g transform="rotate(7 20 2)">{tile("b", 20, 2, 5)}</g>
+        </>
+      ) : (
+        tile(side, 0, 0, side === "w" ? 3 : 5)
       )}
     </svg>
   );

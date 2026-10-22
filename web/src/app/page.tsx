@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
 import { PHONE_QUERY, useAppScreen } from "@/lib/app-screen";
 import { Icon } from "@/components/Icon";
-import { ClockIcon, ComputerIcon, LevelPips, OnlineIcon, PassIcon } from "@/components/SetupIcons";
+import { ClockIcon, ComputerIcon, LevelPips, OnlineIcon, PassIcon, SideIcon } from "@/components/SetupIcons";
 import { useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/engine";
 import { isStandardRules, levelInfo, LEVELS, normalizeRules, standardRules, type ColorCode, type Level, type Rules } from "@/lib/engine-types";
@@ -210,7 +210,8 @@ export default function Home() {
                     ["random", "Random"],
                   ] as [Prefs["color"], string][]
                 ).map(([c, name]) => (
-                  <button key={c} aria-pressed={prefs.color === c} onClick={() => update({ color: c })}>
+                  <button key={c} aria-pressed={prefs.color === c} onClick={() => update({ color: c })} className="flex flex-col items-center justify-center !gap-1 !py-2">
+                    <SideIcon side={c} on={prefs.color === c} />
                     {name}
                   </button>
                 ))}

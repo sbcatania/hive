@@ -1,8 +1,10 @@
 "use client";
 
-// Haptic feedback. Android exposes navigator.vibrate. iOS Safari doesn't, but since
-// iOS 18 toggling a native <input type="checkbox" switch> plays the system "tick", so
-// we keep a hidden switch and click its label. Must run inside a user gesture.
+// Haptic feedback. Android exposes navigator.vibrate. iOS Safari doesn't, but toggling
+// a native <input type="checkbox" switch> plays the system tick. Up to iOS 26.4 a
+// script could click a hidden switch's label inside a tap; since 26.5 the finger has
+// to toggle a real switch itself, so on iPhones every control carries an invisible
+// switch over it (installSwitchOverlays) and the tap is passed on to the control.
 
 let label: HTMLLabelElement | null = null;
 
@@ -42,8 +44,60 @@ export function haptic(strong = false) {
   } catch {}
 }
 
+const HOSTS = 'button, a[href], summary, [role="button"], label:has(input[type="checkbox"])';
+
+/** iPhone-style haptics: a native switch is the only thing that can tick, and only
+ * under a finger. Touch devices without navigator.vibrate but with switch support. */
+function wantsSwitchOverlays() {
+  return typeof window !== "undefined" && !("vibrate" in navigator) && "switch" in HTMLInputElement.prototype && window.matchMedia("(pointer: coarse)").matches;
+}
+
+function overlay(host: Element) {
+  if (!(host instanceof HTMLElement) || host.closest("[data-no-haptic]")) return;
+  if (host.querySelector(":scope > .haptic-switch")) return;
+  // Only the innermost control gets one, so it is the one under the finger.
+  if (host.querySelector(HOSTS)) return;
+  if (getComputedStyle(host).position === "static") host.style.position = "relative";
+  const sw = document.createElement("input");
+  sw.type = "checkbox";
+  sw.setAttribute("switch", "");
+  sw.className = "haptic-switch";
+  sw.tabIndex = -1;
+  sw.setAttribute("aria-hidden", "true");
+  // The switch has ticked; hand the tap to the control it covers (a real click, so
+  // links navigate, labels toggle their input and forms submit) and swallow its own.
+  sw.addEventListener("click", (e) => {
+    e.stopPropagation();
+    host.click();
+  });
+  host.append(sw);
+}
+
+/** Puts an invisible native switch inside every tappable control, now and as the page
+ * changes (React may also wipe one when it rewrites a control's text). */
+function installSwitchOverlays() {
+  document.querySelectorAll(HOSTS).forEach(overlay);
+  const mo = new MutationObserver((records) => {
+    for (const r of records) {
+      r.addedNodes.forEach((n) => {
+        if (!(n instanceof Element) || n.classList.contains("haptic-switch")) return;
+        const inner = n.matches(HOSTS) ? [n, ...n.querySelectorAll(HOSTS)] : [...n.querySelectorAll(HOSTS)];
+        if (!inner.length) return;
+        inner.forEach(overlay);
+        // A control added inside another means the outer one mustn't cover it.
+        n.parentElement?.closest(HOSTS)?.querySelector(":scope > .haptic-switch")?.remove();
+      });
+      const host = r.target instanceof Element ? r.target.closest(HOSTS) : null;
+      if (host) overlay(host);
+    }
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+  return () => mo.disconnect();
+}
+
 /** Every press of a control gives a tick, app-wide (installed once, see NativeFeel). */
 export function installTapHaptics() {
+  if (wantsSwitchOverlays()) return installSwitchOverlays();
   const onClick = (e: MouseEvent) => {
     const t = e.target as Element | null;
     if (!t || (t as HTMLElement).id === "haptic-label" || (t as HTMLElement).id === "haptic-switch") return;

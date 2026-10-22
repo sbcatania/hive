@@ -14,7 +14,7 @@ const DURATION = 480;
  * pull dismisses it, and pulling up rubber-bands. Dragging writes the transform
  * straight to the element (no React renders), so it tracks the finger at frame rate.
  * Closes on the backdrop, the close button or Escape. */
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title?: string; children: React.ReactNode }) {
+export function Sheet({ open, onClose, title, children, instant }: { open: boolean; onClose: () => void; title?: string; children: React.ReactNode; /** Appear already open, without sliding up. */ instant?: boolean }) {
   const [mounted, setMounted] = useState(false);
   const [live, setLive] = useState(open);
   const panel = useRef<HTMLDivElement>(null);
@@ -49,6 +49,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   useLayoutEffect(() => {
     if (!mounted) return;
     if (open) {
+      if (instant) return place(0, false);
       place(null, false);
       // Next frame: slide up.
       const id = requestAnimationFrame(() => requestAnimationFrame(() => place(0, true)));

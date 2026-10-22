@@ -459,7 +459,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
         </svg>
       )}
       {(view.x !== 0 || view.y !== 0 || view.k !== 1) && (
-        <button className="btn-ghost absolute right-2 bottom-2" onClick={() => setView({ x: 0, y: 0, k: 1 })}>
+        <button className="btn-ghost absolute bottom-2 left-2" onClick={() => setView({ x: 0, y: 0, k: 1 })}>
           Re-centre
         </button>
       )}

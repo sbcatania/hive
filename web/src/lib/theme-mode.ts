@@ -10,22 +10,52 @@ export function loadThemeMode(): ThemeMode {
   return "system";
 }
 
-export function applyThemeMode(mode: ThemeMode) {
+/** Switches day/night. The change crossfades (a view transition where supported). A
+ * home-screen app picks its status bar once, at launch, so if day/night actually
+ * changed there it then relaunches (instant from the offline cache) behind a cover in
+ * the new paper colour, reopening whatever `reopen` names (e.g. the menu). */
+export function applyThemeMode(mode: ThemeMode, opts: { reopen?: string } = {}) {
   try {
     localStorage.setItem(KEY, mode);
   } catch {}
   const dark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  const was = document.documentElement.dataset.theme;
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
-  window.dispatchEvent(new Event("hive-theme"));
-  syncChrome();
-  // A home-screen app picks its status bar once, at launch. If day/night actually
-  // changed, relaunch the page (instant from the offline cache) so the bar matches.
-  if (was && was !== document.documentElement.dataset.theme && isHomeScreenApp()) {
+  const next = dark ? "dark" : "light";
+  const root = document.documentElement;
+  const changed = root.dataset.theme !== next;
+  const flip = () => {
+    root.dataset.theme = next;
+    window.dispatchEvent(new Event("hive-theme"));
+    syncChrome();
+  };
+  const relaunch = () => {
+    if (!changed || !isHomeScreenApp()) return;
     try {
       sessionStorage.setItem("hive.launched", "1");
+      sessionStorage.setItem(COVER, "1");
+      if (opts.reopen) sessionStorage.setItem(REOPEN, opts.reopen);
     } catch {}
     location.reload();
+  };
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
+  if (changed && doc.startViewTransition && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    doc.startViewTransition(flip).finished.then(relaunch, relaunch);
+  } else {
+    flip();
+    relaunch();
+  }
+}
+
+const COVER = "hive.theme-cover";
+const REOPEN = "hive.reopen";
+
+/** What to reopen after a theme relaunch (read once). */
+export function takeReopen(): string | null {
+  try {
+    const v = sessionStorage.getItem(REOPEN);
+    sessionStorage.removeItem(REOPEN);
+    return v;
+  } catch {
+    return null;
   }
 }
 
@@ -39,7 +69,7 @@ export function isHomeScreenApp() {
  * It also picks the iOS home-screen status bar style, which iOS reads once at launch:
  * at night the page shows through behind white status text ("black-translucent"); by
  * day it's the standard white bar with dark text, which matches the white paper. */
-export const THEME_BOOT_SCRIPT = `(function(){try{var m=localStorage.getItem("${KEY}")||"system";var d=m==="dark"||(m==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";var s=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(!s){s=document.createElement("meta");s.name="apple-mobile-web-app-status-bar-style";document.head.appendChild(s);}s.content=d?"black-translucent":"default";if(sessionStorage.getItem("hive.launched"))document.documentElement.classList.add("relaunch");else sessionStorage.setItem("hive.launched","1");}catch(e){document.documentElement.dataset.theme="light";}})();`;
+export const THEME_BOOT_SCRIPT = `(function(){try{var m=localStorage.getItem("${KEY}")||"system";var d=m==="dark"||(m==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";var s=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(!s){s=document.createElement("meta");s.name="apple-mobile-web-app-status-bar-style";document.head.appendChild(s);}s.content=d?"black-translucent":"default";if(sessionStorage.getItem("hive.launched"))document.documentElement.classList.add("relaunch");else sessionStorage.setItem("hive.launched","1");if(sessionStorage.getItem("${COVER}")){sessionStorage.removeItem("${COVER}");document.documentElement.classList.add("theme-cover");}}catch(e){document.documentElement.dataset.theme="light";}})();`;
 
 /** Current resolved theme ("light" | "dark"). */
 export function currentTheme(): "light" | "dark" {
