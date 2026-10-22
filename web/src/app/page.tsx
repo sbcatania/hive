@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdvancedRules, ExpansionToggles } from "@/components/RulesEditor";
-import { useAppScreen } from "@/lib/app-screen";
+import { PHONE_QUERY, useAppScreen } from "@/lib/app-screen";
 import { Icon } from "@/components/Icon";
 import { ClockIcon, ComputerIcon, LevelPips, OnlineIcon, PassIcon } from "@/components/SetupIcons";
 import { useAuth } from "@/lib/auth";
@@ -44,7 +44,7 @@ export default function Home() {
   const [recent, setRecent] = useState<JournalEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useAppScreen(639);
+  useAppScreen(PHONE_QUERY);
 
   useEffect(() => {
     migrateLegacySave();
@@ -146,18 +146,18 @@ export default function Home() {
   );
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col px-4 max-sm:h-[calc(100dvh-var(--header-h))] sm:pb-16">
-      <section className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-3 pb-1 sm:pt-10 sm:pb-2">
-        <p className="hidden max-w-md text-lg text-ink-soft sm:block">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
+    <div className="mx-auto flex max-w-5xl flex-col px-4 sm:pb-16 phone:h-[calc(100dvh-var(--header-h))] phone:pb-0">
+      <section className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-3 pb-1 sm:pt-10 sm:pb-2 phone:pt-2 phone:pb-1">
+        <p className="hidden max-w-md text-lg text-ink-soft sm:block phone:hidden">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
         <div className="flex w-full items-center justify-between gap-x-4 sm:w-auto sm:justify-end">
-          <Link href="/learn" className="font-hand text-xl md:hidden text-ink underline decoration-line-strong decoration-1 underline-offset-4">
+          <Link href="/learn" className="-my-2 py-2 font-hand text-xl md:hidden [@media(orientation:landscape)_and_(max-height:540px)]:hidden text-ink underline">
             How to play
           </Link>
-          <Link href="/puzzles" className="font-hand text-xl md:hidden text-ink underline decoration-line-strong decoration-1 underline-offset-4">
+          <Link href="/puzzles" className="-my-2 py-2 font-hand text-xl md:hidden [@media(orientation:landscape)_and_(max-height:540px)]:hidden text-ink underline">
             Puzzles
           </Link>
           {resume && (
-            <Link href={`/play?id=${resume.id}`} className="btn ml-auto max-sm:!min-h-10 max-sm:!px-3 sm:ml-0">
+            <Link href={`/play?id=${resume.id}`} className="btn ml-auto sm:ml-0 phone:!min-h-10 phone:!px-3">
               <Icon name="play" size={18} />
               Continue
             </Link>
@@ -165,9 +165,9 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card relative mt-2 !p-0 max-sm:min-h-0 max-sm:flex-1 sm:mt-4">
-        <div className="scroll-fade space-y-5 p-4 max-sm:absolute max-sm:inset-[3px] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pb-8 sm:space-y-6 sm:p-7">
-        <h2 className="hidden font-display text-2xl font-semibold sm:block">New game</h2>
+      <section className="card relative mt-2 !p-0 sm:mt-4 phone:mt-1 phone:min-h-0 phone:flex-1">
+        <div className="scroll-fade space-y-5 p-4 sm:space-y-6 sm:p-7 phone:absolute phone:inset-[3px] phone:space-y-5 phone:overflow-y-auto phone:overscroll-contain phone:p-4 phone:pb-8">
+        <h2 className="hidden font-display text-2xl font-semibold sm:block phone:hidden">New game</h2>
 
         <div>
           <span className="label">Opponent</span>
@@ -235,13 +235,13 @@ export default function Home() {
 
         {prefs.mode === "online" && !onlineAvailable() && <p className="note-error">Online play isn&apos;t configured on this deployment.</p>}
         {error && <p className="note-error">{error}</p>}
-        <button className="btn-accent hidden !min-h-14 !px-10 !text-lg sm:inline-flex" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
+        <button className="btn-accent hidden !min-h-14 !px-10 !text-lg sm:inline-flex phone:hidden" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
           {startLabel}
         </button>
         </div>
       </section>
 
-      <div className="z-10 -mx-4 shrink-0 bg-paper px-4 pt-2 sm:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}>
+      <div className="z-10 -mx-4 hidden shrink-0 bg-paper px-4 pt-2 phone:block" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}>
         <button className="btn-accent w-full !min-h-14 !text-lg" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
           {startLabel}
         </button>
@@ -249,7 +249,7 @@ export default function Home() {
 
 
       {recent.length > 0 && (
-        <section className="mt-8 hidden sm:block">
+        <section className="mt-8 hidden sm:block phone:hidden">
           <div className="flex items-baseline justify-between">
             <span className="label mb-0">Recent games</span>
             <Link href="/journal" className="font-hand text-lg text-ink-soft underline decoration-accent underline-offset-4">

@@ -53,12 +53,9 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
     return () => ai.current?.terminate();
   }, []);
 
-  useEffect(() => {
-    setMoves(puzzle.moves);
-    setPhase("solve");
-    setSelected(null);
-    setMessage(null);
-  }, [puzzle]);
+  // Undoes a wrong answer after a pause; cleared if the player restarts or leaves.
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(undoTimer.current), []);
 
   const state: StateView = useMemo(() => withEngine(rules, moves, (e) => e.state()), [rules, moves]);
   const solver: ColorCode = puzzle.moves.length % 2 === 0 ? "w" : "b";
@@ -73,7 +70,8 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
     (msg: string) => {
       setPhase("wrong");
       setMessage(msg);
-      setTimeout(() => {
+      clearTimeout(undoTimer.current);
+      undoTimer.current = setTimeout(() => {
         setMoves(puzzle.moves);
         setPhase("solve");
       }, 1700);
@@ -131,29 +129,23 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 lg:block lg:space-y-3">
-      <div className={`card flex shrink-0 items-center justify-between gap-3 !px-3 !py-2 lg:!px-4 lg:!py-3 ${phase === "solved" ? "[--bc:var(--move)] [--fill:color-mix(in_oklab,var(--move)_12%,var(--card))]" : phase === "wrong" ? "[--bc:var(--danger)] [--fill:color-mix(in_oklab,var(--danger)_10%,var(--card))]" : ""}`}>
+    <div className="pz-wrap flex min-h-0 flex-1 flex-col gap-2 lg:block lg:space-y-3">
+      <div className={`pz-prompt card flex shrink-0 items-center justify-between gap-3 !px-3 !py-2 lg:!px-4 lg:!py-3 ${phase === "solved" ? "[--bc:var(--move)] [--fill:color-mix(in_oklab,var(--move)_12%,var(--card))]" : phase === "wrong" ? "[--bc:var(--danger)] [--fill:color-mix(in_oklab,var(--danger)_10%,var(--card))]" : ""}`}>
         <div>
           <div className="font-display text-lg font-semibold lg:text-xl">
             {colorName(solver)} to play and win in {puzzle.kind === "win1" ? "one" : "two"}
           </div>
           <div className="text-[0.85rem] text-ink-soft lg:text-sm">{message ?? (puzzle.kind === "win1" ? "Find the move that completes the surround." : "Find a move after which every defence loses.")}</div>
         </div>
-        {phase === "solved" && (
-          <button className="btn shrink-0" onClick={onNext}>
-            Next puzzle
-            <Icon name="next" size={18} />
-          </button>
-        )}
       </div>
-      <div className="card relative min-h-0 flex-1 !p-0 [--fill:transparent] lg:h-[52vh] lg:min-h-80 lg:flex-none">
+      <div className="pz-board card relative min-h-0 flex-1 !p-0 [--fill:transparent] lg:h-[52vh] lg:min-h-80 lg:flex-none">
         <div className="sk-lg absolute inset-[3px] overflow-hidden">
         <Board2D state={state} selected={selected} targets={targets} theme={theme} selectable={selectable} onPieceClick={onPieceClick} onTargetClick={play} onBackgroundClick={() => setSelected(null)} hideLastMove={moves.length === puzzle.moves.length} />
         </div>
       </div>
-      <HandPanel className="shrink-0" color={solver} hand={state.hands[solver === "w" ? 0 : 1]} selected={selected} placeable={placeable} onSelect={(n) => setSelected(n === selected ? null : n)} />
-      <div className="flex shrink-0 gap-2" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }}>
-        <button className="btn-secondary" onClick={() => (setMoves(puzzle.moves), setPhase("solve"), setMessage(null))}>
+      <HandPanel className="pz-hand shrink-0" color={solver} hand={state.hands[solver === "w" ? 0 : 1]} selected={selected} placeable={placeable} onSelect={(n) => setSelected(n === selected ? null : n)} />
+      <div className="pz-actions flex shrink-0 flex-wrap gap-2" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }}>
+        <button className="btn-secondary" onClick={() => (clearTimeout(undoTimer.current), setMoves(puzzle.moves), setPhase("solve"), setMessage(null))}>
           <Icon name="refresh" size={16} />
           Restart
         </button>
@@ -165,6 +157,12 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
           <Icon name="hint" size={16} />
           Hint
         </button>
+        {phase === "solved" && (
+          <button className="btn ml-auto" onClick={onNext}>
+            Next puzzle
+            <Icon name="next" size={18} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -217,14 +215,14 @@ export default function PuzzlesPage() {
   );
   const step = (d: number) => setCurrent((c) => (c + d + LIST.length) % LIST.length);
   return (
-    <div className="mx-auto max-w-6xl px-3 pt-2 max-lg:flex max-lg:h-[calc(100dvh-var(--header-h))] max-lg:flex-col lg:px-4 lg:py-8">
+    <div className="pz-page mx-auto max-w-6xl px-3 pt-2 max-lg:flex max-lg:h-[calc(100dvh-var(--header-h))] max-lg:flex-col lg:px-4 lg:py-8">
       <div className="hidden lg:block">
         <h1 className="font-display text-4xl font-semibold">Puzzles</h1>
         <p className="mt-1 text-sm text-ink-soft">
           Real positions from engine games, checked by the engine. {solved.size} of {LIST.length} solved. New to the rules? <Link href="/learn" className="underline">Read how to play</Link>.
         </p>
       </div>
-      <div className="mb-2 flex shrink-0 items-center gap-2 lg:hidden">
+      <div className="pz-nav mb-2 flex shrink-0 items-center gap-2 lg:hidden">
         <button className="icon-btn !h-10 !w-10 [--fill:transparent]" onClick={() => step(-1)} aria-label="Previous puzzle">
           <Icon name="prev" />
         </button>
@@ -239,12 +237,12 @@ export default function PuzzlesPage() {
           <Icon name="next" />
         </button>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col lg:mt-6 lg:grid lg:grid-cols-[16rem_1fr] lg:gap-6">
+      <div className="pz-wrap flex min-h-0 flex-1 flex-col lg:mt-6 lg:grid lg:grid-cols-[16rem_1fr] lg:gap-6">
         <div className="hidden lg:block">{grid}</div>
         {ready && p ? (
-          <PuzzlePlayer puzzle={p} onSolved={() => markSolved(p.id)} onNext={() => step(1)} />
+          <PuzzlePlayer key={p.id} puzzle={p} onSolved={() => markSolved(p.id)} onNext={() => step(1)} />
         ) : (
-          <div className="min-h-0 flex-1 animate-pulse sk-lg bg-card-2 lg:h-[52vh]" />
+          <div className="pz-board min-h-0 flex-1 sk-lg bg-card-2 lg:h-[52vh]" />
         )}
       </div>
       <Sheet open={list} onClose={() => setList(false)} title="Puzzles">

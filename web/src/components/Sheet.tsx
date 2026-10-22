@@ -99,8 +99,9 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
           mode = "scroll";
           return;
         }
+        // Measure from where the finger landed, so the sheet sits under it rather
+        // than trailing by the distance it took to decide.
         mode = "drag";
-        startY = cy;
       }
       e.preventDefault();
       const d = cy - startY;
@@ -143,6 +144,8 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
       {/* The dim stops at the header: in a home-screen app the status bar can't dim with the
           page, so the header (which sits under it) stays bright too and the two always match. */}
       <div ref={dim} className="absolute inset-x-0 top-[var(--header-h)] bottom-0 touch-none bg-black/35" style={{ opacity: 0 }} onClick={() => closeRef.current()} />
+      {/* Undimmed, but still part of the backdrop: a drag here mustn't scroll the page. */}
+      <div className="absolute inset-x-0 top-0 h-[var(--header-h)] touch-none" onClick={() => closeRef.current()} />
       <div
         ref={panel}
         role="dialog"

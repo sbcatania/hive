@@ -72,7 +72,7 @@ type Gesture =
   | { kind: "drag"; id: number; piece: string; lift: number }
   | { kind: "pinch"; d0: number; k0: number; mx0: number; my0: number; vx0: number; vy0: number };
 
-export default function Board2D({ state, selected, targets, previewTargets = [], hint, onPieceClick, onTargetClick, onBackgroundClick, theme, selectable, hideLastMove, onDragChange }: BoardProps) {
+export default function Board2D({ state, selected, targets, previewTargets = [], hint, onPieceClick, onTargetClick, onBackgroundClick, theme, selectable, hideLastMove, onDragChange, fixed }: BoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const layerRef = useRef<SVGGElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
@@ -130,8 +130,12 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
     // Frame the hive plus one ring of cells: every legal move lands next to it.
     const w = Math.max(maxX - minX + S * (2 * SQ3 + 2), minW);
     const h = Math.max(maxY - minY + S * 5, minH);
-    return { cells, viewBox: [cx - w / 2, cy - h / 2, w, h] as const };
-  }, [state, narrow]);
+    // Extra room above for the status note and below for the selection card, both of
+    // which sit over the board's edges.
+    const top = fixed ? 0 : S * 1.1;
+    const bottom = fixed ? 0 : S * 0.9;
+    return { cells, viewBox: [cx - w / 2, cy - h / 2 - top, w, h + top + bottom] as const };
+  }, [state, narrow, fixed]);
 
   const pieceItems = useMemo(() => {
     const items: { p: PieceView; x: number; y: number; height: number; names: string[] }[] = [];
@@ -230,6 +234,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   }
 
   function onWheel(e: React.WheelEvent) {
+    if (fixed) return;
     const p = rel(e.clientX, e.clientY);
     setView((v) => zoomAt(p.x, p.y, v.k * Math.exp(-e.deltaY * 0.0015), v));
   }
@@ -237,7 +242,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     svgRef.current?.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size === 2) {
+    if (pointers.current.size === 2 && !fixed) {
       const [a, b] = [...pointers.current.values()];
       const m = rel((a.x + b.x) / 2, (a.y + b.y) / 2);
       setGhost(null);
@@ -278,6 +283,8 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
         moveGhost(e.clientX, e.clientY);
         setGhost({ piece, size: dragBox.current.size });
         buzz();
+      } else if (fixed) {
+        gesture.current = { kind: "idle" };
       } else {
         gesture.current = { kind: "pan", id: e.pointerId, x: g.x, y: g.y, vx: g.vx, vy: g.vy };
       }
@@ -335,7 +342,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
         onPieceClick(piece);
       } else {
         const now = Date.now();
-        if (now - lastTap.current < 320) setView({ x: 0, y: 0, k: 1 });
+        if (now - lastTap.current < 320 && !fixed) setView({ x: 0, y: 0, k: 1 });
         lastTap.current = now;
         onBackgroundClick?.();
       }
@@ -357,7 +364,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
     <div ref={boxRef} className={`relative h-full w-full overflow-hidden select-none board-paper`}>
       <svg
         ref={svgRef}
-        className="h-full w-full touch-none overflow-visible [transform-origin:50%_50%]"
+        className={`h-full w-full overflow-visible [transform-origin:50%_50%] ${fixed ? "touch-pan-y" : "touch-none"}`}
         data-dragging={dragging ? "" : undefined}
         viewBox={viewBox.join(" ")}
         preserveAspectRatio="xMidYMid meet"

@@ -100,11 +100,11 @@ function AuthForms() {
         </form>
         <div className="mt-4 text-center text-xs text-muted">
           {tab === "reset" ? (
-            <button className="underline" onClick={() => setTab("signin")}>
+            <button className="inline-block py-2 underline" onClick={() => setTab("signin")}>
               Back to sign in
             </button>
           ) : tab === "signin" ? (
-            <button className="underline" onClick={() => (setTab("reset"), setMsg(null))}>
+            <button className="inline-block py-2 underline" onClick={() => (setTab("reset"), setMsg(null))}>
               Forgot your password?
             </button>
           ) : null}

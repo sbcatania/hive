@@ -13,6 +13,16 @@
    See docs/DESIGN.md (rounds 5-7). */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* Phone-sized screens in either orientation: portrait phones, and phones held
+   sideways (wide but short). Declared after the breakpoints, so it wins over sm:. */
+@custom-variant phone {
+  @media (max-width: 639px) {
+    @slot;
+  }
+  @media (orientation: landscape) and (max-height: 540px) {
+    @slot;
+  }
+}
 
 :root {
   color-scheme: light;
@@ -125,6 +135,11 @@ body {
     --header-h: calc(4rem + env(safe-area-inset-top));
   }
 }
+@media (orientation: landscape) and (max-height: 540px) {
+  :root {
+    --header-h: 3.25rem;
+  }
+}
 
 /* Game, puzzle and replay screens fill the viewport like a native app: the page
    never scrolls, bounces or pull-to-refreshes, and long presses don't select. */
@@ -161,6 +176,10 @@ body {
   font-family: var(--font-sans);
   font-size: 16.5px;
   -webkit-font-smoothing: antialiased;
+  /* A phone held sideways: keep everything clear of the camera cutout and the
+     rounded corners (zero in portrait and on desktops). */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Paper fibres over the whole page. */
@@ -256,8 +275,8 @@ nav a {
    concentric to the phone's rounded screen (screen radius minus the inset). */
 .sheet-panel {
   --inset: 8px;
-  left: var(--inset);
-  right: var(--inset);
+  left: max(var(--inset), env(safe-area-inset-left));
+  right: max(var(--inset), env(safe-area-inset-right));
   bottom: var(--inset);
   margin: 0 auto;
   max-width: 34rem;
@@ -487,6 +506,43 @@ input[type="range"]::-moz-range-thumb {
     flex-wrap: wrap;
     overflow: visible;
     row-gap: 2px;
+  }
+}
+
+/* Puzzles on a phone held sideways: the same split, board left, everything else in a
+   column on the right. The page's nested wrappers dissolve into one grid. */
+@media (orientation: landscape) and (max-height: 540px) and (max-width: 1023px) {
+  .pz-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18.5rem;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    column-gap: 0.5rem;
+    row-gap: 0.4rem;
+  }
+  .pz-wrap {
+    display: contents;
+  }
+  .pz-board {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+  .pz-nav {
+    grid-column: 2;
+    grid-row: 1;
+    margin-bottom: 0;
+  }
+  .pz-prompt {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .pz-hand {
+    grid-column: 2;
+    grid-row: 4;
+    flex-wrap: wrap;
+  }
+  .pz-actions {
+    grid-column: 2;
+    grid-row: 5;
   }
 }
 

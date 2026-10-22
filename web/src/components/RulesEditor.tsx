@@ -51,11 +51,11 @@ function OfficialMark() {
 function Stepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
     <div className="inline-flex items-center">
-      <button className="grid h-9 w-8 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label="Fewer">
+      <button className="grid h-10 w-8 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label="Fewer">
         <Icon name="minus" size={16} />
       </button>
       <span className="w-5 text-center text-sm font-semibold tabular-nums">{value}</span>
-      <button className="grid h-9 w-8 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="More">
+      <button className="grid h-10 w-8 place-items-center text-ink-soft hover:text-ink disabled:opacity-30" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label="More">
         <Icon name="plus" size={16} />
       </button>
     </div>
@@ -107,7 +107,7 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
             <div className="font-medium">Queen must be placed by turn</div>
             <div className="mt-1 seg">
               {[2, 3, 4, 5, 6].map((n) => (
-                <button key={n} aria-pressed={rules.queenDeadline === n} disabled={n < 2 && rules.tournament} onClick={() => onChange({ ...rules, queenDeadline: n })}>
+                <button key={n} className="min-w-10" aria-pressed={rules.queenDeadline === n} disabled={n < 2 && rules.tournament} onClick={() => onChange({ ...rules, queenDeadline: n })}>
                   {n}
                   {n === 4 && <OfficialMark />}
                 </button>
@@ -140,14 +140,14 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
 
         <div>
           <span className="label">Pieces per player</span>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:grid-cols-4">
             {BUG_ORDER.map((b, i) => {
               const on = expOn(b);
               return (
                 <div key={b} className={`pencil pencil-clear flex items-center justify-between gap-2 px-2 py-1.5 ${on ? "" : "opacity-40"}`}>
                   <div className="flex min-w-0 items-center gap-1.5">
                     <Tile bug={b} size={28} />
-                    <span className="truncate text-xs font-medium max-sm:hidden">{BUG_NAMES[b]}</span>
+                    <span className="truncate text-xs font-medium min-[360px]:max-sm:hidden">{BUG_NAMES[b]}</span>
                   </div>
                   {b === "Q" ? (
                     <span className="px-2 text-sm font-semibold">1</span>

@@ -380,7 +380,7 @@ function LocalGame() {
         {entry.clock?.baseMs ? `, ${entry.clock.baseMs / 60000} min + ${entry.clock.incMs / 1000}s clock` : ""}
         {entry.mode === "cpu" ? `. Help used: ${assistText(entry)}` : ""}
       </span>
-      <button className="inline-flex items-center gap-1 underline hover:text-ink" onClick={copyGame}>
+      <button className="inline-flex min-h-10 items-center gap-1 underline hover:text-ink" onClick={copyGame}>
         <Icon name={copied ? "check" : "copy"} size={14} />
         {copied ? "Copied" : "Copy notation"}
       </button>

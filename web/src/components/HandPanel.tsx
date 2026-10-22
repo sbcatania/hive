@@ -13,11 +13,15 @@ interface Props {
   className?: string;
 }
 
-/** The tray of unplayed pieces for one player. Any piece can be tapped to inspect it. */
+/** The tray of unplayed pieces for one player. Any piece can be tapped to inspect it.
+ * On phones the tiles shrink to share the row, so every bug is always visible (a tray
+ * that scrolled sideways hid the expansion pieces). On the narrowest phones your own
+ * tray wraps six to a row instead, so the tiles stay big enough to tap. */
 export function HandPanel({ color, hand, selected, placeable, onSelect, small, className }: Props) {
   const left = hand.reduce((n, h) => n + h.count, 0);
   return (
-    <div className={`-mx-1 flex items-center gap-0.5 overflow-x-auto overscroll-x-contain px-1 pt-1.5 pb-0.5 [scrollbar-width:none] ${className ?? ""}`} aria-label={`${color === "w" ? "White" : "Black"} pieces in hand`}>
+    <div className={`@container min-w-0 ${className ?? ""}`}>
+    <div className={`-mx-1 flex items-center gap-0.5 px-1 pt-1.5 pb-0.5 lg:flex-wrap ${small ? "" : "@max-[15rem]:flex-wrap @max-[15rem]:gap-y-1"}`} aria-label={`${color === "w" ? "White" : "Black"} pieces in hand`}>
       {left > 0 && hand.map((h, i) => {
         const name = h.next;
         const can = !!name && placeable.has(name);
@@ -29,9 +33,9 @@ export function HandPanel({ color, hand, selected, placeable, onSelect, small, c
             onClick={() => name && onSelect?.(name)}
             aria-label={`${BUG_NAMES[h.bug]}, ${h.count} left${can ? ", tap to place" : ""}`}
             aria-pressed={sel}
-            className={`relative grid shrink-0 place-items-center transition-transform ${small ? "h-9 w-9 lg:h-12 lg:w-12" : "h-11 w-11 lg:h-12 lg:w-12"} ${h.count === 0 ? "opacity-20" : ""} ${name && onSelect ? "cursor-pointer active:scale-95" : "cursor-default"} ${sel ? "-translate-y-1.5" : ""}`}
+            className={`relative grid aspect-square place-items-center transition-transform lg:h-12 lg:w-12 lg:flex-none ${small ? "min-w-0 flex-[0_1_2.25rem]" : "min-w-0 flex-[0_1_2.75rem] @max-[15rem]:w-[calc((100%-0.625rem)/6)] @max-[15rem]:flex-none"} ${h.count === 0 ? "opacity-20" : ""} ${name && onSelect ? "cursor-pointer active:scale-95" : "cursor-default"} ${sel ? "-translate-y-1.5" : ""}`}
           >
-            <svg viewBox="-50 -50 100 100" className={`overflow-visible ${small ? "h-8 w-8 lg:h-11 lg:w-11" : "h-10 w-10 lg:h-11 lg:w-11"}`}>
+            <svg viewBox="-50 -50 100 100" className="h-[90%] w-[90%] overflow-visible lg:h-11 lg:w-11">
               <PieceTile bug={h.bug} color={color} x={0} y={0} size={42} seed={i * 7 + (color === "w" ? 1 : 2)} />
               {(sel || can) && (
                 <path
@@ -54,6 +58,7 @@ export function HandPanel({ color, hand, selected, placeable, onSelect, small, c
         );
       })}
       {left === 0 && <span className="hand-note px-1 !text-base whitespace-nowrap">all pieces in play</span>}
+    </div>
     </div>
   );
 }

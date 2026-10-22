@@ -20,4 +20,7 @@ export interface BoardProps {
   onDragChange?: (dragging: boolean) => void;
   /** Hide the last-move highlight (e.g. for demos). */
   hideLastMove?: boolean;
+  /** A board embedded in a scrolling page: no pan or zoom, so swipes scroll the page
+   * and only taps reach the board. */
+  fixed?: boolean;
 }

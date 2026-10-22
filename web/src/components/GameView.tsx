@@ -248,7 +248,9 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
           {analysis && !wide && <div className="eval-compact pointer-events-none absolute top-2 right-2 w-[44%] lg:hidden">{analysis}</div>}
           {sel && (
             <div className={`rise pointer-events-none absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm`}>
-              <div className={`pointer-events-auto flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} pencil pencil-strong py-1.5 pr-1 pl-3 text-sm sm:py-2`}>
+              {/* Taps pass through the card to any move target under it; only the close
+                  button catches them. */}
+              <div className={`flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} pencil pencil-strong py-1.5 pr-1 pl-3 text-sm sm:py-2`}>
                 <div className="min-w-0 flex-1 py-0.5">
                   <div className="font-semibold">
                     {sel.label}
@@ -261,7 +263,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
                         {targets.length} legal {inHand ? "placement" : "move"}
                         {targets.length === 1 ? "" : "s"}
                         {sel.color !== state.toMove ? " for your Pillbug to throw it" : ""}
-                        <span className="text-muted">Tap one or drag the piece.</span>
+                        <span className="text-muted max-sm:hidden">Tap one or drag the piece.</span>
                       </li>
                     )}
                     {previewTargets.length > 0 && (
@@ -273,7 +275,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
                     {preview?.reason && targets.length === 0 && <li className="text-ink">{preview.reason}</li>}
                   </ul>
                 </div>
-                <button className="grid h-10 w-10 shrink-0 place-items-center text-muted hover:text-ink" onClick={() => setSelected(null)} aria-label="Close">
+                <button className="pointer-events-auto grid h-10 w-10 shrink-0 place-items-center text-muted hover:text-ink" onClick={() => setSelected(null)} aria-label="Close">
                   <Icon name="close" />
                 </button>
               </div>
