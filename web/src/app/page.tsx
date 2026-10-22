@@ -151,7 +151,7 @@ export default function Home() {
         <p className="hidden max-w-md text-lg text-ink-soft sm:block phone:hidden">No board, no luck, just bugs. Surround the other Queen Bee before yours is surrounded.</p>
         <div className="flex w-full items-center justify-between gap-x-4 sm:w-auto sm:justify-end">
           <Link href="/learn" className="-my-2 py-2 font-hand text-xl md:hidden [@media(orientation:landscape)_and_(max-height:540px)]:hidden text-ink underline">
-            How to play
+            Instructions
           </Link>
           <Link href="/puzzles" className="-my-2 py-2 font-hand text-xl md:hidden [@media(orientation:landscape)_and_(max-height:540px)]:hidden text-ink underline">
             Puzzles
@@ -243,7 +243,7 @@ export default function Home() {
       </section>
 
       <div className="z-10 -mx-4 hidden shrink-0 bg-paper px-4 pt-2 phone:block" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}>
-        <button className="btn-accent w-full !min-h-14 !text-lg" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
+        <button className="btn-accent pencil-pill w-full !min-h-14 !text-lg" disabled={busy || (prefs.mode === "online" && !onlineAvailable())} onClick={start}>
           {startLabel}
         </button>
       </div>

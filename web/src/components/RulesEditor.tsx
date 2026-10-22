@@ -4,17 +4,23 @@ import { MiniTile } from "./PieceTile";
 import { BUG_NAMES, BUG_ORDER, STANDARD_COUNTS, type BugLetter, type Rules } from "@/lib/engine-types";
 import { describeVariants, PRESETS } from "@/lib/variants";
 import { Icon } from "./Icon";
+import { PresetIcon } from "./SetupIcons";
+import { useState } from "react";
 
 function Tile({ bug, size = 36, off }: { bug: BugLetter; size?: number; off?: boolean }) {
   return <MiniTile bug={bug} size={size} seed={bug.charCodeAt(0)} className={off ? "opacity-30 grayscale" : ""} />;
 }
 
 export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: (r: Rules) => void }) {
-  const items: { key: "mosquito" | "ladybug" | "pillbug"; bug: BugLetter; text: string }[] = [
-    { key: "mosquito", bug: "M", text: "Copies any bug it touches" },
-    { key: "ladybug", bug: "L", text: "Two steps over the top, one down" },
-    { key: "pillbug", bug: "P", text: "Lifts neighbours over itself" },
+  // Each bug comes to life its own way when switched on: the mosquito buzzes, the
+  // ladybug hops, the pillbug rolls. Switched off, it nods off.
+  const items: { key: "mosquito" | "ladybug" | "pillbug"; bug: BugLetter; text: string; wake: string }[] = [
+    { key: "mosquito", bug: "M", text: "Copies any bug it touches", wake: "anim-buzz" },
+    { key: "ladybug", bug: "L", text: "Two steps over the top, one down", wake: "anim-hop" },
+    { key: "pillbug", bug: "P", text: "Lifts neighbours over itself", wake: "anim-roll" },
   ];
+  // Only animate after a tap, not when the screen first appears.
+  const [touched, setTouched] = useState<string | null>(null);
   return (
     <div className="grid grid-cols-3 gap-2">
       {items.map((x) => {
@@ -22,11 +28,16 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
         return (
           <button
             key={x.key}
-            onClick={() => onChange({ ...rules, [x.key]: !on })}
+            onClick={() => {
+              setTouched(x.key);
+              onChange({ ...rules, [x.key]: !on });
+            }}
             aria-pressed={on}
             className={`pencil flex flex-col items-center gap-1 px-1 py-2 text-center text-sm transition sm:flex-row sm:gap-3 sm:p-2.5 sm:text-left ${on ? "pencil-honey" : "pencil-clear pencil-dashed"}`}
           >
-            <Tile bug={x.bug} off={!on} />
+            <span key={on ? "on" : "off"} className={`inline-block ${touched === x.key ? (on ? x.wake : "anim-doze") : ""}`}>
+              <Tile bug={x.bug} off={!on} />
+            </span>
             <div className="min-w-0">
               <div className="flex h-6 items-center justify-center gap-1 leading-none font-semibold sm:justify-start sm:gap-2">
                 {BUG_NAMES[x.bug]}
@@ -78,11 +89,14 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
       <div className="space-y-5 border-t border-dashed border-line-strong px-4 py-4">
         <div>
           <span className="label">Presets</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             {PRESETS.map((p) => (
-              <button key={p.id} className="pencil px-3 py-2 text-left text-sm transition hover:[--fill:var(--card-2)]" onClick={() => onChange(p.apply(rules))}>
-                <div className="font-semibold">{p.name}</div>
-                <div className="max-w-52 text-xs text-muted">{p.blurb}</div>
+              <button key={p.id} className="pencil flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition hover:[--fill:var(--card-2)]" onClick={() => onChange(p.apply(rules))}>
+                <PresetIcon id={p.id} />
+                <span className="min-w-0">
+                  <span className="block font-semibold">{p.name}</span>
+                  <span className="block text-xs text-muted">{p.blurb}</span>
+                </span>
               </button>
             ))}
           </div>

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./sketch-frames.css";
 
 /* A naturalist's sketchbook, drawn by hand throughout.
    Day: graphite ink on white sketchbook paper. Night: chalk and coloured pencil
@@ -271,8 +272,9 @@ nav a {
 
 /* ---- Pencil surfaces ------------------------------------------------------ */
 
-/* Bottom sheets float like iOS 26 sheets: inset from the screen edges, with corners
-   concentric to the phone's rounded screen (screen radius minus the inset). */
+/* Bottom sheets float like iOS 26 sheets: inset from the screen edges, with one even
+   corner radius concentric to the phone's rounded screen (its radius minus the inset).
+   --screen-r is set per iPhone model by NativeFeel; elsewhere a soft default. */
 .sheet-panel {
   --inset: 8px;
   left: max(var(--inset), env(safe-area-inset-left));
@@ -282,7 +284,7 @@ nav a {
   max-width: 34rem;
   background: var(--paper);
   border: 1.8px solid var(--ink-soft);
-  border-radius: 42px 38px 44px 40px / 40px 44px 38px 42px;
+  border-radius: max(22px, calc(var(--screen-r, 38px) - var(--inset)));
   padding-bottom: max(calc(env(safe-area-inset-bottom) - var(--inset)), 10px);
   will-change: transform;
   contain: layout paint;
@@ -501,28 +503,32 @@ input[type="range"]::-moz-range-thumb {
   .game-col {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 18.5rem;
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
     column-gap: 0.5rem;
   }
   .gv-board {
     grid-column: 1;
     grid-row: 1 / -1;
   }
-  .gv-top {
+  .gv-back {
     grid-column: 2;
     grid-row: 1;
   }
-  .gv-notice {
+  .gv-top {
     grid-column: 2;
     grid-row: 2;
   }
+  .gv-notice {
+    grid-column: 2;
+    grid-row: 3;
+  }
   .gv-bar {
     grid-column: 2;
-    grid-row: 4;
+    grid-row: 5;
   }
   .gv-bottom {
     grid-column: 2;
-    grid-row: 5;
+    grid-row: 6;
   }
   /* The trays wrap onto two rows rather than scrolling off the side. */
   .gv-top [aria-label$="pieces in hand"],
@@ -677,7 +683,11 @@ html.theme-cover body::after {
   animation-duration: 320ms;
 }
 
-/* Home-screen launch: matches the launch image, then fades away. */
+/* Home-screen launch: the first frame repeats the launch image (the wordmark centred
+   on paper). Then the wordmark glides up and shrinks into the header's logo, exactly
+   onto it, while the paper behind it clears to reveal the app: one continuous motion,
+   like an iOS app opening. The target (--tx, --ty, --s) is measured by LAUNCH_SCRIPT
+   before first paint; without it (.launch:not(.fly)) the splash simply fades. */
 .launch {
   display: none;
 }
@@ -690,39 +700,58 @@ html.theme-cover body::after {
     place-items: center;
     background: var(--paper);
     pointer-events: none;
-    animation: launch-out 650ms cubic-bezier(0.32, 0.72, 0, 1) 900ms forwards;
+    animation:
+      launch-clear 420ms cubic-bezier(0.32, 0.72, 0, 1) 300ms forwards,
+      launch-done 0s linear 900ms forwards;
   }
   html:not(.relaunch) .launch-mark {
     width: 62vw;
     height: auto;
-    animation: launch-mark 650ms cubic-bezier(0.32, 0.72, 0, 1) 900ms forwards;
-  }
-  /* The Queen settles against the hive while the app loads underneath. */
-  html:not(.relaunch) .launch-mark .launch-queen {
-    transform-box: fill-box;
     transform-origin: center;
-    animation: launch-queen 700ms cubic-bezier(0.34, 1.4, 0.64, 1) 120ms both;
+  }
+  html:not(.relaunch) .launch.fly .launch-mark {
+    animation: launch-fly 600ms cubic-bezier(0.32, 0.72, 0, 1) 200ms forwards;
+  }
+  html:not(.relaunch) .launch:not(.fly) .launch-mark {
+    animation: launch-fade 400ms ease-out 300ms forwards;
+  }
+  /* The real logo waits under the flying one until it has landed. */
+  html:not(.relaunch) header a[aria-label="Hive home"] {
+    animation: launch-hold 800ms;
   }
 }
+@keyframes launch-hold {
+  from,
+  to {
+    opacity: 0;
+  }
+}
+@keyframes launch-clear {
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes launch-done {
+  to {
+    visibility: hidden;
+  }
+}
+@keyframes launch-fly {
+  to {
+    transform: translate(var(--tx), var(--ty)) scale(var(--s));
+  }
+}
+@keyframes launch-fade {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+/* Still used by the theme-relaunch cover. */
 @keyframes launch-out {
   to {
     opacity: 0;
     visibility: hidden;
-  }
-}
-@keyframes launch-queen {
-  from {
-    transform: translate(18%, -60%) rotate(-24deg) scale(1.15);
-    opacity: 0;
-  }
-  to {
-    transform: none;
-    opacity: 1;
-  }
-}
-@keyframes launch-mark {
-  to {
-    transform: scale(0.82) translateY(-8%);
   }
 }
 
@@ -750,6 +779,32 @@ html.theme-cover body::after {
 .anim-tick { animation: tick 420ms cubic-bezier(0.34, 1.6, 0.64, 1); }
 @keyframes boop { 0% { transform: scale(0.82); } 55% { transform: scale(1.14); } 100% { transform: none; } }
 .anim-boop { animation: boop 420ms cubic-bezier(0.34, 1.4, 0.64, 1); }
+/* Parts of an icon that move on their own turn about their own centre. */
+.part { transform-box: fill-box; transform-origin: center; }
+@keyframes blink { 0%, 40%, 60%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
+.anim-blink { animation: blink 700ms ease-in-out 150ms 2; }
+@keyframes spin-tile { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.anim-spin { animation: spin-tile 700ms cubic-bezier(0.45, 0, 0.2, 1) 120ms; }
+@keyframes dash { to { stroke-dashoffset: -10; } }
+.anim-dash { animation: dash 700ms linear 2; }
+@keyframes ping { 0% { opacity: 0; transform: scale(0.5); } 50% { opacity: 1; transform: scale(1.15); } 100% { transform: none; } }
+.anim-ping { animation: ping 600ms ease-out 2; }
+/* The clock's wedge fills as its hand sweeps round to the chosen time. */
+@keyframes sweep { from { stroke-dasharray: 0 100; } }
+.anim-sweep { animation: sweep 650ms cubic-bezier(0.3, 0.7, 0.2, 1); }
+@keyframes hand { from { transform: rotate(0deg); } }
+.anim-hand { animation: hand 650ms cubic-bezier(0.3, 0.7, 0.2, 1); }
+@keyframes draw { from { stroke-dashoffset: 1; } }
+.anim-draw { stroke-dasharray: 1; animation: draw 650ms ease-out; }
+/* Expansion bugs coming to life when switched on, and nodding off when switched off. */
+@keyframes buzz { 0%, 100% { transform: none; } 15% { transform: translate(-2px, -1px) rotate(-6deg); } 30% { transform: translate(2px, 1px) rotate(5deg); } 45% { transform: translate(-1.5px, 0) rotate(-4deg); } 60% { transform: translate(1.5px, -1px) rotate(3deg); } 75% { transform: translate(-0.5px, 0) rotate(-1deg); } }
+.anim-buzz { animation: buzz 520ms ease-out; }
+@keyframes hop { 0%, 100% { transform: none; } 35% { transform: translateY(-7px) scale(1.06); } 60% { transform: translateY(0) scale(1.04, 0.94); } 80% { transform: translateY(-2px); } }
+.anim-hop { animation: hop 560ms cubic-bezier(0.3, 0.7, 0.4, 1); }
+@keyframes roll { 0% { transform: rotate(0) scale(1); } 40% { transform: rotate(200deg) scale(0.86); } 100% { transform: rotate(360deg) scale(1); } }
+.anim-roll { animation: roll 650ms cubic-bezier(0.45, 0, 0.25, 1); }
+@keyframes doze { 0% { transform: none; } 45% { transform: rotate(-9deg) scale(0.92); } 100% { transform: none; } }
+.anim-doze { animation: doze 420ms ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
   html .launch {
@@ -974,5 +1029,118 @@ html.theme-cover body::after {
   .note-hint {
     --bc: var(--violet);
     --fill: color-mix(in oklab, var(--violet) 10%, transparent);
+  }
+
+  /* Hand-drawn outlines. Where the browser can mask with a 9-slice image (Safari,
+     Chrome), the fill and the line are drawn through generated vector frames
+     (sketch-frames.css): a pen line that thickens and thins, corners that each swing a
+     little differently, and an overlap where the pen started. Colours still come from
+     --fill and --bc. Corner size groups: sm, md (default), lg (cards), xl (pills). */
+  @supports (-webkit-mask-box-image: none) {
+    .pencil,
+    .btn,
+    .btn-accent,
+    .btn-secondary,
+    .btn-ghost,
+    .icon-btn,
+    .card,
+    .note,
+    .note-info,
+    .note-warn,
+    .note-error,
+    .note-hint,
+    .seg > button {
+      --skf: var(--sk-fill-md);
+      --skl1: var(--sk-l1-md);
+      --skl2: var(--sk-l2-md);
+      --skl3: var(--sk-l3-md);
+      --skd1: var(--sk-d1-md);
+      --skd2: var(--sk-d2-md);
+      --skline: var(--skl2);
+    }
+    .pencil-sm,
+    .btn-ghost {
+      --skf: var(--sk-fill-sm);
+      --skl1: var(--sk-l1-sm);
+      --skl2: var(--sk-l2-sm);
+      --skl3: var(--sk-l3-sm);
+      --skd1: var(--sk-d1-sm);
+      --skd2: var(--sk-d2-sm);
+    }
+    .card {
+      --skf: var(--sk-fill-lg);
+      --skl1: var(--sk-l1-lg);
+      --skl2: var(--sk-l2-lg);
+      --skl3: var(--sk-l3-lg);
+      --skd1: var(--sk-d1-lg);
+      --skd2: var(--sk-d2-lg);
+    }
+    .pencil-pill {
+      --skf: var(--sk-fill-xl);
+      --skl1: var(--sk-l1-xl);
+      --skl2: var(--sk-l2-xl);
+      --skl3: var(--sk-l3-xl);
+      --skd1: var(--sk-d1-xl);
+      --skd2: var(--sk-d2-xl);
+      --br: 27px;
+    }
+    .pencil-strong,
+    .pencil-honey,
+    .btn,
+    .btn-accent {
+      --skline: var(--skl3);
+    }
+    .pencil-dashed {
+      --skline: var(--skd2);
+    }
+    .btn-ghost,
+    .note,
+    .note-info,
+    .note-warn,
+    .note-error,
+    .note-hint {
+      --skline: var(--skd1);
+    }
+    .pencil::before,
+    .btn::before,
+    .btn-accent::before,
+    .btn-secondary::before,
+    .btn-ghost::before,
+    .icon-btn::before,
+    .card::before,
+    .note::before,
+    .note-info::before,
+    .note-warn::before,
+    .note-error::before,
+    .note-hint::before,
+    .seg > button[aria-pressed="true"]::before {
+      border: 0;
+      border-radius: 0;
+      -webkit-mask-box-image: var(--skf);
+    }
+    .pencil::after,
+    .btn::after,
+    .btn-accent::after,
+    .btn-secondary::after,
+    .btn-ghost::after,
+    .icon-btn::after,
+    .card::after,
+    .note::after,
+    .note-info::after,
+    .note-warn::after,
+    .note-error::after,
+    .note-hint::after,
+    .seg > button[aria-pressed="true"]::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: var(--bc);
+      -webkit-mask-box-image: var(--skline);
+      pointer-events: none;
+    }
+    .seg > button[aria-pressed="true"] {
+      --bc: var(--ink-soft);
+    }
   }
 }

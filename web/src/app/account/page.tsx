@@ -1,5 +1,6 @@
 "use client";
 
+import { BackBar } from "@/components/BackBar";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -50,7 +51,8 @@ function AuthForms() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10">
+    <div className="mx-auto max-w-md px-4 pt-2 pb-10">
+      <BackBar fallback="/" className="mb-3" />
       <div className="text-center">
         <h1 className="font-display text-4xl font-semibold">Join the hive</h1>
         <p className="mt-2 text-sm text-ink-soft">You can play everything without an account. Signing in keeps your journal across devices and lets you play rated games for an Elo rating.</p>
@@ -118,7 +120,8 @@ function Recovery() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   return (
-    <div className="mx-auto max-w-md px-4 py-10">
+    <div className="mx-auto max-w-md px-4 pt-2 pb-10">
+      <BackBar fallback="/" className="mb-3" />
       <div className="card p-6">
         <h1 className="font-display text-2xl font-semibold">Choose a new password</h1>
         <form
@@ -152,7 +155,8 @@ function ProfilePanel() {
   if (!user) return null;
   const total = profile ? profile.wins + profile.losses + profile.draws : 0;
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-4 pt-2 pb-10">
+      <BackBar fallback="/" className="mb-3" />
       <div className="card p-6">
         <div className="flex items-center gap-4">
           <Avatar color="w" initial={(profile?.username ?? "?").slice(0, 1).toUpperCase()} size={64} />

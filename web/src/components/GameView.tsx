@@ -60,6 +60,8 @@ interface Props {
   status: React.ReactNode;
   sidebar?: React.ReactNode;
   analysis?: React.ReactNode;
+  /** A way back, shown above the game (detail screens such as a replay). */
+  back?: React.ReactNode;
   overlay?: React.ReactNode;
   actions?: GameAction[];
   /** Small print under the move list (rules, clock, export). */
@@ -76,7 +78,7 @@ function describePiece(name: string) {
   return { color, bug, label: `${colorName(color)} ${BUG_NAMES[bug]}` };
 }
 
-export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [], footer, notice, ownColors }: Props) {
+export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPreview, players, bottom, hint, status, sidebar, analysis, overlay, actions = [], footer, notice, ownColors, back }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -236,6 +238,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 6px)" }}
     >
       <div className="game-col flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">
+        {back && <div className="gv-back -mb-1.5 flex shrink-0 sm:-mb-2">{back}</div>}
         {seat(top, "gv-top")}
         <div className="gv-board card relative min-h-0 flex-1 !p-0">
           <div className="absolute inset-[3px] overflow-hidden" style={{ borderRadius: "21px 17px 23px 18px / 18px 23px 17px 21px" }}>

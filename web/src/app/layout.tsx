@@ -11,7 +11,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { NativeFeel } from "@/components/NativeFeel";
 import { Wordmark } from "@/components/Wordmark";
 import { AuthProvider } from "@/lib/auth";
-import { THEME_BOOT_SCRIPT } from "@/lib/theme-mode";
+import { LAUNCH_SCRIPT, THEME_BOOT_SCRIPT } from "@/lib/theme-mode";
 import { DialogProvider } from "@/components/Dialogs";
 
 export const metadata: Metadata = {
@@ -42,8 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh">
         {/* Launching from the home screen: the first frame repeats the launch image (the
-            wordmark centred on plain paper), then dissolves into the app. CSS-only, so it
-            needs no JavaScript and always gets out of the way. */}
+            wordmark centred on plain paper), then the wordmark glides into the header's
+            logo (see .launch and LAUNCH_SCRIPT). Its timing is pure CSS, so it always
+            gets out of the way, even before the app has loaded. */}
         <div className="launch" aria-hidden>
           <Wordmark className="launch-mark" />
         </div>
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main>{children}</main>
           </DialogProvider>
         </AuthProvider>
+        <script dangerouslySetInnerHTML={{ __html: LAUNCH_SCRIPT }} />
       </body>
     </html>
   );

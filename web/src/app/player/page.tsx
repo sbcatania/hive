@@ -1,5 +1,6 @@
 "use client";
 
+import { BackBar } from "@/components/BackBar";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -32,7 +33,8 @@ function PlayerInner() {
 
   const total = profile.wins + profile.losses + profile.draws;
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 pt-2 pb-8">
+      <BackBar fallback="/leaderboard" className="mb-3" />
       <div className="card flex items-center gap-4 p-6">
         <Avatar color="w" initial={profile.username.slice(0, 1).toUpperCase()} size={72} />
         <div>

@@ -24,7 +24,7 @@ import {
   SwarmVignette,
 } from "@/components/RuleSketches";
 
-export const metadata = { title: "How to play" };
+export const metadata = { title: "Instructions" };
 
 const OPENING = "Base;InProgress;White[3];wS1;bS1 wS1-;wQ -wS1;bQ bS1-";
 

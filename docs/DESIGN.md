@@ -161,3 +161,20 @@ naming), one change at a time.
 - **One name per thing.** The nav says "How to play" and "Your games", matching the
   pages and links. The labelled specimen drawing moved to the top of How to play,
   where it explains the pieces, so the home page has a single hero.
+
+## Round 7: drawn lines, smoothly
+
+- Outlines are hand-drawn again, without the pixelation of the old displacement filter:
+  `web/scripts/sketch-frames.mjs` draws each frame as a vector ink ribbon (the line
+  thickens and thins, corners swing a little wide or tight, the pen overlaps where it
+  started, a faint second pass at one corner) and `sketch-frames.css` applies them as
+  9-slice masks (`-webkit-mask-box-image`), so any box gets a crisp line at full
+  resolution, coloured by `--fill` / `--bc`. Edge middles barely bow, because a box
+  barely taller than its corners squeezes them into a pixel. Browsers without the mask
+  keep the plain rounded outline.
+- Things at the bottom of the screen are concentric with it: sheets use one even radius,
+  the phone's screen radius (per model, `screenCornerRadius`) minus their inset; the
+  pinned Start button is a pill.
+- The header never changes between screens: back is a "‹ Back" row at the top of a detail
+  screen's own content, and the account chip keeps its size while loading.
+- Launch: the splash wordmark glides into the header logo while the app fades in.

@@ -94,3 +94,29 @@ export function syncChrome() {
     m.content = color;
   });
 }
+
+/** The display's corner radius in CSS px, for iPhones run from the home screen (where
+ * the page reaches the screen's rounded corners). Keyed by the screen's size in points;
+ * null elsewhere. Things that sit near the bottom corners use it to stay concentric. */
+export function screenCornerRadius(): number | null {
+  if (typeof window === "undefined" || !isHomeScreenApp() || !/iPhone/.test(navigator.userAgent)) return null;
+  const w = Math.min(screen.width, screen.height);
+  const h = Math.max(screen.width, screen.height);
+  const models: [number, number, number][] = [
+    [375, 812, 41.5], // X, XS, 11 Pro, 12/13 mini
+    [390, 844, 47.33], // 12, 13, 14
+    [393, 852, 55], // 14 Pro, 15, 15 Pro, 16
+    [402, 874, 62], // 16 Pro, 17, 17 Pro
+    [414, 896, 41.5], // XR, 11, XS Max, 11 Pro Max
+    [420, 912, 62], // Air
+    [428, 926, 53.33], // 12/13 Pro Max, 14 Plus
+    [430, 932, 55], // 14 Pro Max, 15 Plus/Pro Max, 16 Plus
+    [440, 956, 62], // 16 Pro Max, 17 Pro Max
+  ];
+  const m = models.find(([mw, mh]) => Math.abs(mw - w) <= 2 && Math.abs(mh - h) <= 2);
+  return m ? m[2] : h / w > 2 ? 47 : 0; // unknown notched phones: a typical radius
+}
+
+/** Runs right after the header is in the page, before first paint: measures where the
+ * launch wordmark must land (the header logo) so it can glide there (see .launch). */
+export const LAUNCH_SCRIPT = `(function(){try{var o=document.querySelector(".launch");if(!o||getComputedStyle(o).display==="none")return;var m=o.querySelector(".launch-mark"),l=document.querySelector('header a[aria-label="Hive home"] svg');if(!m||!l)return;var a=m.getBoundingClientRect(),b=l.getBoundingClientRect();if(!a.width||!b.width)return;m.style.setProperty("--s",String(b.width/a.width));m.style.setProperty("--tx",(b.left+b.width/2-(a.left+a.width/2))+"px");m.style.setProperty("--ty",(b.top+b.height/2-(a.top+a.height/2))+"px");o.classList.add("fly");}catch(e){}})();`;

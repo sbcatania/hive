@@ -81,17 +81,15 @@ export function Wordmark({
         );
       })}
       <g transform={`rotate(-6 ${QUEEN.x} ${QUEEN.y})`}>
-        <g className="launch-queen">
-          <g {...set(4, QUEEN.x, QUEEN.y)}>
-            <PieceTile
-              bug="Q"
-              color="w"
-              x={QUEEN.x}
-              y={QUEEN.y}
-              size={R * 1.04}
-              seed={9}
-            />
-          </g>
+        <g {...set(4, QUEEN.x, QUEEN.y)}>
+          <PieceTile
+            bug="Q"
+            color="w"
+            x={QUEEN.x}
+            y={QUEEN.y}
+            size={R * 1.04}
+            seed={9}
+          />
         </g>
       </g>
     </svg>
