@@ -1,59 +1,82 @@
-// Small coloured illustrations for the new-game choices. Each one animates once when it
-// becomes the selected option (the `on` prop), in the sketchbook's ink style. Moving
-// parts turn about their own centre (transform-box: fill-box, see .part in globals.css)
-// and only animate for a moment after a tap, never continuously.
+"use client";
+
+// Small coloured illustrations for the new-game choices, drawn like the rest of the
+// sketchbook (a faint second pencil pass, wobbly hexes: see Sketchy). Each one plays a
+// little scene when it becomes the selected option (`on`), and has a smaller idle moment
+// every few seconds (a blink, a nudge, a ping): one-shot animations replayed by a timer,
+// so nothing animates in between. Moving parts turn about their own centre (.part).
 
 import { PieceTile } from "./PieceTile";
+import { Drawn, hex, useTicker } from "./Sketchy";
 
 const ink = "var(--ink)";
 const honey = "var(--accent)";
 const blue = "var(--move)";
 const red = "var(--threat)";
 
-/** A friendly robot: honey antenna that bobs, blinking eyes. */
+/** A friendly robot that blinks now and then (twice, and bobs, when picked). */
 export function ComputerIcon({ on }: { on?: boolean }) {
+  const blink = useTicker(4300, 1800);
   return (
-    <svg viewBox="0 0 40 40" className={`h-9 w-9 ${on ? "anim-bob" : ""}`} aria-hidden>
-      <path d="M20 9V5" stroke={ink} strokeWidth={2} strokeLinecap="round" />
-      <circle cx="20" cy="4.5" r="2.6" fill={honey} stroke={ink} strokeWidth={1.6} />
-      <rect x="7.5" y="10" width="25" height="20" rx="7" fill="var(--card)" stroke={ink} strokeWidth={2} />
+    <svg viewBox="0 0 40 40" className={`h-9 w-9 overflow-visible ${on ? "anim-bob" : ""}`} aria-hidden>
+      <Drawn>
+        <path d="M20 9.5V5.5" stroke={ink} strokeWidth={2} strokeLinecap="round" />
+        <circle cx="20.2" cy="4.6" r="2.6" fill={honey} stroke={ink} strokeWidth={1.6} />
+        <path d="M14.3 10.2c4-.4 8-.5 11.6-.1 4 .4 6.6 2.8 6.7 6.6.1 2.4 0 4.6-.2 6.7-.4 3.9-3 6.4-7 6.6-3.8.2-7.6.1-11.2-.1-3.8-.3-6.4-2.8-6.6-6.5-.1-2.3-.1-4.6.1-6.9.4-3.8 2.9-5.9 6.6-6.3Z" fill="var(--card)" stroke={ink} strokeWidth={2} strokeLinejoin="round" />
+        <path d="M4.6 18.2v4.9M35.4 17.9v5.1" stroke={ink} strokeWidth={2} strokeLinecap="round" />
+        <path d="M14.2 34.1c3.9-.3 7.7-.3 11.6 0" stroke={ink} strokeWidth={2} strokeLinecap="round" fill="none" />
+      </Drawn>
       <rect x="11.5" y="14.5" width="17" height="10" rx="4" fill={ink} opacity={0.88} />
-      <g className={`part ${on ? "anim-blink" : ""}`}>
+      <g key={`${on}-${blink}`} className={`part ${on ? "anim-blink" : blink ? "anim-blink-once" : ""}`}>
         <circle cx="16" cy="19.5" r="1.8" fill={honey} />
         <circle cx="24" cy="19.5" r="1.8" fill={honey} />
       </g>
-      <path d="M4.5 18v5M35.5 18v5" stroke={ink} strokeWidth={2} strokeLinecap="round" />
-      <path d="M14 34h12" stroke={ink} strokeWidth={2} strokeLinecap="round" />
     </svg>
   );
 }
 
-/** A phone passed between two players (blue and red arrows). */
+/** A phone passed between two players (blue and red arrows). Picked, it swings across
+ * with its tile spinning; idle, it gives a small nudge now and then. */
 export function PassIcon({ on }: { on?: boolean }) {
+  const nudge = useTicker(7100, 3600);
   return (
     <svg viewBox="0 0 40 40" className="h-9 w-9 overflow-visible" aria-hidden>
-      <path d="M6 13c2-5 6-7 10-7" fill="none" stroke={blue} strokeWidth={2.2} strokeLinecap="round" />
-      <path d="M13.5 3.5 16.5 6l-3 3" fill="none" stroke={blue} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M34 27c-2 5-6 7-10 7" fill="none" stroke={red} strokeWidth={2.2} strokeLinecap="round" />
-      <path d="M26.5 36.5 23.5 34l3-3" fill="none" stroke={red} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-      <g className={`part ${on ? "anim-pass" : ""}`}>
-        <rect x="13" y="9.5" width="14" height="21" rx="3.5" fill="var(--card)" stroke={ink} strokeWidth={2} />
+      <Drawn>
+        <path d="M6 13.2c2.1-4.8 5.8-7.1 10.2-7" fill="none" stroke={blue} strokeWidth={2.2} strokeLinecap="round" />
+        <path d="M13.6 3.4 16.6 6l-3.1 2.9" fill="none" stroke={blue} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M34 26.8c-2 5-5.9 7.2-10.1 7.2" fill="none" stroke={red} strokeWidth={2.2} strokeLinecap="round" />
+        <path d="M26.4 36.6 23.5 34l3.1-2.9" fill="none" stroke={red} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+      </Drawn>
+      <g key={`${on}-${nudge}`} className={`part ${on ? "anim-pass" : nudge ? "anim-nudge" : ""}`}>
+        <Drawn>
+          <path d="M16.6 9.6c2.3-.2 4.7-.2 7 0 2 .2 3.3 1.5 3.4 3.5.2 4.6.2 9.2 0 13.8-.1 2-1.4 3.3-3.4 3.5-2.3.2-4.7.2-7 0-2-.2-3.4-1.5-3.5-3.5-.2-4.6-.2-9.2 0-13.8.1-2 1.5-3.3 3.5-3.5Z" fill="var(--card)" stroke={ink} strokeWidth={2} strokeLinejoin="round" />
+          <path d="M18 27.1c1.3-.1 2.7-.1 4 0" stroke={ink} strokeWidth={1.6} strokeLinecap="round" fill="none" />
+        </Drawn>
         {/* the tile on screen spins as the phone changes hands */}
-        <path className={`part ${on ? "anim-spin" : ""}`} d="m20 15.5 3.5 2v4l-3.5 2-3.5-2v-4z" fill={honey} stroke={ink} strokeWidth={1.4} strokeLinejoin="round" />
-        <path d="M18 27h4" stroke={ink} strokeWidth={1.6} strokeLinecap="round" />
+        <path className={`part ${on ? "anim-spin" : ""}`} d={hex(20, 19.5, 4.1, 5)} fill={honey} stroke={ink} strokeWidth={1.4} strokeLinejoin="round" />
       </g>
     </svg>
   );
 }
 
-/** Two linked hexes with a signal pulse. */
+/** Two linked tiles with a signal. Picked: the link flows across, the far tile pulses
+ * and the signal lights up arc by arc. Idle: the signal lights up now and then. */
 export function OnlineIcon({ on }: { on?: boolean }) {
+  const ping = useTicker(5200, 2600);
+  const k = `${on}-${ping}`;
   return (
     <svg viewBox="0 0 40 40" className="h-9 w-9 overflow-visible" aria-hidden>
-      <path d="m12 14 6 3.5v7L12 28l-6-3.5v-7z" fill="var(--card)" stroke={ink} strokeWidth={2} strokeLinejoin="round" />
-      <path d="m28 12 6 3.5v7L28 26l-6-3.5v-7z" fill={honey} fillOpacity={0.55} stroke={ink} strokeWidth={2} strokeLinejoin="round" />
-      <path d="M17 21.5h6" stroke={blue} strokeWidth={2.4} strokeLinecap="round" strokeDasharray="2 3" className={on ? "anim-dash" : ""} />
-      <path className={`part ${on ? "anim-ping" : ""}`} d="M33 6.5a8 8 0 0 1 4 4M31 9a4.5 4.5 0 0 1 2.4 2.4" fill="none" stroke={blue} strokeWidth={1.8} strokeLinecap="round" opacity={on ? 1 : 0.5} />
+      <Drawn>
+        <path d={hex(12, 21, 7.4, 3)} fill="var(--card)" stroke={ink} strokeWidth={2} strokeLinejoin="round" />
+      </Drawn>
+      <g key={`t-${on}`} className={`part ${on ? "anim-pulse" : ""}`}>
+        <Drawn>
+          <path d={hex(28, 19, 7.4, 8)} fill={honey} fillOpacity={0.55} stroke={ink} strokeWidth={2} strokeLinejoin="round" />
+        </Drawn>
+      </g>
+      <path key={`l-${on}`} d="M17.4 20.6c1.8-.4 3.6-.6 5.3-.6" stroke={blue} strokeWidth={2.4} strokeLinecap="round" strokeDasharray="2 2.6" className={on ? "anim-flow" : ""} fill="none" />
+      <path key={`a-${k}`} className={on || ping ? "anim-signal" : ""} d="M31.2 9.1c1.1.5 1.9 1.3 2.4 2.4" fill="none" stroke={blue} strokeWidth={1.8} strokeLinecap="round" opacity={0.55} />
+      <path key={`b-${k}`} className={on || ping ? "anim-signal-late" : ""} d="M33 6.4c2 .9 3.4 2.3 4.2 4.3" fill="none" stroke={blue} strokeWidth={1.8} strokeLinecap="round" opacity={0.55} />
     </svg>
   );
 }
@@ -141,8 +164,8 @@ export function PresetIcon({ id }: { id: string }) {
     // Fewer pieces: a small, light hive.
     lite: (
       <>
-        <path d="m11 9 5 2.9v5.8L11 20.6l-5-2.9v-5.8z" fill="var(--card)" stroke={ink} strokeWidth={1.7} strokeLinejoin="round" />
-        <path d="m21 14.8 5 2.9v5.8l-5 2.9-5-2.9v-5.8z" fill={honey} fillOpacity={0.55} stroke={ink} strokeWidth={1.7} strokeLinejoin="round" />
+        <path d={hex(11, 14.8, 5.8, 2)} fill="var(--card)" stroke={ink} strokeWidth={1.7} strokeLinejoin="round" />
+        <path d={hex(21, 20.6, 5.8, 6)} fill={honey} fillOpacity={0.55} stroke={ink} strokeWidth={1.7} strokeLinejoin="round" />
         <path d="M24 4.5c-3 .5-5 3-5 6 3-.3 5-2.8 5-6Z" fill={blue} fillOpacity={0.6} stroke={blue} strokeWidth={1.2} strokeLinejoin="round" />
       </>
     ),
@@ -177,7 +200,7 @@ export function PresetIcon({ id }: { id: string }) {
   };
   return (
     <svg viewBox="0 0 32 32" className="h-9 w-9 shrink-0" aria-hidden>
-      {art[id] ?? art.official}
+      <Drawn>{art[id] ?? art.official}</Drawn>
     </svg>
   );
 }

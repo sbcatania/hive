@@ -1,5 +1,8 @@
 // Small coloured drawings for the site's sections, in the same ink-and-wash style as
-// the new-game icons. Used in the menu, one beside each page.
+// the new-game icons (with their faint second pencil pass). One beside each page in
+// the menu.
+
+import { Drawn, hex } from "./Sketchy";
 
 const ink = "var(--ink)";
 const honey = "var(--accent)";
@@ -13,7 +16,7 @@ const ICONS: Record<NavIconName, React.ReactNode> = {
   // A honey tile with a play mark.
   play: (
     <>
-      <path d="m16 3.5 10 5.8v11.4L16 26.5 6 20.7V9.3z" fill={honey} fillOpacity={0.55} stroke={ink} strokeWidth={1.8} strokeLinejoin="round" />
+      <path d={hex(16, 15, 11.4, 4)} fill={honey} fillOpacity={0.55} stroke={ink} strokeWidth={1.8} strokeLinejoin="round" />
       <path d="M13.5 10.5v9l7-4.5z" fill={ink} stroke={ink} strokeWidth={1.2} strokeLinejoin="round" />
     </>
   ),
@@ -29,7 +32,7 @@ const ICONS: Record<NavIconName, React.ReactNode> = {
   // A tile with a violet question mark.
   puzzles: (
     <>
-      <path d="m16 3.5 10 5.8v11.4L16 26.5 6 20.7V9.3z" fill="var(--card)" stroke={ink} strokeWidth={1.8} strokeLinejoin="round" />
+      <path d={hex(16, 15, 11.4, 9)} fill="var(--card)" stroke={ink} strokeWidth={1.8} strokeLinejoin="round" />
       <path d="M12.8 12.3c0-2 1.5-3.3 3.3-3.3s3.2 1.2 3.2 2.9c0 2.4-3.1 2.6-3.1 5" fill="none" stroke={violet} strokeWidth={2.2} strokeLinecap="round" />
       <circle cx="16.2" cy="20.4" r="1.4" fill={violet} />
     </>
@@ -37,7 +40,7 @@ const ICONS: Record<NavIconName, React.ReactNode> = {
   // A spiral-bound notebook with a red bookmark.
   journal: (
     <>
-      <rect x="7.5" y="4.5" width="17" height="22" rx="2.5" fill="var(--card)" stroke={ink} strokeWidth={1.8} />
+      <path d="M9.9 4.6c4.1-.2 8.2-.2 12.3 0 1.4.1 2.3 1 2.4 2.4.2 5.8.2 11.6 0 17.4-.1 1.4-1 2.3-2.4 2.3-4.1.2-8.2.2-12.3 0-1.4-.1-2.3-1-2.4-2.4-.2-5.8-.2-11.6 0-17.4.1-1.3 1-2.2 2.4-2.3Z" fill="var(--card)" stroke={ink} strokeWidth={1.8} strokeLinejoin="round" />
       <path d="M5.5 9h4M5.5 14h4M5.5 19h4" stroke={ink} strokeWidth={1.6} strokeLinecap="round" />
       <path d="M13 11h7M13 15h7M13 19h4.5" stroke={ink} strokeWidth={1.2} strokeLinecap="round" opacity={0.55} />
       <path d="M19.5 4.5v7l2-1.6 2 1.6v-7" fill={red} stroke={red} strokeWidth={1} strokeLinejoin="round" />
@@ -57,7 +60,7 @@ const ICONS: Record<NavIconName, React.ReactNode> = {
 export function NavIcon({ name, className }: { name: NavIconName; className?: string }) {
   return (
     <svg viewBox="0 0 32 30" className={className ?? "h-7 w-7"} aria-hidden>
-      {ICONS[name]}
+      <Drawn>{ICONS[name]}</Drawn>
     </svg>
   );
 }
