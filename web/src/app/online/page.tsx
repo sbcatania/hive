@@ -47,7 +47,6 @@ function OnlineGameView() {
   const [busy, setBusy] = useState(false);
   const [theme, setTheme] = useState<ThemeId>("field");
   const [connected, setConnected] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState<string | null>(null);
   const [overlayClosed, setOverlayClosed] = useState(false);
   const offset = useRef(0);
@@ -98,12 +97,6 @@ function OnlineGameView() {
     return () => clearInterval(t);
   }, [connected, reload]);
 
-  useEffect(() => {
-    if (!row?.base_ms || row.status !== "active") return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [row?.base_ms, row?.status]);
-
   // Player names and ratings.
   useEffect(() => {
     if (!row) return;
@@ -139,22 +132,24 @@ function OnlineGameView() {
   const state: StateView | null = game?.state ?? null;
   const toMove: ColorCode = (row?.moves.length ?? 0) % 2 === 0 ? "w" : "b";
 
+  // Time left at the start of the current turn, and when that turn started on this
+  // device's clock. The faces tick themselves; the page wakes once, at the flag.
   const clocks = useMemo(() => {
     if (!row?.base_ms) return null;
-    const elapsed = row.status === "active" && row.turn_started_at ? now + offset.current - new Date(row.turn_started_at).getTime() : 0;
-    return {
-      w: (row.white_ms ?? 0) - (toMove === "w" ? elapsed : 0),
-      b: (row.black_ms ?? 0) - (toMove === "b" ? elapsed : 0),
-    };
-  }, [row, now, toMove]);
+    const since = row.status === "active" && row.turn_started_at ? new Date(row.turn_started_at).getTime() - offset.current : undefined;
+    return { w: row.white_ms ?? 0, b: row.black_ms ?? 0, since };
+  }, [row]);
 
   useEffect(() => {
-    if (!clocks || !row || row.status !== "active") return;
+    if (!clocks || clocks.since === undefined || !row || row.status !== "active") return;
     const key = `${row.id}:${row.moves.length}`;
-    if (clocks[toMove] <= 0 && timeoutClaimed.current !== key) {
+    const left = clocks[toMove] - (Date.now() - clocks.since);
+    const t = setTimeout(() => {
+      if (timeoutClaimed.current === key) return;
       timeoutClaimed.current = key;
       claimTimeout(row.id).then(reload).catch(() => {});
-    }
+    }, Math.max(0, left));
+    return () => clearTimeout(t);
   }, [clocks, row, toMove, reload]);
 
   const getPreview = useCallback((piece: string) => withEngine(rules!, row!.moves, (e) => e.preview(piece)), [rules, row]);
@@ -223,7 +218,7 @@ function OnlineGameView() {
     return {
       name,
       sub: joined ? parts.join(", ") : "waiting to join…",
-      clock: clocks ? <ClockFace ms={clocks[c]} running={row.status === "active" && toMove === c} /> : undefined,
+      clock: clocks ? <ClockFace ms={clocks[c]} running={row.status === "active" && toMove === c} since={toMove === c ? clocks.since : undefined} /> : undefined,
     };
   };
 

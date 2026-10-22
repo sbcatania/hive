@@ -34,7 +34,6 @@ function LocalGame() {
   const [overlayClosed, setOverlayClosed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [clockLeft, setClockLeft] = useState<[number, number] | null>(null);
-  const [now, setNow] = useState(() => Date.now());
 
   const engine = useRef<Engine | null>(null);
   const cpu = useRef<AiClient | null>(null);
@@ -176,27 +175,24 @@ function LocalGame() {
   // ---- Clocks ------------------------------------------------------------------
   const timed = !!entry?.clock?.baseMs && !!clockLeft;
   const running = timed && !result && (state?.ply ?? 0) > 0;
-  useEffect(() => {
-    if (!running) return;
-    const t = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(t);
-  }, [running]);
-  const shown = (c: ColorCode) => {
-    if (!clockLeft) return 0;
-    const base = clockLeft[c === "w" ? 0 : 1];
-    return running && state?.toMove === c ? base - (now - turnStart.current) : base;
+  // The faces tick themselves (ClockFace); the page only wakes once, when the player to
+  // move runs out of time.
+  const flagRef = useRef<() => void>(() => {});
+  flagRef.current = () => {
+    if (!state || !engine.current || !clockLeft) return;
+    const status: GameResult = state.toMove === "w" ? "BlackWins" : "WhiteWins";
+    engine.current.setResult(status);
+    const left: [number, number] = [...clockLeft] as [number, number];
+    left[state.toMove === "w" ? 0 : 1] = 0;
+    setClockLeft(left);
+    commit({ result: status, resultReason: "time" }, left);
   };
   useEffect(() => {
-    if (!running || !state || !engine.current) return;
-    if (shown(state.toMove) <= 0) {
-      const status: GameResult = state.toMove === "w" ? "BlackWins" : "WhiteWins";
-      engine.current.setResult(status);
-      const left: [number, number] = [...clockLeft!] as [number, number];
-      left[state.toMove === "w" ? 0 : 1] = 0;
-      setClockLeft(left);
-      commit({ result: status, resultReason: "time" }, left);
-    }
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!running || !state || !clockLeft) return;
+    const left = clockLeft[state.toMove === "w" ? 0 : 1] - (Date.now() - turnStart.current);
+    const t = setTimeout(() => flagRef.current(), Math.max(0, left));
+    return () => clearTimeout(t);
+  }, [running, state, clockLeft]);
 
   const getPreview = useCallback((piece: string) => engine.current!.preview(piece), []);
 
@@ -320,7 +316,7 @@ function LocalGame() {
     } else {
       players[c] = { name: colorName(c) };
     }
-    if (timed) players[c].clock = <ClockFace ms={shown(c)} running={running && state.toMove === c} />;
+    if (timed) players[c].clock = <ClockFace ms={clockLeft![c === "w" ? 0 : 1]} running={running && state.toMove === c} since={turnStart.current} />;
   }
 
   const youWon = result && entry.mode === "cpu" && ((result === "WhiteWins" && entry.human === "w") || (result === "BlackWins" && entry.human === "b"));

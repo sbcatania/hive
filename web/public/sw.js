@@ -2,7 +2,7 @@
 // CPU / pass-and-play games work without a connection (the engine runs locally).
 //
 // - Build assets under /_next/static are content-hashed: cache first, forever.
-// - Pages: network first (so a new deploy shows up at once), cached copy offline.
+// - Pages: the network if it answers within 450 ms, else the cached copy at once.
 // - Other same-origin files (the WASM engine, icons, fonts) aren't hashed: serve the
 //   cached copy straight away and refresh it in the background.
 // Cross-origin requests (Supabase for online games and accounts) are never cached.
@@ -35,15 +35,23 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // Pages: take the network if it answers quickly (so a fresh deploy shows up at once),
+  // otherwise open the cached copy straight away and let the network refresh the cache
+  // for next time. A home-screen launch never waits on a slow connection.
   if (req.mode === "navigate") {
+    const network = fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+      }
+      return res;
+    });
+    const cached = () => caches.match(req).then((hit) => hit || caches.match(req, { ignoreSearch: true })).then((hit) => hit || caches.match("/"));
+    const late = new Promise((resolve) => setTimeout(resolve, 450)).then(cached);
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
-          return res;
-        })
-        .catch(async () => (await caches.match(req)) || (await caches.match(req, { ignoreSearch: true })) || (await caches.match("/"))),
+      Promise.race([network.catch(() => null), late]).then(async (res) => res || (await network.catch(() => null)) || (await cached()) || Response.error()),
     );
+    event.waitUntil(network.catch(() => {}));
     return;
   }
 

@@ -30,15 +30,19 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
     return () => clearTimeout(t);
   }, [open]);
 
+  // The panel's height, measured when a drag starts: reading it on every frame right
+  // after writing styles would force a style recalculation each time.
+  const height = useRef(0);
   const place = (y: number | null, animate: boolean) => {
     const p = panel.current;
     const d = dim.current;
     if (!p || !d) return;
+    const h = animate || !height.current ? p.offsetHeight || 400 : height.current;
     const t = animate ? `transform ${DURATION}ms ${EASE}` : "none";
     p.style.transition = t;
     d.style.transition = animate ? `opacity ${DURATION}ms ${EASE}` : "none";
     p.style.transform = y === null ? "translate3d(0, calc(100% + 24px), 0)" : `translate3d(0, ${y}px, 0)`;
-    d.style.opacity = y === null ? "0" : String(Math.max(0, 1 - Math.max(0, y) / (p.offsetHeight || 400)));
+    d.style.opacity = y === null ? "0" : String(Math.max(0, 1 - Math.max(0, y) / h));
   };
 
   // Open / close.
@@ -75,6 +79,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
     const onStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
       startY = lastY = e.touches[0].clientY;
+      height.current = p.offsetHeight || 400;
       lastT = e.timeStamp;
       vel = 0;
       mode = "undecided";
@@ -114,7 +119,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
       }
       mode = "idle";
       cancelAnimationFrame(frame);
-      const h = p.offsetHeight || 400;
+      const h = height.current;
       if (y > h * 0.3 || (vel > 0.5 && y > 10)) closeRef.current();
       else place(0, true);
       y = 0;

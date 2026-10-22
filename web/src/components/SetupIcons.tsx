@@ -1,5 +1,7 @@
 // Small coloured illustrations for the new-game choices. Each one animates once when it
-// becomes the selected option (the `on` prop), in the sketchbook's ink style.
+// becomes the selected option (the `on` prop), in the sketchbook's ink style. Only the
+// outer <svg> ever animates: a transform on it is composited, while animating paths
+// inside an SVG forces layout and repaint every frame.
 
 const ink = "var(--ink)";
 const honey = "var(--accent)";
@@ -14,10 +16,8 @@ export function ComputerIcon({ on }: { on?: boolean }) {
       <circle cx="20" cy="4.5" r="2.6" fill={honey} stroke={ink} strokeWidth={1.6} />
       <rect x="7.5" y="10" width="25" height="20" rx="7" fill="var(--card)" stroke={ink} strokeWidth={2} />
       <rect x="11.5" y="14.5" width="17" height="10" rx="4" fill={ink} opacity={0.88} />
-      <g className={on ? "anim-blink" : ""} style={{ transformOrigin: "20px 19.5px" }}>
-        <circle cx="16" cy="19.5" r="1.8" fill={honey} />
-        <circle cx="24" cy="19.5" r="1.8" fill={honey} />
-      </g>
+      <circle cx="16" cy="19.5" r="1.8" fill={honey} />
+      <circle cx="24" cy="19.5" r="1.8" fill={honey} />
       <path d="M4.5 18v5M35.5 18v5" stroke={ink} strokeWidth={2} strokeLinecap="round" />
       <path d="M14 34h12" stroke={ink} strokeWidth={2} strokeLinecap="round" />
     </svg>
@@ -27,16 +27,14 @@ export function ComputerIcon({ on }: { on?: boolean }) {
 /** A phone passed between two players (blue and red arrows). */
 export function PassIcon({ on }: { on?: boolean }) {
   return (
-    <svg viewBox="0 0 40 40" className="h-9 w-9" aria-hidden>
+    <svg viewBox="0 0 40 40" className={`h-9 w-9 ${on ? "anim-pass" : ""}`} aria-hidden>
       <path d="M6 13c2-5 6-7 10-7" fill="none" stroke={blue} strokeWidth={2.2} strokeLinecap="round" />
       <path d="M13.5 3.5 16.5 6l-3 3" fill="none" stroke={blue} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
       <path d="M34 27c-2 5-6 7-10 7" fill="none" stroke={red} strokeWidth={2.2} strokeLinecap="round" />
       <path d="M26.5 36.5 23.5 34l3-3" fill="none" stroke={red} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-      <g className={on ? "anim-pass" : ""} style={{ transformOrigin: "20px 20px" }}>
-        <rect x="13" y="9.5" width="14" height="21" rx="3.5" fill="var(--card)" stroke={ink} strokeWidth={2} />
-        <path d="m20 15.5 3.5 2v4l-3.5 2-3.5-2v-4z" fill={honey} stroke={ink} strokeWidth={1.4} strokeLinejoin="round" />
-        <path d="M18 27h4" stroke={ink} strokeWidth={1.6} strokeLinecap="round" />
-      </g>
+      <rect x="13" y="9.5" width="14" height="21" rx="3.5" fill="var(--card)" stroke={ink} strokeWidth={2} />
+      <path d="m20 15.5 3.5 2v4l-3.5 2-3.5-2v-4z" fill={honey} stroke={ink} strokeWidth={1.4} strokeLinejoin="round" />
+      <path d="M18 27h4" stroke={ink} strokeWidth={1.6} strokeLinecap="round" />
     </svg>
   );
 }
@@ -44,13 +42,11 @@ export function PassIcon({ on }: { on?: boolean }) {
 /** Two linked hexes with a signal pulse. */
 export function OnlineIcon({ on }: { on?: boolean }) {
   return (
-    <svg viewBox="0 0 40 40" className="h-9 w-9" aria-hidden>
+    <svg viewBox="0 0 40 40" className={`h-9 w-9 ${on ? "anim-boop" : ""}`} aria-hidden>
       <path d="m12 14 6 3.5v7L12 28l-6-3.5v-7z" fill="var(--card)" stroke={ink} strokeWidth={2} strokeLinejoin="round" />
       <path d="m28 12 6 3.5v7L28 26l-6-3.5v-7z" fill={honey} fillOpacity={0.55} stroke={ink} strokeWidth={2} strokeLinejoin="round" />
-      <path d="M17 21.5h6" stroke={blue} strokeWidth={2.4} strokeLinecap="round" strokeDasharray="2 3" className={on ? "anim-dash" : ""} />
-      <g className={on ? "anim-ping" : ""} style={{ transformOrigin: "28px 19px" }} opacity={on ? 1 : 0.5}>
-        <path d="M33 6.5a8 8 0 0 1 4 4M31 9a4.5 4.5 0 0 1 2.4 2.4" fill="none" stroke={blue} strokeWidth={1.8} strokeLinecap="round" />
-      </g>
+      <path d="M17 21.5h6" stroke={blue} strokeWidth={2.4} strokeLinecap="round" strokeDasharray="2 3" />
+      <path d="M33 6.5a8 8 0 0 1 4 4M31 9a4.5 4.5 0 0 1 2.4 2.4" fill="none" stroke={blue} strokeWidth={1.8} strokeLinecap="round" opacity={on ? 1 : 0.5} />
     </svg>
   );
 }
@@ -59,7 +55,7 @@ export function OnlineIcon({ on }: { on?: boolean }) {
 export function LevelPips({ n, on }: { n: number; on?: boolean }) {
   const color = n >= 4 ? red : n === 3 ? "color-mix(in oklab, var(--accent) 45%, var(--threat))" : honey;
   return (
-    <svg viewBox="0 0 46 10" className="mx-auto h-2.5 w-[46px]" aria-hidden>
+    <svg viewBox="0 0 46 10" className={`mx-auto h-2.5 w-[46px] ${on ? "anim-boop" : ""}`} aria-hidden>
       {[0, 1, 2, 3].map((i) => (
         <path
           key={i}
@@ -68,8 +64,6 @@ export function LevelPips({ n, on }: { n: number; on?: boolean }) {
           stroke={i < n ? color : "var(--line-strong)"}
           strokeWidth={1.3}
           strokeLinejoin="round"
-          className={on && i < n ? "anim-pop" : ""}
-          style={{ transformOrigin: `${5.5 + i * 11.5}px 5.5px`, animationDelay: `${i * 70}ms` }}
         />
       ))}
     </svg>

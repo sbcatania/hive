@@ -140,6 +140,7 @@ export function SiteHeader() {
             <Link
               key={n.href}
               href={n.href}
+              prefetch={false}
               onClick={() => setOpen(false)}
               aria-current={active(n.href) ? "page" : undefined}
               className={`flex min-h-12 items-center px-1 text-xl ${active(n.href) ? "font-bold text-ink" : "text-ink-soft"}`}

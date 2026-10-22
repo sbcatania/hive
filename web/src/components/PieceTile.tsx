@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { BUG_ART, paintColor } from "@/lib/bug-art";
 import type { BugLetter, ColorCode } from "@/lib/engine-types";
 
@@ -25,7 +26,21 @@ function rand(seed: number) {
 }
 
 /** A hexagon drawn by hand: jittered corners and slightly bowed edges. */
+// Paths are pure functions of their inputs and every board render asks for the same
+// few hundred, so keep them.
+const pathCache = new Map<string, string>();
+
 export function sketchHexPath(cx: number, cy: number, r: number, seed: number, wobble = 0.035) {
+  const key = `${cx},${cy},${r},${seed},${wobble}`;
+  const hit = pathCache.get(key);
+  if (hit) return hit;
+  if (pathCache.size > 4000) pathCache.clear();
+  const d = buildHexPath(cx, cy, r, seed, wobble);
+  pathCache.set(key, d);
+  return d;
+}
+
+function buildHexPath(cx: number, cy: number, r: number, seed: number, wobble: number) {
   const rnd = rand(seed + 1);
   const pts = Array.from({ length: 6 }, (_, i) => {
     const a = ((60 * i - 90) * Math.PI) / 180;
@@ -69,8 +84,9 @@ function InkBug({ bug, ink, washOpacity }: { bug: BugLetter; ink: string; washOp
 }
 
 /** One hexagonal piece drawn centred on (x, y): an inked outline, a second loose
- * pen stroke, and the bug over a slightly mis-registered watercolour wash. */
-export function PieceTile({ bug, color, x, y, size, dim, seed = 0 }: Props) {
+ * pen stroke, and the bug over a slightly mis-registered watercolour wash. Memoised, so
+ * a board re-render only redraws the tiles whose props changed. */
+export const PieceTile = memo(function PieceTile({ bug, color, x, y, size, dim, seed = 0 }: Props) {
   const white = color === "w";
   const line = white ? "var(--tile-white-ink)" : "var(--tile-black-ink)";
   const paper = white ? "var(--tile-white)" : "var(--tile-black)";
@@ -84,7 +100,7 @@ export function PieceTile({ bug, color, x, y, size, dim, seed = 0 }: Props) {
       </g>
     </g>
   );
-}
+});
 
 /** A small tile for menus, hands and avatars. */
 export function MiniTile({ bug, color = "w", size = 40, seed = 1, className }: { bug: BugLetter; color?: ColorCode; size?: number; seed?: number; className?: string }) {

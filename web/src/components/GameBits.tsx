@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { MiniTile, PieceTile, sketchHexPath } from "./PieceTile";
 import { Tape } from "./Tape";
@@ -11,8 +12,19 @@ export function fmtClock(ms: number) {
   return `${m}:${(s % 60).toString().padStart(2, "0")}`;
 }
 
-/** A chess-clock face. */
-export function ClockFace({ ms, running }: { ms: number; running: boolean }) {
+/** A chess-clock face. `ms` is the time left when the clock started running at `since`
+ * (epoch ms); while running the face ticks by itself, so the game around it doesn't
+ * re-render every fraction of a second. */
+export function ClockFace({ ms: base, running, since }: { ms: number; running: boolean; since?: number }) {
+  const ticking = running && since !== undefined;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!ticking) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [ticking, since]);
+  const ms = ticking ? base - Math.max(0, now - since) : base;
   const low = ms < 20_000;
   return (
     <span

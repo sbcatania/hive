@@ -14,6 +14,7 @@ import type { ThemeId } from "@/lib/themes";
 import { useAppScreen } from "@/lib/app-screen";
 import { haptic } from "@/lib/haptics";
 import { useViewSettings } from "@/lib/view-settings";
+import { useMedia } from "@/lib/media";
 
 const Board3D = dynamic(() => import("./Board3D"), {
   ssr: false,
@@ -80,6 +81,8 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
   const [dragging, setDragging] = useState(false);
   const [sheet, setSheet] = useState(false);
   useAppScreen();
+  // The sidebar only exists on wide screens; on phones its contents live in the sheet.
+  const wide = useMedia("(min-width: 1024px)");
   useEffect(() => setSelected(null), [state.ply, canMove]);
 
   const legalByPiece = useMemo(() => {
@@ -242,7 +245,7 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
           <div className={`pencil pointer-events-none absolute top-2 left-2 -rotate-1 px-2.5 py-0.5 font-hand text-lg leading-snug text-ink ${analysis ? "max-w-[52%] lg:max-w-[75%]" : "max-w-[75%]"}`}>
             {status}
           </div>
-          {analysis && <div className="eval-compact pointer-events-none absolute top-2 right-2 w-[44%] lg:hidden">{analysis}</div>}
+          {analysis && !wide && <div className="eval-compact pointer-events-none absolute top-2 right-2 w-[44%] lg:hidden">{analysis}</div>}
           {sel && (
             <div className={`rise pointer-events-none absolute right-2 bottom-2 left-2 z-[5] sm:right-auto sm:max-w-sm`}>
               <div className={`pointer-events-auto flex items-start gap-2 transition-opacity ${dragging ? "opacity-0" : ""} pencil pencil-strong py-1.5 pr-1 pl-3 text-sm sm:py-2`}>
@@ -278,27 +281,29 @@ export function GameView({ state, theme, onThemeChange, canMove, onPlay, getPrev
           )}
           {overlay}
         </div>
-        {notice && <div className="gv-notice max-h-[35%] shrink-0 overflow-y-auto empty:hidden lg:hidden">{notice}</div>}
+        {notice && !wide && <div className="gv-notice max-h-[35%] shrink-0 overflow-y-auto empty:hidden lg:hidden">{notice}</div>}
         <div className="gv-bar flex shrink-0 items-stretch justify-around gap-1 lg:hidden" role="toolbar" aria-label="Game controls">
           {barActions.map((a) => barButton(a.id, a.icon, a.short ?? a.label, a.onClick, a))}
           {barButton("more", "more", "More", () => setSheet(true))}
         </div>
         {seat(bottom, "gv-bottom")}
       </div>
-      <aside className="hidden w-[22rem] shrink-0 flex-col gap-3 overflow-y-auto pr-1 select-text lg:flex">
-        {actions.length > 0 && (
-          <div className="grid grid-cols-2 gap-2">
-            {actions.map((a) => (
-              <button key={a.id} className="btn-secondary !justify-start" onClick={a.onClick} disabled={a.disabled} aria-pressed={a.active}>
-                <Icon name={a.icon} size={18} className={a.busy ? "pulse-ink" : undefined} />
-                {a.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {notice}
-        {details}
-      </aside>
+      {wide && (
+        <aside className="flex w-[22rem] shrink-0 flex-col gap-3 overflow-y-auto pr-1 select-text">
+          {actions.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {actions.map((a) => (
+                <button key={a.id} className="btn-secondary !justify-start" onClick={a.onClick} disabled={a.disabled} aria-pressed={a.active}>
+                  <Icon name={a.icon} size={18} className={a.busy ? "pulse-ink" : undefined} />
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {notice}
+          {details}
+        </aside>
+      )}
       <Sheet open={sheet} onClose={() => setSheet(false)} title="Game">
         <div className="space-y-4 select-text">
           {menuActions.length > 0 && (

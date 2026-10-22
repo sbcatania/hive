@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { hexPoints } from "./BugGlyph";
 import { PieceTile, sketchHexPath } from "./PieceTile";
 import { haptic } from "@/lib/haptics";
@@ -8,6 +8,7 @@ import type { BoardProps } from "./board-types";
 import type { MoveView, PieceView } from "@/lib/engine-types";
 
 const S = 40; // hex radius in SVG units
+const GHOST = S * 2.4; // the drag ghost's box, in SVG units
 const SQ3 = Math.sqrt(3);
 
 export const hexToPixel = (q: number, r: number) => [S * SQ3 * (q + r / 2), S * 1.5 * r] as const;
@@ -53,7 +54,7 @@ function Target({ m, kind }: { m: MoveView; kind: "legal" | "preview" }) {
     );
   }
   return (
-    <g data-move={m.notation} className="pulse-ink cursor-pointer" transform={`translate(${x + ox} ${y + oy})`}>
+    <g data-move={m.notation} className="cursor-pointer" transform={`translate(${x + ox} ${y + oy})`}>
       {/* generous invisible hit area for fingers */}
       <polygon points={hexPoints(0, 0, S)} fill="transparent" />
       <path d={sketchHexPath(0, 0, S * 0.86, seed, 0.03)} fill="var(--move)" fillOpacity={climb ? 0.2 : 0.1} stroke="none" />
@@ -82,7 +83,10 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   if (!live.current) viewRef.current = view;
   const gesture = useRef<Gesture>({ kind: "idle" });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const [ghost, setGhost] = useState<{ piece: PieceView; x: number; y: number } | null>(null);
+  // The dragged tile, drawn in its own small SVG over the board so moving it never
+  // repaints the board. `size` is its width in CSS pixels at the current zoom.
+  const [ghost, setGhost] = useState<{ piece: PieceView; size: number } | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const lastTap = useRef(0);
   const [narrow, setNarrow] = useState(false);
   const targetsRef = useRef(targets);
@@ -146,9 +150,10 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   const cx = viewBox[0] + viewBox[2] / 2;
   const cy = viewBox[1] + viewBox[3] / 2;
 
-  /** SVG units per CSS pixel. */
+  /** SVG units per CSS pixel. Measured on the container, which (unlike the SVG during
+   * a gesture) never carries a transform. */
   function svgScale() {
-    const rect = svgRef.current?.getBoundingClientRect();
+    const rect = boxRef.current?.getBoundingClientRect();
     if (!rect) return 1;
     return Math.max(viewBox[2] / rect.width, viewBox[3] / rect.height);
   }
@@ -164,7 +169,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
 
   /** Client point relative to the board centre, in SVG units (for zooming). */
   function rel(clientX: number, clientY: number) {
-    const rect = svgRef.current!.getBoundingClientRect();
+    const rect = boxRef.current!.getBoundingClientRect();
     const s = svgScale();
     return { x: (clientX - rect.left - rect.width / 2) * s, y: (clientY - rect.top - rect.height / 2) * s };
   }
@@ -172,24 +177,50 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   function layerTransform(v: { x: number; y: number; k: number }) {
     return `translate(${v.x} ${v.y}) translate(${cx} ${cy}) scale(${v.k}) translate(${-cx} ${-cy})`;
   }
+  // Pan and pinch move the whole SVG with a CSS transform (composited, so nothing
+  // repaints) relative to the last committed view; the real view is drawn once when the
+  // fingers lift, and the CSS transform is cleared in the same frame.
   const frame = useRef(0);
+  const baseView = useRef(view);
   function liveView(v: { x: number; y: number; k: number }) {
+    if (!live.current) baseView.current = view;
     live.current = true;
     viewRef.current = v;
     cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => layerRef.current?.setAttribute("transform", layerTransform(viewRef.current)));
+    frame.current = requestAnimationFrame(() => {
+      const el = svgRef.current;
+      if (!el || !live.current) return;
+      const b = baseView.current;
+      const c = viewRef.current;
+      const dk = c.k / b.k;
+      const s = svgScale();
+      el.style.willChange = "transform";
+      el.style.transform = `translate3d(${(c.x - dk * b.x) / s}px, ${(c.y - dk * b.y) / s}px, 0) scale(${dk})`;
+    });
   }
   function commitView() {
     if (!live.current) return;
     live.current = false;
+    cancelAnimationFrame(frame.current);
     setView({ ...viewRef.current });
   }
-  const ghostRef = useRef<SVGGElement>(null);
+  useLayoutEffect(() => {
+    const el = svgRef.current;
+    if (!el || live.current) return;
+    el.style.transform = "";
+    el.style.willChange = "";
+  }, [view]);
+
+  const ghostRef = useRef<SVGSVGElement>(null);
+  const dragBox = useRef({ left: 0, top: 0, lift: 0, size: 0 });
   const ghostPos = useRef({ x: 0, y: 0 });
-  function moveGhost(x: number, y: number) {
+  function moveGhost(clientX: number, clientY: number) {
+    const d = dragBox.current;
+    const x = clientX - d.left - d.size / 2;
+    const y = clientY - d.top - d.lift - d.size / 2;
     ghostPos.current = { x, y };
     const el = ghostRef.current;
-    if (el) el.style.transform = `translate(${x}px, ${y - S * 0.25}px) scale(1.12)`;
+    if (el) el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
   function zoomAt(px: number, py: number, k: number, base = viewRef.current) {
@@ -241,9 +272,11 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
         // On touch, carry the tile above the fingertip so it stays visible.
         const lift = g.touch ? S * 1.1 : 0;
         gesture.current = { kind: "drag", id: e.pointerId, piece: name, lift };
-        const p = toBoard(e.clientX, e.clientY);
-        ghostPos.current = { x: p.x, y: p.y - lift };
-        setGhost({ piece, x: p.x, y: p.y - lift });
+        const rect = boxRef.current!.getBoundingClientRect();
+        const px = viewRef.current.k / svgScale(); // CSS px per board unit
+        dragBox.current = { left: rect.left, top: rect.top, lift: (lift + S * 0.25) * px, size: GHOST * 1.12 * px };
+        moveGhost(e.clientX, e.clientY);
+        setGhost({ piece, size: dragBox.current.size });
         buzz();
       } else {
         gesture.current = { kind: "pan", id: e.pointerId, x: g.x, y: g.y, vx: g.vx, vy: g.vy };
@@ -254,8 +287,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
       const s = svgScale();
       liveView({ ...viewRef.current, x: g2.vx + (e.clientX - g2.x) * s, y: g2.vy + (e.clientY - g2.y) * s });
     } else if (g2.kind === "drag" && g2.id === e.pointerId) {
-      const p = toBoard(e.clientX, e.clientY);
-      moveGhost(p.x, p.y - g2.lift);
+      moveGhost(e.clientX, e.clientY);
     }
   }
 
@@ -322,10 +354,10 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
   useEffect(() => onDragChange?.(isDragging), [isDragging]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className={`relative h-full w-full select-none board-paper`}>
+    <div ref={boxRef} className={`relative h-full w-full overflow-hidden select-none board-paper`}>
       <svg
         ref={svgRef}
-        className="h-full w-full touch-none"
+        className="h-full w-full touch-none overflow-visible [transform-origin:50%_50%]"
         data-dragging={dragging ? "" : undefined}
         viewBox={viewBox.join(" ")}
         preserveAspectRatio="xMidYMid meet"
@@ -343,7 +375,7 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
             <path d="M0 1 L9 5 L0 9" fill="none" stroke="var(--violet)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </marker>
         </defs>
-        <g ref={layerRef} transform={layerTransform(viewRef.current)}>
+        <g ref={layerRef} transform={layerTransform(view)}>
           {lastFrom && (
             <path d={sketchHexPath(...hexToPixel(lastFrom[0], lastFrom[1]), S * 0.86, 3, 0.04)} fill="var(--accent)" fillOpacity={0.12} stroke="var(--accent)" strokeOpacity={0.75} strokeDasharray="2 7" strokeLinecap="round" strokeWidth={3} />
           )}
@@ -405,13 +437,20 @@ export default function Board2D({ state, selected, targets, previewTargets = [],
             </g>
           )}
 
-          {ghost && (
-            <g ref={ghostRef} style={{ transform: `translate(${ghostPos.current.x}px, ${ghostPos.current.y - S * 0.25}px) scale(1.12)` }} pointerEvents="none" opacity={0.95}>
-              <PieceTile bug={ghost.piece.bug} color={ghost.piece.color} x={0} y={0} size={S} seed={pieceSeed(ghost.piece.name)} />
-            </g>
-          )}
         </g>
       </svg>
+      {ghost && (
+        <svg
+          ref={ghostRef}
+          viewBox={`${-GHOST / 2} ${-GHOST / 2} ${GHOST} ${GHOST}`}
+          className="pointer-events-none absolute top-0 left-0 overflow-visible will-change-transform"
+          style={{ width: ghost.size, height: ghost.size, transform: `translate3d(${ghostPos.current.x}px, ${ghostPos.current.y}px, 0)` }}
+          opacity={0.95}
+          aria-hidden
+        >
+          <PieceTile bug={ghost.piece.bug} color={ghost.piece.color} x={0} y={0} size={S} seed={pieceSeed(ghost.piece.name)} />
+        </svg>
+      )}
       {(view.x !== 0 || view.y !== 0 || view.k !== 1) && (
         <button className="btn-ghost absolute right-2 bottom-2" onClick={() => setView({ x: 0, y: 0, k: 1 })}>
           Re-centre
