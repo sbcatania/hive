@@ -86,17 +86,27 @@ function overlay(host: Element) {
  * list is still gliding from a flick just stops it, as in native lists. */
 const gesture = { x: 0, y: 0, scrolled: false, sw: null as HTMLInputElement | null };
 let lastScroll = 0;
+const benched = new Set<HTMLInputElement>();
 
 function trackGestures() {
+  const release = () => {
+    benched.forEach((sw) => (sw.disabled = false));
+    benched.clear();
+  };
+  // Re-enable just after the finger lifts (once the cancelled touch can no longer
+  // toggle), or at once when the next touch begins, so a quick second tap never waits.
   const settle = () => {
-    const sw = gesture.sw;
-    if (sw) setTimeout(() => (sw.disabled = false), 400);
+    if (benched.size) setTimeout(release, 80);
   };
   const cancel = () => {
     gesture.scrolled = true;
-    if (gesture.sw) gesture.sw.disabled = true;
+    if (gesture.sw) {
+      gesture.sw.disabled = true;
+      benched.add(gesture.sw);
+    }
   };
   const onStart = (e: TouchEvent) => {
+    release();
     const t = e.touches[0];
     gesture.x = t.clientX;
     gesture.y = t.clientY;
