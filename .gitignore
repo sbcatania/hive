@@ -13,3 +13,10 @@ training/data/
 .DS_Store
 training/*.log
 .claude/worktrees/
+
+# Game Boy port: build output, generated test data, and the cartridge backup
+# (OpenAI/ModRetro's ROM is not ours to publish; see gameboy/cartridge-backup/README.md)
+gameboy/build/
+gameboy/test/rust_games.txt
+gameboy/cartridge-backup/*.gbc
+gameboy/cartridge-backup/*.sav

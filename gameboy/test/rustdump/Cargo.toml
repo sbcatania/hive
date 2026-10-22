@@ -1,0 +1,10 @@
+[package]
+name = "rustdump"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hive-engine = { path = "../../../engine" }
+
+# Standalone: not part of the repo-root workspace.
+[workspace]
