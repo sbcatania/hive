@@ -33,7 +33,14 @@ function LocalGame() {
   const [evalLoading, setEvalLoading] = useState(false);
   const [overlayClosed, setOverlayClosed] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [clockLeft, setClockLeft] = useState<[number, number] | null>(null);
+  const [clockLeft, setClockLeftState] = useState<[number, number] | null>(null);
+  // The clocks' true value, readable synchronously (a state updater runs later, so the
+  // time saved with a move must not come from inside one).
+  const clockRef = useRef<[number, number] | null>(null);
+  const setClockLeft = useCallback((l: [number, number] | null) => {
+    clockRef.current = l;
+    setClockLeftState(l);
+  }, []);
 
   const engine = useRef<Engine | null>(null);
   const cpu = useRef<AiClient | null>(null);
@@ -120,17 +127,13 @@ function LocalGame() {
     const t = Date.now();
     const elapsed = t - turnStart.current;
     turnStart.current = t;
-    let left: [number, number] = [0, 0];
-    setClockLeft((prev) => {
-      const l: [number, number] = [...(prev ?? [cur.clock!.baseMs!, cur.clock!.baseMs!])] as [number, number];
-      const i = mover === "w" ? 0 : 1;
-      // The clock starts after White's first move.
-      if (ply > 0) l[i] = Math.max(0, l[i] - elapsed) + cur.clock!.incMs;
-      left = l;
-      return l;
-    });
-    return left;
-  }, []);
+    const l: [number, number] = [...(clockRef.current ?? [cur.clock.baseMs, cur.clock.baseMs])] as [number, number];
+    const i = mover === "w" ? 0 : 1;
+    // The clock starts after White's first move.
+    if (ply > 0) l[i] = Math.max(0, l[i] - elapsed) + cur.clock.incMs;
+    setClockLeft(l);
+    return l;
+  }, [setClockLeft]);
 
   const result = entry?.result;
   const isCpuTurn = !!state && !!entry && entry.mode === "cpu" && state.toMove !== entry.human && !result;
@@ -231,8 +234,16 @@ function LocalGame() {
       n++;
     } while (target && engine.current!.state().toMove !== target && engine.current!.state().ply > 0);
     turnStart.current = Date.now();
+    // Taking back a loss on time: the flagged side gets a little time back, or it would
+    // lose again the moment play resumed.
+    let cl = clockRef.current;
+    if (cl && entry.clock?.baseMs && (cl[0] <= 0 || cl[1] <= 0)) {
+      const grace = Math.max(entry.clock.incMs, 10_000);
+      cl = [Math.max(cl[0], grace), Math.max(cl[1], grace)];
+      setClockLeft(cl);
+    }
     if (n > 0 || result) {
-      commit({ result: undefined, resultReason: undefined, takebacks: (entry.takebacks ?? 0) + (n > 0 ? 1 : 0) });
+      commit({ result: undefined, resultReason: undefined, takebacks: (entry.takebacks ?? 0) + (n > 0 ? 1 : 0) }, cl ?? undefined);
       setCurrentGameId(entry.id);
     }
   }

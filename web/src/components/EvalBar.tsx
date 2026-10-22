@@ -60,7 +60,7 @@ export function EvalBar({ result, loading }: { result: AiResult | null; loading?
   const x = L + p * (R - L);
   return (
     <div className="card p-3">
-      <div className="mb-1 flex justify-between gap-2 text-xs">
+      <div className="mb-2 flex justify-between gap-2 text-xs leading-tight">
         <span className="eval-label label mb-0">Evaluation{loading ? " (thinking)" : ""}</span>
         <span className="whitespace-nowrap text-ink-soft">{label}</span>
       </div>

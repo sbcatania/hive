@@ -66,16 +66,70 @@ function overlay(host: Element) {
   sw.setAttribute("aria-hidden", "true");
   // The switch has ticked; hand the tap to the control it covers (a real click, so
   // links navigate, labels toggle their input and forms submit) and swallow its own.
+  // A touch that turned into a scroll is not a press (see `gesture`).
   sw.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (gesture.scrolled) {
+      e.preventDefault(); // undo the toggle
+      return;
+    }
     host.click();
   });
   host.append(sw);
 }
 
+/** The current touch, so a scroll is never mistaken for a press. iOS switches respond to
+ * a finger sliding across them, not only to taps, so a scroll that starts on a control
+ * could flip its switch and press the control. A touch counts as a scroll once the
+ * finger moves more than a few pixels or anything scrolls; the switch under it is then
+ * disabled for the rest of the touch (no flip, no tick). A touch that lands while a
+ * list is still gliding from a flick just stops it, as in native lists. */
+const gesture = { x: 0, y: 0, scrolled: false, sw: null as HTMLInputElement | null };
+let lastScroll = 0;
+
+function trackGestures() {
+  const settle = () => {
+    const sw = gesture.sw;
+    if (sw) setTimeout(() => (sw.disabled = false), 400);
+  };
+  const cancel = () => {
+    gesture.scrolled = true;
+    if (gesture.sw) gesture.sw.disabled = true;
+  };
+  const onStart = (e: TouchEvent) => {
+    const t = e.touches[0];
+    gesture.x = t.clientX;
+    gesture.y = t.clientY;
+    gesture.sw = e.target instanceof HTMLInputElement && e.target.classList.contains("haptic-switch") ? e.target : null;
+    gesture.scrolled = false;
+    if (performance.now() - lastScroll < 120) cancel();
+  };
+  const onMove = (e: TouchEvent) => {
+    const t = e.touches[0];
+    if (!gesture.scrolled && Math.hypot(t.clientX - gesture.x, t.clientY - gesture.y) > 8) cancel();
+  };
+  const onScroll = () => {
+    lastScroll = performance.now();
+    if (gesture.sw) cancel();
+  };
+  document.addEventListener("touchstart", onStart, { capture: true, passive: true });
+  document.addEventListener("touchmove", onMove, { capture: true, passive: true });
+  document.addEventListener("touchend", settle, { capture: true, passive: true });
+  document.addEventListener("touchcancel", settle, { capture: true, passive: true });
+  document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+  return () => {
+    document.removeEventListener("touchstart", onStart, { capture: true });
+    document.removeEventListener("touchmove", onMove, { capture: true });
+    document.removeEventListener("touchend", settle, { capture: true });
+    document.removeEventListener("touchcancel", settle, { capture: true });
+    document.removeEventListener("scroll", onScroll, { capture: true });
+  };
+}
+
 /** Puts an invisible native switch inside every tappable control, now and as the page
  * changes (React may also wipe one when it rewrites a control's text). */
 function installSwitchOverlays() {
+  const offGestures = trackGestures();
   document.querySelectorAll(HOSTS).forEach(overlay);
   const mo = new MutationObserver((records) => {
     for (const r of records) {
@@ -92,7 +146,10 @@ function installSwitchOverlays() {
     }
   });
   mo.observe(document.body, { childList: true, subtree: true });
-  return () => mo.disconnect();
+  return () => {
+    mo.disconnect();
+    offGestures();
+  };
 }
 
 /** Every press of a control gives a tick, app-wide (installed once, see NativeFeel). */
