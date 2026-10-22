@@ -166,7 +166,7 @@ export default function Home() {
       </section>
 
       <section className="card relative mt-2 !p-0 sm:mt-4 phone:mt-1 phone:min-h-0 phone:flex-1">
-        <div className="scroll-fade space-y-5 p-4 sm:space-y-6 sm:p-7 phone:absolute phone:inset-[3px] phone:space-y-5 phone:overflow-y-auto phone:overscroll-contain phone:p-4 phone:pb-8">
+        <div className="scroll-fade space-y-5 p-4 sm:space-y-6 sm:p-7 phone:absolute phone:inset-[4.5px] phone:space-y-5 phone:overflow-y-auto phone:overscroll-contain phone:p-4 phone:pb-8">
         <h2 className="hidden font-display text-2xl font-semibold sm:block phone:hidden">New game</h2>
 
         <div>

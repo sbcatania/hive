@@ -139,7 +139,7 @@ function PuzzlePlayer({ puzzle, onSolved, onNext }: { puzzle: (typeof LIST)[numb
         </div>
       </div>
       <div className="pz-board card relative min-h-0 flex-1 !p-0 [--fill:transparent] lg:h-[52vh] lg:min-h-80 lg:flex-none">
-        <div className="sk-lg absolute inset-[3px] overflow-hidden">
+        <div className="frame-inner-lg">
         <Board2D state={state} selected={selected} targets={targets} theme={theme} selectable={selectable} onPieceClick={onPieceClick} onTargetClick={play} onBackgroundClick={() => setSelected(null)} hideLastMove={moves.length === puzzle.moves.length} />
         </div>
       </div>

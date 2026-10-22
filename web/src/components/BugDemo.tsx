@@ -61,7 +61,7 @@ export function BugDemo({ gameString, focus, theme = "field", height = "h-64 sm:
   return (
     <figure className="space-y-1.5">
       <div className={`pencil relative ${height} [--fill:transparent]`}>
-        <div className="sk-lg absolute inset-[3px] overflow-hidden">
+        <div className="frame-inner-md">
           <Board2D state={state} selected={moved ? null : focus} targets={targets} previewTargets={coral} theme={theme} selectable={new Set()} onTargetClick={(m) => tryMove(m.notation)} hideLastMove={!moved} fixed />
         </div>
         <div className="pencil pointer-events-none absolute top-2 left-2 -rotate-1 px-2 py-0.5 font-hand text-base text-ink">

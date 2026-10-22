@@ -1,10 +1,10 @@
 "use client";
 
 import { MiniTile } from "./PieceTile";
-import { BUG_NAMES, BUG_ORDER, STANDARD_COUNTS, type BugLetter, type Rules } from "@/lib/engine-types";
-import { describeVariants, PRESETS } from "@/lib/variants";
+import { BUG_NAMES, BUG_ORDER, normalizeRules, STANDARD_COUNTS, type BugLetter, type Rules } from "@/lib/engine-types";
+import { describeVariants, PRESETS, type Preset } from "@/lib/variants";
 import { Icon } from "./Icon";
-import { PresetIcon } from "./SetupIcons";
+import { Dial, PresetIcon, RuleIcon, SurroundIcon } from "./SetupIcons";
 import { useState } from "react";
 
 function Tile({ bug, size = 36, off }: { bug: BugLetter; size?: number; off?: boolean }) {
@@ -54,6 +54,14 @@ export function ExpansionToggles({ rules, onChange }: { rules: Rules; onChange: 
   );
 }
 
+const sameRules = (a: Rules, b: Rules) => JSON.stringify(normalizeRules(a)) === JSON.stringify(normalizeRules(b));
+
+/** A preset is in effect when applying it would change nothing; Official only when the
+ * rules are exactly the official ones (so presets combined show each one checked). */
+function presetInEffect(p: Preset, rules: Rules) {
+  return sameRules(p.apply(rules), rules);
+}
+
 /** Marks the official setting in a row of options. */
 function OfficialMark() {
   return <span aria-label="official" className="ml-1 inline-block h-[7px] w-[6px] bg-accent align-middle [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />;
@@ -90,21 +98,31 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
         <div>
           <span className="label">Presets</span>
           <div className="grid gap-2 sm:grid-cols-2">
-            {PRESETS.map((p) => (
-              <button key={p.id} className="pencil flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition hover:[--fill:var(--card-2)]" onClick={() => onChange(p.apply(rules))}>
-                <PresetIcon id={p.id} />
-                <span className="min-w-0">
-                  <span className="block font-semibold">{p.name}</span>
-                  <span className="block text-xs text-muted">{p.blurb}</span>
-                </span>
-              </button>
-            ))}
+            {PRESETS.map((p) => {
+              const on = presetInEffect(p, rules);
+              return (
+                <button
+                  key={p.id}
+                  aria-pressed={on}
+                  className={`pencil flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition ${on ? "pencil-honey" : "hover:[--fill:var(--card-2)]"}`}
+                  onClick={() => onChange(p.apply(rules))}
+                >
+                  <PresetIcon id={p.id} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{p.name}</span>
+                    <span className="block text-xs text-muted">{p.blurb}</span>
+                  </span>
+                  <span className="grid h-6 w-6 shrink-0 place-items-center">{on && <Icon name="check" size={18} className="anim-boop text-move" />}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" className="mt-0.5" checked={rules.tournament} onChange={(e) => onChange({ ...rules, tournament: e.target.checked })} />
+            <RuleIcon name="tournament" />
             <span>
               <span className="font-medium">Tournament opening</span>
               <span className="block text-xs text-muted">No Queen on either player&apos;s first turn (official).</span>
@@ -112,13 +130,17 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
           </label>
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" className="mt-0.5" checked={rules.repetitionDraw} onChange={(e) => onChange({ ...rules, repetitionDraw: e.target.checked })} />
+            <RuleIcon name="repetition" />
             <span>
               <span className="font-medium">Threefold repetition is a draw</span>
               <span className="block text-xs text-muted">Stops games where both sides shuffle forever.</span>
             </span>
           </label>
           <div className="text-sm">
-            <div className="font-medium">Queen must be placed by turn</div>
+            <div className="flex items-center gap-2 font-medium">
+              <RuleIcon name="deadline" />
+              Queen must be placed by turn
+            </div>
             <div className="mt-1 seg">
               {[2, 3, 4, 5, 6].map((n) => (
                 <button key={n} className="min-w-10" aria-pressed={rules.queenDeadline === n} disabled={n < 2 && rules.tournament} onClick={() => onChange({ ...rules, queenDeadline: n })}>
@@ -129,23 +151,33 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
             </div>
           </div>
           <div className="text-sm">
-            <div className="font-medium">A Queen is captured when surrounded on</div>
+            <div className="flex items-center gap-2 font-medium">
+              <RuleIcon name="surround" />
+              A Queen is captured when surrounded on
+            </div>
             <div className="mt-1 seg">
               {[6, 5].map((n) => (
-                <button key={n} aria-pressed={rules.surround === n} onClick={() => onChange({ ...rules, surround: n })}>
+                <button key={n} className="inline-flex items-center gap-1.5" aria-pressed={rules.surround === n} onClick={() => onChange({ ...rules, surround: n })}>
+                  <SurroundIcon n={n} on={rules.surround === n} />
                   {n} sides{n === 6 && <OfficialMark />}
                 </button>
               ))}
             </div>
           </div>
           <div className="text-sm sm:col-span-2">
-            <div className="font-medium">Turn limit (turns each)</div>
+            <div className="flex items-center gap-2 font-medium">
+              <RuleIcon name="turnLimit" />
+              Turn limit (turns each)
+            </div>
             <div className="text-xs text-muted">The less-surrounded Queen wins when it&apos;s reached.</div>
             <div className="mt-1 seg seg-fill">
               {[0, 20, 30, 40, 60].map((n) => (
-                <button key={n} aria-pressed={rules.turnLimit === n} onClick={() => onChange({ ...rules, turnLimit: n })}>
-                  {n === 0 ? "None" : n}
-                  {n === 0 && <OfficialMark />}
+                <button key={n} className="flex flex-col items-center justify-center !gap-1 !py-2" aria-pressed={rules.turnLimit === n} onClick={() => onChange({ ...rules, turnLimit: n })}>
+                  <Dial fraction={n ? n / 60 : null} on={rules.turnLimit === n} />
+                  <span className="whitespace-nowrap">
+                    {n === 0 ? "None" : n}
+                    {n === 0 && <OfficialMark />}
+                  </span>
                 </button>
               ))}
             </div>
@@ -153,7 +185,10 @@ export function AdvancedRules({ rules, onChange }: { rules: Rules; onChange: (r:
         </div>
 
         <div>
-          <span className="label">Pieces per player</span>
+          <span className="label flex items-center gap-2">
+            <RuleIcon name="pieces" />
+            Pieces per player
+          </span>
           <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:grid-cols-4">
             {BUG_ORDER.map((b, i) => {
               const on = expOn(b);

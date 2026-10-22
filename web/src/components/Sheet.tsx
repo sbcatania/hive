@@ -168,7 +168,9 @@ export function Sheet({ open, onClose, title, children, instant }: { open: boole
           {title && <div className="px-6 pb-2 font-display text-xl font-semibold">{title}</div>}
         </div>
         <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-4">
-          {live && children}
+          {/* Rendered in the same frame the sheet opens, so it slides up at full height
+              (rendering a frame later made a short, too-quick slide and then a jump). */}
+          {(live || open) && children}
         </div>
       </div>
     </div>,
