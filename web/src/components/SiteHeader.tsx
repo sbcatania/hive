@@ -8,6 +8,7 @@ import { Icon } from "./Icon";
 import { Avatar } from "./Nameplate";
 import { Sheet } from "./Sheet";
 import { NavIcon, type NavIconName } from "./NavIcons";
+import { ShareButton, ShareRow } from "./ShareApp";
 import { useAuth } from "@/lib/auth";
 import { applyThemeMode, loadThemeMode, takeReopen, type ThemeMode } from "@/lib/theme-mode";
 
@@ -137,6 +138,9 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <span className="hidden md:block">
+            <ShareButton />
+          </span>
           <span className="hidden sm:block">
             <ThemeToggle />
           </span>
@@ -163,6 +167,7 @@ export function SiteHeader() {
               {active(n.href) && <span className="ml-auto h-[11px] w-[10px] shrink-0 bg-accent [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" aria-hidden />}
             </Link>
           ))}
+          <ShareRow onShared={() => setOpen(false)} />
           <div className="mt-2 flex items-center justify-between border-t border-dashed border-line-strong pt-3">
             <span className="text-ink-soft">Theme</span>
             <ThemeSeg />
