@@ -16,7 +16,9 @@ type Tab = "signin" | "signup" | "reset";
 function AuthForms() {
   const params = useSearchParams();
   const router = useRouter();
-  const next = params.get("next");
+  // Only same-site paths: "//host" or "/\host" would send people to another site after signing in.
+  const raw = params.get("next");
+  const next = raw && /^\/(?![/\\])/.test(raw) ? raw : null;
   const [tab, setTab] = useState<Tab>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -108,7 +110,7 @@ function AuthForms() {
               setBusy(true);
               setMsg(null);
               try {
-                await signInWithGoogle(next?.startsWith("/") ? next : "/account");
+                await signInWithGoogle(next ?? "/account");
               } catch (err) {
                 setMsg({ kind: "error", text: errorMessage(err) });
                 setBusy(false);
