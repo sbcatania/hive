@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Avatar } from "@/components/Nameplate";
-import { sendPasswordReset, setUsername, signIn, signOut, signUp, updatePassword, useAuth } from "@/lib/auth";
+import { sendPasswordReset, setUsername, signIn, signInWithGoogle, signOut, signUp, updatePassword, useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/engine";
 import { uploadAllLocal } from "@/lib/journal";
 import { supabaseAvailable } from "@/lib/supabase";
@@ -100,6 +100,24 @@ function AuthForms() {
             {busy ? "One moment…" : tab === "signin" ? "Sign in" : tab === "signup" ? "Create account" : "Send reset link"}
           </button>
         </form>
+        {tab !== "reset" && (
+          <button
+            className="btn-secondary mt-3 w-full"
+            disabled={busy || !supabaseAvailable()}
+            onClick={async () => {
+              setBusy(true);
+              setMsg(null);
+              try {
+                await signInWithGoogle(next?.startsWith("/") ? next : "/account");
+              } catch (err) {
+                setMsg({ kind: "error", text: errorMessage(err) });
+                setBusy(false);
+              }
+            }}
+          >
+            Continue with Google
+          </button>
+        )}
         <div className="mt-4 text-center text-xs text-muted">
           {tab === "reset" ? (
             <button className="inline-block py-2 underline" onClick={() => setTab("signin")}>

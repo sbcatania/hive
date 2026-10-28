@@ -1,6 +1,6 @@
 "use client";
 
-// Optional accounts via Supabase Auth (email + password). Everything works
+// Optional accounts via Supabase Auth (email + password, or Google). Everything works
 // signed out; signing in adds a cloud journal, Elo rating and profile.
 import type { User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
@@ -89,6 +89,12 @@ export async function signUp(email: string, password: string, username: string) 
 
 export async function signIn(email: string, password: string) {
   const { error } = await sb().auth.signInWithPassword({ email, password });
+  if (error) throw error;
+}
+
+/** Leaves for Google's sign-in and comes back to `path` signed in (the project is shared with Sam's other apps). */
+export async function signInWithGoogle(path = "/account") {
+  const { error } = await sb().auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${origin()}${path}` } });
   if (error) throw error;
 }
 
