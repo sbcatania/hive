@@ -349,6 +349,14 @@ summary::-webkit-details-marker {
 /* Thin, quiet scrollbars where a panel scrolls on desktop. In the base layer, so a
    utility like [scrollbar-width:none] still wins. */
 @layer base {
+  /* Design system, typography: even line lengths in headings, no lone last word in
+     paragraphs. */
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+  p, li, blockquote, figcaption {
+    text-wrap: pretty;
+  }
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--line-strong) transparent;
@@ -849,6 +857,25 @@ html.theme-cover body::after {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Icon swaps (copy -> check): both icons share one cell and cross-fade with scale and
+   blur, as a transition so a second tap mid-swap just reverses it. */
+.icon-swap {
+  display: inline-grid;
+  flex-shrink: 0;
+}
+.icon-swap > svg {
+  grid-area: 1 / 1;
+  transition:
+    opacity 180ms ease-out,
+    transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    filter 180ms ease-out;
+}
+.icon-swap > svg.is-off {
+  opacity: 0;
+  transform: scale(0.5);
+  filter: blur(3px);
 }
 
 /* ---- Components ------------------------------------------------------------ */

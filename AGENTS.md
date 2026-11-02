@@ -20,6 +20,16 @@
 - `src/app`: `/` start screen, `/play?id=` CPU & pass-and-play (games live in the journal, `src/lib/journal.ts`), `/online?g=`, `/replay`, `/journal`, `/learn` (field guide), `/puzzles` (`src/lib/puzzles.json`, made by `cargo run --release --example find_puzzles`), `/account`, `/player?u=`, `/leaderboard`.
 - Design tokens are CSS variables in `src/app/globals.css` (day + `[data-theme=dark]` night); use the Tailwind token classes (`bg-card`, `text-ink`, `border-line`...) rather than raw colours so both themes stay readable. Design rationale: `docs/DESIGN.md`.
 
+## Design system (Sam's, applies to all UI work)
+Sam keeps a cross-project design system in Notion: https://app.notion.com/p/40cb6198cc3a8141b858c81acf886610. Read it before building or changing UI and run its checklist before calling UI work done. Hive's own rules in `docs/DESIGN.md` win where they differ; how each rule maps onto Hive is in the "Sam's design system" section there. In short:
+- Headings `text-wrap: balance`, paragraphs `pretty` (set globally in `globals.css` base layer); `antialiased` is on `body`.
+- `tabular-nums` on anything that counts or ticks (clocks, ratings, move numbers, scores).
+- Nested rounded corners: outer radius = inner radius + padding.
+- No box-shadows or borders on Hive's chrome: edges are the hand-drawn `.pencil` outlines (Hive rule, overrides the Notion "shadows instead of borders" rule).
+- Icon swaps use `<SwapIcon>` (`components/Icon.tsx`), never a hard cut.
+- Interruptible interactions (hover, toggles, sheets) use transitions; keyframes only for one-shot sequences. Enters are staggered, exits shorter and quieter. Respect `prefers-reduced-motion`.
+- Optically centre icon buttons and icon+text buttons by eye.
+
 ## Conventions
 - Types crossing the WASM boundary are mirrored in `web/src/lib/engine-types.ts` — keep in sync with `engine/src/wasm.rs`.
 - NN input encoding lives only in `engine/src/features.rs`; Python reads encoded data, never encodes. Changing features requires retraining.
