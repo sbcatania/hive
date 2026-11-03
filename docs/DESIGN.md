@@ -198,5 +198,5 @@ Hive's own decisions above come first; the Notion page fills the gaps. How each 
 | 7 | Animate icon swaps | `<SwapIcon>` cross-fades with scale and blur (share → check, copy → check). |
 | 8 | Transitions for interactions, keyframes for sequences | Keyframes are for one-shot moments (launch, wordmark tiles, bug reactions in the guide). Interactive state changes use transitions. |
 | 9 | Split and stagger enters | The wordmark tiles set down in turn. Round 6 removed fade-up on cards, so don't add blanket enter animations; stagger only where something already enters. |
-| 10 | Quieter exits | Gap: sheets (`Sheet.tsx`) close with the same duration and easing as they open. A shorter close is a candidate follow-up. |
+| 10 | Quieter exits | Sheets (`Sheet.tsx`) open in 480ms and close in 300ms; a drag that snaps back uses the open timing. |
 | 11 | Align by eye | Icons are drawn on a 24px grid; nudge inside the SVG path when an icon looks off-centre. |
