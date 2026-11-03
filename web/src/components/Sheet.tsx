@@ -7,6 +7,8 @@ import { Icon } from "./Icon";
 // iOS's sheet curve (fast out, long gentle settle).
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 const DURATION = 480;
+// Exits are quicker than entrances (design system): leaving shouldn't hold attention.
+const EXIT = 300;
 
 /** A bottom sheet that floats like an iOS 26 sheet: inset from the screen edges with
  * corners concentric to the rounded screen. Drag it from anywhere: pulling down on its
@@ -26,7 +28,7 @@ export function Sheet({ open, onClose, title, children, instant }: { open: boole
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (open) return setLive(true);
-    const t = setTimeout(() => setLive(false), DURATION);
+    const t = setTimeout(() => setLive(false), EXIT);
     return () => clearTimeout(t);
   }, [open]);
 
@@ -38,9 +40,10 @@ export function Sheet({ open, onClose, title, children, instant }: { open: boole
     const d = dim.current;
     if (!p || !d) return;
     const h = animate || !height.current ? p.offsetHeight || 400 : height.current;
-    const t = animate ? `transform ${DURATION}ms ${EASE}` : "none";
+    const ms = y === null ? EXIT : DURATION;
+    const t = animate ? `transform ${ms}ms ${EASE}` : "none";
     p.style.transition = t;
-    d.style.transition = animate ? `opacity ${DURATION}ms ${EASE}` : "none";
+    d.style.transition = animate ? `opacity ${ms}ms ${EASE}` : "none";
     p.style.transform = y === null ? "translate3d(0, calc(100% + 24px), 0)" : `translate3d(0, ${y}px, 0)`;
     d.style.opacity = y === null ? "0" : String(Math.max(0, 1 - Math.max(0, y) / h));
   };
@@ -141,7 +144,7 @@ export function Sheet({ open, onClose, title, children, instant }: { open: boole
 
   if (!mounted) return null;
   return createPortal(
-    <div className={`fixed inset-0 z-50 overflow-hidden ${open ? "visible" : "pointer-events-none invisible"}`} style={{ transition: `visibility 0s linear ${open ? "0s" : `${DURATION}ms`}` }} aria-hidden={!open}>
+    <div className={`fixed inset-0 z-50 overflow-hidden ${open ? "visible" : "pointer-events-none invisible"}`} style={{ transition: `visibility 0s linear ${open ? "0s" : `${EXIT}ms`}` }} aria-hidden={!open}>
       {/* The dim stops at the header: in a home-screen app the status bar can't dim with the
           page, so the header (which sits under it) stays bright too and the two always match. */}
       <div ref={dim} className="absolute inset-x-0 top-[var(--header-h)] bottom-0 touch-none bg-black/35" style={{ opacity: 0 }} onClick={() => closeRef.current()} />

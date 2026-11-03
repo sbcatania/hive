@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "./Icon";
+import { SwapIcon } from "./Icon";
 
 /** Always the start screen: the current page may be a game that only lives on this device. */
 function appLink() {
@@ -52,7 +52,7 @@ export function ShareRow({ onShared }: { onShared?: () => void }) {
   return (
     <button type="button" onClick={share} className="flex min-h-12 w-full items-center gap-3 px-1 text-left text-xl text-ink-soft">
       <span className="grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
-        <Icon name={note === "Link copied" ? "check" : "share"} />
+        <SwapIcon name="share" swapTo="check" on={note === "Link copied"} />
       </span>
       <span aria-live="polite">{note ?? "Share Hive with a friend"}</span>
     </button>
@@ -65,7 +65,7 @@ export function ShareButton() {
   return (
     <span className="relative">
       <button type="button" className="icon-btn !h-10 !w-10" aria-label="Share Hive with a friend" title="Share Hive" onClick={share}>
-        <Icon name={note === "Link copied" ? "check" : "share"} />
+        <SwapIcon name="share" swapTo="check" on={note === "Link copied"} />
       </button>
       {note && (
         <span role="status" className="absolute right-0 top-full mt-1 whitespace-nowrap rounded-md border border-line bg-card px-2 py-1 text-sm text-ink shadow-sm">

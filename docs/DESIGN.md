@@ -178,3 +178,25 @@ naming), one change at a time.
 - The header never changes between screens: back is a "‹ Back" row at the top of a detail
   screen's own content, and the account chip keeps its size while loading.
 - Launch: the splash wordmark glides into the header logo while the app fades in.
+
+## Sam's design system (added 2026-11-02)
+
+Sam keeps one design system for all projects in Notion
+([Design system](https://app.notion.com/p/40cb6198cc3a8141b858c81acf886610), starting with
+11 "Interface details" rules from Jakub Krehel's
+[Details that make interfaces feel better](https://jakub.kr/writing/details-that-make-interfaces-feel-better)).
+Hive's own decisions above come first; the Notion page fills the gaps. How each rule lands here:
+
+| # | Rule | In Hive |
+|---|---|---|
+| 1 | Balanced headings, pretty paragraphs | Global: `h1–h4` balance, `p`/`li` pretty (`globals.css` base layer). |
+| 2 | Font smoothing on the root | `-webkit-font-smoothing: antialiased` on `body`. |
+| 3 | Tabular numbers for changing values | Clocks, nameplates, move list, journal, player and leaderboard use `tabular-nums`. Add it to any new counter. |
+| 4 | Concentric corners | Same rule as Round 7: bottom sheets match the phone's screen radius minus their inset. Apply outer = inner + padding to any nested card or button. |
+| 5 | Shadows instead of borders | **Overridden.** Round 5 bans box-shadows; edges are the drawn `.pencil` outlines, which already adapt to both themes. |
+| 6 | Faint outline on images | Not used: the UI has no photos. If avatars arrive, give them a 1px 10% ink outline with `outline-offset: -1px`. |
+| 7 | Animate icon swaps | `<SwapIcon>` cross-fades with scale and blur (share → check, copy → check). |
+| 8 | Transitions for interactions, keyframes for sequences | Keyframes are for one-shot moments (launch, wordmark tiles, bug reactions in the guide). Interactive state changes use transitions. |
+| 9 | Split and stagger enters | The wordmark tiles set down in turn. Round 6 removed fade-up on cards, so don't add blanket enter animations; stagger only where something already enters. |
+| 10 | Quieter exits | Sheets (`Sheet.tsx`) open in 480ms and close in 300ms; a drag that snaps back uses the open timing. |
+| 11 | Align by eye | Icons are drawn on a 24px grid; nudge inside the SVG path when an icon looks off-centre. |

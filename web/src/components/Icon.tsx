@@ -114,3 +114,14 @@ export function Icon({ name, size = 20, className, title }: { name: IconName; si
     </svg>
   );
 }
+
+/** Shows `name`, or `swapTo` while `on`, animating between them (design system rule:
+ *  icon swaps never hard-cut). */
+export function SwapIcon({ name, swapTo, on, size = 20 }: { name: IconName; swapTo: IconName; on: boolean; size?: number }) {
+  return (
+    <span className="icon-swap" aria-hidden>
+      <Icon name={name} size={size} className={on ? "is-off" : undefined} />
+      <Icon name={swapTo} size={size} className={on ? undefined : "is-off"} />
+    </span>
+  );
+}

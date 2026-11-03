@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClockFace, GameOverCard, NewGameLink } from "@/components/GameBits";
-import { Icon } from "@/components/Icon";
+import { Icon, SwapIcon } from "@/components/Icon";
 import { GameView, type GameAction, type PlayerInfo } from "@/components/GameView";
 import { useAuth } from "@/lib/auth";
 import { engineFromMoves, errorMessage, loadEngine, withEngine } from "@/lib/engine";
@@ -306,7 +306,7 @@ function OnlineGameView() {
           <div className="flex gap-2">
             <input readOnly value={link} className="input min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.target.select()} />
             <button className="btn shrink-0" onClick={() => copy(link, "invite")}>
-              <Icon name={copied === "invite" ? "check" : "copy"} size={17} />
+              <SwapIcon name="copy" swapTo="check" on={copied === "invite"} size={17} />
               {copied === "invite" ? "Copied" : "Copy"}
             </button>
           </div>
@@ -370,7 +370,7 @@ function OnlineGameView() {
       <div className="flex flex-wrap gap-2">
         {playing && row.status !== "waiting" && (
           <button className="btn-ghost" onClick={() => copy(link, "spectate")}>
-            <Icon name={copied === "spectate" ? "check" : "eye"} size={16} />
+            <SwapIcon name="eye" swapTo="check" on={copied === "spectate"} size={16} />
             {copied === "spectate" ? "Copied" : "Copy spectator link"}
           </button>
         )}
