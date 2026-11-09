@@ -18,6 +18,7 @@
 
 ## Web app map
 - `src/app`: `/` start screen, `/play?id=` CPU & pass-and-play (games live in the journal, `src/lib/journal.ts`), `/online?g=`, `/replay`, `/journal`, `/learn` (field guide), `/puzzles` (`src/lib/puzzles.json`, made by `cargo run --release --example find_puzzles`), `/account`, `/player?u=`, `/leaderboard`.
+- Link previews: `/og` (`src/app/og/route.tsx`) draws the 1200×630 picture chats show; `src/lib/preview.ts` writes the words for online games (`/online?g=`, an invitation while it waits) and players (`/player?u=`). Those two pages are server wrappers around their client components (`OnlineClient.tsx`, `PlayerClient.tsx`) so they can read the query. The wordmark in the picture is `public/og/wordmark.png`; after changing `Wordmark.tsx`, run `node web/scripts/og-wordmark.mjs`.
 - Design tokens are CSS variables in `src/app/globals.css` (day + `[data-theme=dark]` night); use the Tailwind token classes (`bg-card`, `text-ink`, `border-line`...) rather than raw colours so both themes stay readable. Design rationale: `docs/DESIGN.md`.
 
 ## Design system (Sam's, applies to all UI work)
