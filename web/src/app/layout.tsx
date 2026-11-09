@@ -13,12 +13,25 @@ import { Wordmark } from "@/components/Wordmark";
 import { AuthProvider } from "@/lib/auth";
 import { LAUNCH_SCRIPT, THEME_BOOT_SCRIPT } from "@/lib/theme-mode";
 import { DialogProvider } from "@/components/Dialogs";
+import { DESCRIPTION, SITE } from "@/lib/preview";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE),
   title: { default: "Hive — the board game, in your browser", template: "%s · Hive" },
-  description:
-    "Play Hive with the Mosquito, Ladybug and Pillbug: against four CPU opponents, pass-and-play, or online with a friend. Rated games, puzzles and an illustrated field guide to the rules.",
-  icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
+  description: DESCRIPTION,
+  applicationName: "Hive",
+  // What a link shows in chats and posts. Online games and players have their
+  // own (see lib/preview.ts); every other page uses the site's picture.
+  openGraph: {
+    type: "website",
+    siteName: "Hive",
+    title: "Hive — the board game, in your browser",
+    description: DESCRIPTION,
+    url: "/",
+    images: [{ url: "/og", width: 1200, height: 630, alt: "Hive: no board, no luck, just bugs." }],
+  },
+  twitter: { card: "summary_large_image", title: "Hive — the board game, in your browser", description: DESCRIPTION, images: ["/og"] },
+  icons: { icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/apple-touch-icon.png" },
   // Launch screens per iPhone size and theme (made by the splash script), so a
   // home-screen launch never flashes white.
   appleWebApp: { capable: true, title: "Hive", startupImage: splash },
