@@ -5,6 +5,8 @@ const oldHosts = ["hive-seven-gamma.vercel.app", "hive-sbcatania.vercel.app"];
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The link-preview picture reads its fonts and wordmark from disk.
+  outputFileTracingIncludes: { "/og": ["./assets/og/**", "./public/og/**"] },
   async redirects() {
     return oldHosts.map((host) => ({
       source: "/:path*",
