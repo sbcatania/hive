@@ -1,5 +1,13 @@
 # Agent Instructions — Hive
 
+## Ownership
+This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it.
+
+- Fix what you find along the way: merge repeated code, fix nearby bugs, and take on refactors or migrations when they leave the code simpler.
+- Keep what existing features do for users unless the task asks for a change. If you think one should work differently, say so first.
+- The rules in this file about asking before destructive steps still hold.
+- In your closing summary, list every change, including small ones.
+
 ## Layout
 - **engine/** — Rust crate: rules, notation (UHP), alpha-beta AI, neural net + MCTS, WASM bindings (`src/wasm.rs`, feature `wasm`), native self-play/arena binaries (feature `native`).
 - **web/** — Next.js 15 app (React 19, Tailwind 4). Game logic runs client-side in WebAssembly; the AI runs in a Web Worker (`src/workers/ai.worker.ts`).
